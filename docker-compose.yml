@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  kgbuilder:
+    build: .
+    container_name: kgbuilder
+    command: ["sleep", "infinity"]  # Replace with entrypoint later
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+      env_file:
+        - .env
+      environment:
+        - PYTHONUNBUFFERED=1
+        - KGBUILDER_CONFIG=/app/config/config.yaml
+        - QDRANT_URL=${QDRANT_URL}
+        - NEO4J_URI=${NEO4J_URI}
+        - NEO4J_USER=${NEO4J_USER}
+        - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+        - FUSEKI_URL=${FUSEKI_URL}
+        - FUSEKI_USER=${FUSEKI_USER}
+        - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
+        - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+        - KGBUILDER_ENV=${KGBUILDER_ENV}
+        - KGBUILDER_SECRET_KEY=${KGBUILDER_SECRET_KEY}
+    depends_on:
+      - qdrant
+      - neo4j
+    networks:
+      - kgbuilder-net
+    ports:
+      - "8000:8000"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    ports:
+      - "6333:6333"
+    networks:
+      - kgbuilder-net
+
+  neo4j:
+    image: neo4j:5.19.0
+    container_name: neo4j
+    environment:
+      env_file:
+        - .env
+      environment:
+        - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+    volumes:
+      - ./data/neo4j:/data
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    networks:
+      - kgbuilder-net
+
+  fuseki:
+    image: stain/jena-fuseki:latest
+    container_name: fuseki
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./data/fuseki:/fuseki
+    networks:
+      - kgbuilder-net
+    # Optional: comment out if not using RDF store
+
+networks:
+  kgbuilder-net:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+    # (see service-level volumes above)
