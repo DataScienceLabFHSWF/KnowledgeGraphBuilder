@@ -1,4 +1,3 @@
-
 # KnowledgeGraphBuilder
 
 Ontology-driven Knowledge Graph Construction Pipeline
@@ -14,6 +13,69 @@ Ontology-driven Knowledge Graph Construction Pipeline
 - **Builds and validates** a Knowledge Graph (KG)
 - **Exports** KG in multiple formats (JSON-LD, YARRRML, RDF)
 - **Tracks experiments and KG versions** for research and reproducibility
+
+---
+
+## Quick Start
+
+### 1. Setup
+```bash
+# Copy environment config
+cp .env.example .env
+
+# Install dependencies
+pip install -r pyproject.toml
+
+# Start services
+docker-compose up -d neo4j qdrant
+```
+
+### 2. Load Data
+```python
+from pathlib import Path
+from kgbuilder.document import DocumentLoaderFactory
+
+# Load documents
+loader = DocumentLoaderFactory.get_loader("pdf")
+docs = [loader.load(f) for f in Path("data/Decommissioning_Files").glob("*.pdf")]
+
+# Load ontology
+from rdflib import Graph
+ontology = Graph()
+ontology.parse("data/ontology/plan-ontology-v1.0.owl", format="xml")
+```
+
+### 3. Process Documents
+```python
+from kgbuilder.document.chunking import FixedSizeChunker
+
+# Chunk documents
+chunker = FixedSizeChunker(chunk_size=512, overlap=50)
+chunks = []
+for doc in docs[:3]:  # Start with 3 docs
+    chunks.extend(chunker.chunk(doc))
+```
+
+### 4. Extract & Store
+```python
+# Extract entities & relations (after LLM integration)
+# from kgbuilder.extraction import LLMEntityExtractor, LLMRelationExtractor
+
+# Store in backends
+from kgbuilder.storage import Neo4jStore, QdrantStore
+graph_store = Neo4jStore(uri="bolt://localhost:7687")
+vector_store = QdrantStore(url="http://localhost:6333")
+```
+
+---
+
+## Data
+
+- **Ontology**: `data/ontology/plan-ontology-v1.0.owl` (28 KB) – AI Planning Ontology
+- **Documents**: `data/Decommissioning_Files/` – 33 German nuclear decommissioning PDFs (126 MB)
+- **Scripts**: `scripts/download_ontology.py` – Manage ontology versions
+
+See [data/README.md](data/README.md) for details.
 
 ---
 
@@ -36,28 +98,36 @@ This project is designed to answer key research questions in ontology-driven KG 
 
 ---
 
-## Quick Start
-1. Copy [.env.example](.env.example) to `.env` and fill in secrets
-2. Run `docker-compose up` (Ollama must run externally)
-3. See [src/](src/) for main code, [Planning/](Planning/) for all specs and design docs
+## Architecture
+
+- [src/](src/) – Implementation (document processing, extraction, storage, validation)
+- [Planning/ARCHITECTURE.md](Planning/ARCHITECTURE.md) – System design & diagrams
+- [Planning/INTERFACES.md](Planning/INTERFACES.md) – Protocol/interface definitions
+- [.github/copilot-instructions.md](.github/copilot-instructions.md) – Code style guidelines
 
 ---
 
 ## Documentation
-- [Planning/ARCHITECTURE.md](Planning/ARCHITECTURE.md) – System architecture, diagrams
-- [Planning/INTERFACES.md](Planning/INTERFACES.md) – All protocol/interface definitions
-- [Planning/ISSUES_BACKLOG.md](Planning/ISSUES_BACKLOG.md) – Feature backlog and roadmap
-- [Planning/KG_VERSIONING.md](Planning/KG_VERSIONING.md) – KG versioning design
-- [.github/copilot-instructions.md](.github/copilot-instructions.md) – Code style and repo guidelines
+
+**Public Documentation** (repository ready):
+- [README.md](README.md) – This file
+- [data/README.md](data/README.md) – Data directory guide
+- [Planning/](Planning/) – Specs, architecture, and design docs
+
+**Local Documentation** (development only, not published):
+- `local-docs/` – Phase summaries, implementation guides, completion checklists
+  - Use `local-docs/IMPLEMENTATION_GUIDE.md` for full development reference
 
 ---
 
 ## Repo Organization
 - [src/](src/) – Implementation code
-- [Planning/](Planning/) – All documentation/specs (not in root)
-- [tests/](tests/) – Tests
-- [scripts/](scripts/) – Utilities
-- Root: only essentials ([README.md](README.md), [docker-compose.yml](docker-compose.yml), [.env.example](.env.example), etc.)
+- [tests/](tests/) – Unit tests
+- [scripts/](scripts/) – Utilities (e.g., ontology download)
+- [Planning/](Planning/) – Specs, architecture, design (published)
+- [local-docs/](local-docs/) – Session notes, checklists (local only, not published)
+- [data/](data/) – Ontologies and source documents
+- Root: only essentials ([README.md](README.md), [docker-compose.yml](docker-compose.yml), [pyproject.toml](pyproject.toml), etc.)
 
 ---
 

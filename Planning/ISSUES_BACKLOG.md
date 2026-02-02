@@ -10,9 +10,9 @@
 ### Issue #1.1: Project Scaffolding
 **Priority**: 🔴 Critical | **Estimate**: 2h
 
-- [ ] Initialize Python project structure with `pyproject.toml`
+- [x] Initialize Python project structure with `pyproject.toml`
 - [ ] Set up virtual environment management (uv/poetry)
-- [ ] Create base directory structure:
+- [x] Create base directory structure:
   ```
   /src
     /kgbuilder
@@ -33,9 +33,9 @@
 - [ ] Set up pre-commit hooks (ruff, black, mypy)
 
 **Acceptance Criteria**:
-- `pip install -e .` works
-- All modules importable
-- CI/CD skeleton in place
+- [x] `pip install -e .` works
+- [x] All modules importable
+- [ ] CI/CD skeleton in place
 
 ---
 

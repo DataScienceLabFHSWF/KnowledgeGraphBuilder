@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kgbuilder"
+version = "0.1.0"
+description = "Ontology-driven Knowledge Graph construction pipeline"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "KnowledgeGraphBuilder Contributors" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    # Core
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "structlog>=24.1.0",
+    # Document processing
+    "pdfplumber>=0.11.0",
+    "python-docx>=0.8.11",
+    "python-pptx>=0.6.21",
+    "docling>=1.0.0",
+    "markitdown>=0.11.0",
+    # LLM & embedding
+    "httpx>=0.25.0",
+    "numpy>=1.24",
+    # Graph databases
+    "neo4j>=5.19",
+    "rdflib>=7.0",
+    # Vector database
+    "qdrant-client>=2.7.0",
+    # Validation
+    "pyshacl>=0.25.0",
+    # Utilities
+    "click>=8.1",
+    "typer>=0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "black>=23.0",
+    "ruff>=0.1",
+    "mypy>=1.7",
+    "pre-commit>=3.5",
+]
+test = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-asyncio>=0.21",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/KnowledgeGraphBuilder"
+Documentation = "https://github.com/yourusername/KnowledgeGraphBuilder/tree/main/Planning"
+Repository = "https://github.com/yourusername/KnowledgeGraphBuilder"
+
+[tool.setuptools]
+packages = ["kgbuilder"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=src/kgbuilder --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src/kgbuilder"]
+omit = ["*/tests/*", "*/__pycache__/*"]
