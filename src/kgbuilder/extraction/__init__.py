@@ -4,6 +4,8 @@ Implementation of Issues #5.1-#5.3: Knowledge Extraction
 
 Provides:
 - LLMEntityExtractor: Ontology-guided entity extraction with confidence scores
+- RuleBasedExtractor: Fast regex-based entity extraction
+- EnsembleExtractor: Combines multiple extraction methods
 - LLMRelationExtractor: Entity relation extraction
 - ExtractionChains: LangChain LCEL chains for extraction
 - FindingsSynthesizer: Synthesis of extracted findings
@@ -12,6 +14,7 @@ Provides:
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.chains import ExtractionChains, build_extraction_pipeline
+from kgbuilder.extraction.ensemble import EnsembleExtractor
 from kgbuilder.extraction.entity import (
     EntityExtractor,
     LLMEntityExtractor,
@@ -22,6 +25,7 @@ from kgbuilder.extraction.relation import (
     OntologyRelationDef,
     RelationExtractor,
 )
+from kgbuilder.extraction.rules import RuleBasedExtractor
 from kgbuilder.extraction.schemas import (
     EntityExtractionOutput,
     EntityItem,
@@ -41,6 +45,8 @@ __all__ = [
     "RelationExtractor",
     # Implementations
     "LLMEntityExtractor",
+    "RuleBasedExtractor",
+    "EnsembleExtractor",
     "LLMRelationExtractor",
     "FindingsSynthesizer",
     "SynthesizedFinding",
