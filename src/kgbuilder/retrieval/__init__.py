@@ -5,10 +5,21 @@ Implements hybrid retrieval combining:
 - Sparse keyword search (BM25)  
 - Reranking with semantic relevance
 
+Phase 1: StandardFusionRAG - Basic dense + sparse fusion
+Phase 2: EnhancedFusionRAG - With cross-encoder reranking
+
 See Planning/FUSIONRAG_INTEGRATION.md for architecture.
 """
 
 from __future__ import annotations
+
+# Re-export Phase 2 components
+from kgbuilder.retrieval.phase2 import (
+    BM25Retriever,
+    CrossEncoderReranker,
+    EnhancedFusionRAGRetriever,
+    RerankedResult,
+)
 
 import logging
 from dataclasses import dataclass
@@ -18,6 +29,15 @@ import numpy as np
 from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "RetrievalResult",
+    "FusionRAGRetriever",
+    "BM25Retriever",
+    "CrossEncoderReranker",
+    "EnhancedFusionRAGRetriever",
+    "RerankedResult",
+]
 
 
 @dataclass

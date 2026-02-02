@@ -31,6 +31,10 @@ langchain>=0.1.0
 langchain-community>=0.0.1
 langchain-text-splitters>=0.0.1
 
+# Phase 2: FusionRAG with BM25 & Reranking
+rank-bm25>=0.2.2
+sentence-transformers>=2.2.0
+
 # Validation
 pyshacl>=0.25.0
 
