@@ -123,10 +123,14 @@ class AdvancedIngestionPipeline:
                         )
 
                     # Index to Qdrant
+                    # Add full chunk text to metadata for retrieval
+                    chunk_metadata = doc_result.metadatas[chunk_id].copy()
+                    chunk_metadata["content"] = chunk_text
+                    
                     self.qdrant.store(
                         ids=[f"{file_path.stem}_chunk_{chunk_id}"],
                         embeddings=[embedding],
-                        metadata=[doc_result.metadatas[chunk_id]],
+                        metadata=[chunk_metadata],
                     )
 
                     indexed += 1

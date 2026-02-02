@@ -8,8 +8,12 @@ See Planning/FUSIONRAG_INTEGRATION.md Section 1 for design.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
+
+import numpy as np
+import ollama
 
 logger = logging.getLogger(__name__)
 
@@ -29,29 +33,40 @@ class StandardRAGPipeline:
     """Basic RAG using dense vector retrieval + LLM generation.
 
     Serves as baseline for comparing against more complex approaches.
+    Uses ollama.embed for query embeddings and ollama provider for generation.
     """
 
     def __init__(
         self,
         vector_store: Any,  # QdrantStore
-        llm_provider: Any,  # LLMProvider
+        llm_provider: Any,  # OllamaProvider
         top_k: int = 5,
+        embedding_model: str = "qwen3-embedding",
+        ollama_base_url: str = "http://localhost:11434",
     ) -> None:
         """Initialize standard RAG pipeline.
 
         Args:
             vector_store: Vector store for retrieval (Qdrant)
-            llm_provider: LLM provider for answer generation
+            llm_provider: LLM provider for answer generation (OllamaProvider)
             top_k: Number of documents to retrieve
+            embedding_model: Ollama embedding model name
+            ollama_base_url: Ollama API base URL
         """
         self.vector_store = vector_store
         self.llm = llm_provider
         self.top_k = top_k
+        self.embedding_model = embedding_model
+        self.ollama_base_url = ollama_base_url
+
+        # Initialize Ollama client
+        self.ollama_client = ollama.Client(host=ollama_base_url)
 
         logger.info(
             "standard_rag_pipeline_initialized",
             vector_store=type(vector_store).__name__,
-            llm_model=llm_provider.model_name,
+            llm_model=llm_provider.model,
+            embedding_model=embedding_model,
         )
 
     def retrieve(self, query: str) -> list[dict[str, Any]]:
@@ -64,20 +79,27 @@ class StandardRAGPipeline:
             List of retrieved documents with scores
         """
         try:
-            # Embed query using LLM
-            query_embedding = self.llm.embed_query(query)
+            # Embed query using Ollama
+            response = self.ollama_client.embed(
+                model=self.embedding_model,
+                input=query,
+            )
+            query_embedding = np.array(
+                response.embeddings[0] if response.embeddings else [],
+                dtype=np.float32,
+            )
 
             # Search vector store
             results = self.vector_store.search(query_embedding, top_k=self.top_k)
 
-            # Convert results
+            # Convert results from (id, score, metadata) tuples
             documents = []
-            for result in results:
+            for result_id, score, metadata in results:
                 documents.append({
-                    "id": result.id,
-                    "content": result.content if hasattr(result, 'content') else '',
-                    "score": float(result.score) if hasattr(result, 'score') else 0.0,
-                    "metadata": result.metadata if hasattr(result, 'metadata') else {},
+                    "id": result_id,
+                    "content": metadata.get("content", "") if metadata else "",
+                    "score": float(score),
+                    "metadata": metadata or {},
                 })
 
             logger.info(
@@ -88,7 +110,7 @@ class StandardRAGPipeline:
             return documents
 
         except Exception as e:
-            logger.error("retrieval_failed", error=str(e), exc_info=True)
+            logger.exception("retrieval_failed", exc_info=True)
             return []
 
     def generate(self, query: str, context: list[dict[str, Any]]) -> str:
@@ -168,7 +190,7 @@ Answer:"""
             )
 
         except Exception as e:
-            logger.error("rag_failed", error=str(e), exc_info=True)
+            logger.exception("rag_failed", exc_info=True)
             return RAGResponse(
                 answer="Error processing query",
                 retrieved_docs=[],

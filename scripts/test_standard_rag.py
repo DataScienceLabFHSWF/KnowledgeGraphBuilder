@@ -41,13 +41,13 @@ def main() -> None:
         # Initialize LLM provider
         llm = OllamaProvider(
             model="qwen3",
-            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            base_url="http://localhost:11434",  # Local test override
         )
-        logger.info("llm_initialized", model=llm.model_name)
+        logger.info("llm_initialized", model=llm.model)
 
-        # Initialize vector store
+        # Initialize vector store (override QDRANT_URL for localhost)
         qdrant = QdrantStore(
-            url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+            url="http://localhost:6333",  # Local test override
             collection_name="kgbuilder",
         )
         logger.info("qdrant_initialized")
@@ -56,6 +56,8 @@ def main() -> None:
         rag = StandardRAGPipeline(
             vector_store=qdrant,
             llm_provider=llm,
+            embedding_model="qwen3-embedding",
+            ollama_base_url="http://localhost:11434",
             top_k=5,
         )
         logger.info("standard_rag_pipeline_ready")
