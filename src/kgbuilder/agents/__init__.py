@@ -42,4 +42,12 @@ TODO (Specific agents):
 See Planning/ISSUES_BACKLOG.md Issues #4.2-#4.4 for acceptance criteria.
 """
 
-__all__ = []
+from kgbuilder.agents.question_generator import (
+    QuestionGenerationAgent,
+    ResearchQuestion,
+)
+
+__all__ = [
+    "QuestionGenerationAgent",
+    "ResearchQuestion",
+]
