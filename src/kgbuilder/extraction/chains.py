@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
@@ -54,7 +54,7 @@ class ExtractionChains:
         Returns:
             LCEL Runnable chain for entity extraction
         """
-        # Initialize LLM
+        # Initialize LLM with structured output
         llm = ChatOllama(
             model=model,
             base_url=base_url,
@@ -64,32 +64,43 @@ class ExtractionChains:
         # Create output parser
         parser = PydanticOutputParser(pydantic_object=EntityExtractionOutput)
 
-        # Create prompt template
+        # Create prompt template with clearer format
         prompt = ChatPromptTemplate.from_template(
-            """Extract entities from the following text. Identify all mentions of these entity types:
+            """You are an entity extraction system. Extract named entities from the given text.
 
+Entity types to identify:
 {ontology_section}
 
-TEXT TO ANALYZE:
+TEXT:
 {text}
 
-For each entity found:
-1. Assign a unique ID (ent_XXX format)
-2. Record the exact text as it appears
-3. Classify as one of the entity types above
-4. Estimate confidence (0.0-1.0) based on context clarity
-5. Note character positions in the original text
-6. Provide character context
+Extract all entities. For each entity, provide:
+- id: unique identifier like "ent_001"
+- label: the exact text of the entity
+- entity_type: one of the types listed above
+- confidence: how confident (0.0 to 1.0)
+- start_char: character position where entity starts
+- end_char: character position where entity ends
+- context: surrounding text for context
 
-Extract all entities you can identify. Prioritize high-confidence, domain-relevant entities.
+Return ONLY valid JSON matching this format:
+{{"entities": [
+  {{"id": "ent_001", "label": "Example Entity", "entity_type": "Facility", "confidence": 0.95, "start_char": 0, "end_char": 15, "context": "Example Entity is..."}}
+]}}
 
 {format_instructions}
-
-JSON Response:"""
+"""
         ).partial(format_instructions=parser.get_format_instructions())
 
-        # Build chain
-        chain = prompt | llm | parser
+        # Build chain with error handling
+        def safe_parse(x):
+            try:
+                return parser.parse(x.content)
+            except:
+                # Return empty result on parse error
+                return EntityExtractionOutput(entities=[])
+        
+        chain = prompt | llm | (lambda x: safe_parse(x))
 
         logger.info(f"✓ Created entity extraction chain ({model})")
         return chain

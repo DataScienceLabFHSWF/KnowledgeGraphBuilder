@@ -88,22 +88,28 @@ class Neo4jStore:
     def __init__(
         self,
         uri: str = "bolt://localhost:7687",
-        username: str = "neo4j",
-        password: str = "password",
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
         """Initialize Neo4j store.
 
         Args:
             uri: Neo4j connection URI
-            username: Neo4j username
-            password: Neo4j password
+            username: Neo4j username (None for no auth)
+            password: Neo4j password (None for no auth)
         """
         from neo4j import GraphDatabase
 
         self.uri = uri
         self.username = username
         self.password = password
-        self.driver = GraphDatabase.driver(uri, auth=(username, password))
+        
+        # Support both auth and no-auth scenarios
+        if username and password:
+            self.driver = GraphDatabase.driver(uri, auth=(username, password))
+        else:
+            self.driver = GraphDatabase.driver(uri)
+        
         self._verify_connection()
         self._create_constraints()
 

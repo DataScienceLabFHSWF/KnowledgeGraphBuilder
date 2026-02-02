@@ -41,7 +41,11 @@ class ChunkMetadata:
     section_title: str | None = None
     page_number: int | None = None
     paragraph_index: int | None = None
+    heading: str | None = None
     heading_level: int | None = None
+    section_index: int | None = None
+    parent_chunk_id: str | None = None
+    hierarchy_level: int | None = None
     is_table: bool = False
     is_list: bool = False
 

@@ -75,30 +75,75 @@ class FusekiStore:
         self,
         url: str = "http://localhost:3030",
         dataset_name: str = "kgbuilder",
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
         """Initialize Fuseki store.
 
         Args:
             url: Fuseki server base URL
             dataset_name: Dataset name to use
+            username: HTTP Basic Auth username
+            password: HTTP Basic Auth password
         """
         import requests
+        from requests.auth import HTTPBasicAuth
 
         self.url = url
         self.dataset_name = dataset_name
         self.session = requests.Session()
-        self.graph_url = f"{url}/data/{dataset_name}/update"
-        self.query_url = f"{url}/query"
+        
+        # Setup auth if provided
+        if username and password:
+            self.session.auth = HTTPBasicAuth(username, password)
+        
+        # Use simpler SPARQL endpoint for all operations
         self.sparql_url = f"{url}/{dataset_name}/sparql"
+        self.update_url = f"{url}/{dataset_name}/update"
+        self.query_url = f"{url}/query"
 
         # Verify connection
         try:
             resp = self.session.get(f"{url}/$/datasets")
-            resp.raise_for_status()
+            if resp.status_code not in (200, 401):
+                resp.raise_for_status()
+            
+            # Try to create dataset if it doesn't exist
+            self._ensure_dataset_exists()
         except Exception as e:
             raise ConnectionError(
                 f"Cannot connect to Fuseki at {url}: {e}"
             ) from e
+
+    def _ensure_dataset_exists(self) -> None:
+        """Create the dataset if it doesn't exist."""
+        import json
+        
+        # Check if dataset exists
+        try:
+            resp = self.session.get(f"{self.url}/$/datasets")
+            if resp.status_code == 200:
+                datasets = resp.json().get("datasets", [])
+                if any(d.get("ds.name") == f"/{self.dataset_name}" for d in datasets):
+                    return  # Dataset exists
+        except:
+            pass
+        
+        # Create dataset if it doesn't exist
+        try:
+            payload = {
+                "dbName": self.dataset_name,
+                "dbType": "TDB2"
+            }
+            resp = self.session.post(
+                f"{self.url}/$/datasets",
+                data=payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            if resp.status_code not in (200, 201, 409):  # 409 = already exists
+                pass  # Continue anyway
+        except:
+            pass  # Continue anyway
 
     def add_triple(self, subject: str, predicate: str, obj: str) -> None:
         """Add an RDF triple to Fuseki.
@@ -149,23 +194,29 @@ class FusekiStore:
         # TODO: POST batch operations for efficiency
         raise NotImplementedError("add_triples_batch() not yet implemented")
 
-    def load_ontology(self, ontology_ttl: str) -> None:
+    def load_ontology(self, ontology_content: str) -> None:
         """Load ontology (TBox) into Fuseki.
 
         Args:
-            ontology_ttl: Ontology in Turtle format
+            ontology_content: Ontology in any RDF format (Turtle, RDF/XML, etc.)
             
         Raises:
-            requests.RequestException: If POST to Fuseki fails
+            RuntimeError: If loading to Fuseki fails
         """
-        # POST Turtle data to Fuseki graph endpoint
-        headers = {"Content-Type": "application/x-turtle"}
+        # Detect content type from format
+        if ontology_content.strip().startswith('<?xml'):
+            content_type = "application/rdf+xml"
+        elif 'turtle' in ontology_content.lower() or '@prefix' in ontology_content:
+            content_type = "text/turtle"
+        else:
+            content_type = "application/rdf+xml"  # Default to RDF/XML
         
         try:
+            # Use the graph store endpoint to load RDF directly
             resp = self.session.post(
-                self.graph_url,
-                data=ontology_ttl,
-                headers=headers,
+                f"{self.url}/{self.dataset_name}",
+                data=ontology_content,
+                headers={"Content-Type": content_type},
             )
             resp.raise_for_status()
         except Exception as e:

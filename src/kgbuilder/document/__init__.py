@@ -1,14 +1,23 @@
 """Document processing module."""
 
+from kgbuilder.document.advanced_processor import (
+    AdvancedDocumentProcessor,
+    ProcessedDocument,
+    ProcessingStats,
+)
+from kgbuilder.document.chunking import FixedSizeChunker, SemanticChunker
 from kgbuilder.document.loaders import (
     DOCXLoader,
     DocumentLoaderFactory,
     PPTXLoader,
     PDFLoader,
 )
-from kgbuilder.document.chunking import FixedSizeChunker, SemanticChunker
 
 __all__ = [
+    # Advanced processor
+    "AdvancedDocumentProcessor",
+    "ProcessedDocument",
+    "ProcessingStats",
     # Loaders
     "DocumentLoaderFactory",
     "PDFLoader",
