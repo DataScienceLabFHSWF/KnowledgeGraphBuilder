@@ -245,12 +245,14 @@ Focus on domain-relevant entities (organizations, facilities, operations, requir
 
         for item in output.entities:
             # Create Evidence
+            text_span = source_text[
+                max(0, item.start_char) : min(len(source_text), item.end_char)
+            ]
             evidence = Evidence(
-                source_text=source_text[
-                    max(0, item.start_char) : min(len(source_text), item.end_char)
-                ],
+                source_type="local_doc",
+                source_id="chunk_id",
+                text_span=text_span if text_span.strip() else None,
                 confidence=item.confidence,
-                extraction_method="LLMEntityExtractor",
             )
 
             # Create ExtractedEntity

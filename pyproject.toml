@@ -64,6 +64,12 @@ packages = ["kgbuilder"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[project.scripts]
+kgbuilder-cli = "kgbuilder.cli:main"
+setup-data = "scripts.ingest_data:setup_data"
+extract-kg = "scripts.extract_kg:main"
+serve = "scripts.serve:main"
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]

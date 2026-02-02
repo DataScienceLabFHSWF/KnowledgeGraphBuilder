@@ -36,6 +36,7 @@ See Planning/ISSUES_BACKLOG.md Issues #3.2, #6.2, #7.1 for acceptance criteria.
 from .graph import GraphStore, Neo4jStore
 from .rdf import FusekiStore, RDFStore
 from .vector import QdrantStore, VectorStore
+from .retrieval import SemanticRetriever
 
 __all__ = [
     "VectorStore",
@@ -44,4 +45,5 @@ __all__ = [
     "Neo4jStore",
     "RDFStore",
     "FusekiStore",
+    "SemanticRetriever",
 ]

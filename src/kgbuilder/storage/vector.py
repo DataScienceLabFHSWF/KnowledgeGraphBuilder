@@ -94,12 +94,20 @@ class QdrantStore:
             api_key: Optional API key
             collection_name: Collection to use/create
         """
-        # TODO: Initialize Qdrant client
-        # TODO: Create or connect to collection
-        # TODO: Verify connection
+        import httpx
+        from qdrant_client import QdrantClient
+
         self.url = url
         self.api_key = api_key
         self.collection_name = collection_name
+        self.client = QdrantClient(url=url, api_key=api_key)
+        self.http_client = httpx.Client(base_url=url)
+        self._verify_connection()
+        self._point_counter = 0
+
+    def _verify_connection(self) -> None:
+        """Verify Qdrant connection is working."""
+        self.client.get_collections()
 
     def store(
         self,
@@ -114,10 +122,37 @@ class QdrantStore:
             embeddings: Embedding vectors
             metadata: Optional metadata dicts
         """
-        # TODO: Convert embeddings to Qdrant points
-        # TODO: Upsert points to collection
-        # TODO: Handle batch sizes for large uploads
-        raise NotImplementedError("store() not yet implemented")
+        from qdrant_client.models import Distance, PointStruct, VectorParams
+
+        metadata = metadata or [{} for _ in ids]
+
+        # Create collection if needed
+        try:
+            self.client.get_collection(self.collection_name)
+        except Exception:
+            vector_size = len(embeddings[0]) if embeddings else 768
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
+
+        # Convert to Qdrant points with sequential IDs
+        points = []
+        for i in range(len(ids)):
+            self._point_counter += 1
+            points.append(
+                PointStruct(
+                    id=self._point_counter,
+                    vector=embeddings[i].tolist(),
+                    payload={"id": ids[i], **metadata[i]},
+                )
+            )
+
+        # Upsert points
+        self.client.upsert(
+            collection_name=self.collection_name,
+            points=points,
+        )
 
     def search(
         self,
@@ -135,9 +170,36 @@ class QdrantStore:
         Returns:
             List of (id, score, metadata)
         """
-        # TODO: Query Qdrant with embedding
-        # TODO: Return scored results with metadata
-        raise NotImplementedError("search() not yet implemented")
+        import json
+
+        # Use REST API for search
+        search_request = {
+            "vector": query_embedding.tolist(),
+            "limit": top_k,
+            "with_payload": True,
+        }
+        if score_threshold is not None:
+            search_request["score_threshold"] = score_threshold
+
+        response = self.http_client.post(
+            f"/collections/{self.collection_name}/points/search",
+            json=search_request,
+        )
+
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+        results = data.get("result", [])
+
+        return [
+            (
+                result["payload"].get("id", f"point_{result['id']}"),
+                result["score"],
+                {k: v for k, v in result["payload"].items() if k != "id"},
+            )
+            for result in results
+        ]
 
     def delete(self, ids: list[str]) -> None:
         """Delete embeddings from Qdrant.
@@ -145,9 +207,19 @@ class QdrantStore:
         Args:
             ids: IDs to delete
         """
-        # TODO: Delete points by ID
-        # TODO: Handle batch deletion
-        raise NotImplementedError("delete() not yet implemented")
+        # Filter by payload ID to delete
+        for str_id in ids:
+            try:
+                self.client.delete(
+                    collection_name=self.collection_name,
+                    points_selector={
+                        "filter": {
+                            "must": [{"key": "id", "match": {"value": str_id}}]
+                        }
+                    },
+                )
+            except Exception:
+                pass
 
     def create_collection(
         self,
@@ -160,9 +232,24 @@ class QdrantStore:
             vector_size: Dimensionality of embeddings
             distance_metric: Distance metric (cosine, euclidean, dot)
         """
-        # TODO: Create collection with schema
-        # TODO: Handle existing collections
-        raise NotImplementedError("create_collection() not yet implemented")
+        from qdrant_client.models import Distance, VectorParams
+
+        distance_map = {
+            "cosine": Distance.COSINE,
+            "euclidean": Distance.EUCLID,
+            "dot": Distance.DOT,
+        }
+
+        try:
+            self.client.get_collection(self.collection_name)
+        except Exception:
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=vector_size,
+                    distance=distance_map.get(distance_metric, Distance.COSINE),
+                ),
+            )
 
     def list_collections(self) -> list[str]:
         """List all collections in Qdrant.
@@ -170,8 +257,8 @@ class QdrantStore:
         Returns:
             Collection names
         """
-        # TODO: Query Qdrant for collections
-        raise NotImplementedError("list_collections() not yet implemented")
+        collections = self.client.get_collections()
+        return [coll.name for coll in collections.collections]
 
 
 class ChromaStore:

@@ -4,25 +4,25 @@ services:
   kgbuilder:
     build: .
     container_name: kgbuilder
-    command: ["sleep", "infinity"]  # Replace with entrypoint later
+    command: ["sleep", "infinity"]
     volumes:
       - ./:/app
       - ./data:/app/data
-      env_file:
-        - .env
-      environment:
-        - PYTHONUNBUFFERED=1
-        - KGBUILDER_CONFIG=/app/config/config.yaml
-        - QDRANT_URL=${QDRANT_URL}
-        - NEO4J_URI=${NEO4J_URI}
-        - NEO4J_USER=${NEO4J_USER}
-        - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-        - FUSEKI_URL=${FUSEKI_URL}
-        - FUSEKI_USER=${FUSEKI_USER}
-        - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
-        - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
-        - KGBUILDER_ENV=${KGBUILDER_ENV}
-        - KGBUILDER_SECRET_KEY=${KGBUILDER_SECRET_KEY}
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - KGBUILDER_CONFIG=/app/config/config.yaml
+      - QDRANT_URL=${QDRANT_URL}
+      - NEO4J_URI=${NEO4J_URI}
+      - NEO4J_USER=${NEO4J_USER}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - FUSEKI_URL=${FUSEKI_URL}
+      - FUSEKI_USER=${FUSEKI_USER}
+      - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+      - KGBUILDER_ENV=${KGBUILDER_ENV}
+      - KGBUILDER_SECRET_KEY=${KGBUILDER_SECRET_KEY}
     depends_on:
       - qdrant
       - neo4j
@@ -45,15 +45,13 @@ services:
     image: neo4j:5.19.0
     container_name: neo4j
     environment:
-      env_file:
-        - .env
-      environment:
-        - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+      - NEO4J_AUTH=neo4j/changeme
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
     volumes:
       - ./data/neo4j:/data
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "7474:7474"
+      - "7687:7687"
     networks:
       - kgbuilder-net
 
@@ -66,13 +64,7 @@ services:
       - ./data/fuseki:/fuseki
     networks:
       - kgbuilder-net
-    # Optional: comment out if not using RDF store
 
 networks:
   kgbuilder-net:
     driver: bridge
-
-volumes:
-  data:
-    driver: local
-    # (see service-level volumes above)

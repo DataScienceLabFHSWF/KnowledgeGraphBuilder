@@ -12,7 +12,7 @@ pdfplumber>=0.11.0
 python-docx>=0.8.11
 python-pptx>=0.6.21
 docling>=1.0.0
-markitdown>=0.11.0
+markitdown>=0.1.0
 
 # LLM & embedding (for Ollama integration)
 httpx>=0.25.0
@@ -24,7 +24,12 @@ neo4j>=5.19
 rdflib>=7.0
 
 # Vector database
-qdrant-client>=2.7.0
+qdrant-client>=1.16.0
+
+# LLM & Retrieval frameworks
+langchain>=0.1.0
+langchain-community>=0.0.1
+langchain-text-splitters>=0.0.1
 
 # Validation
 pyshacl>=0.25.0

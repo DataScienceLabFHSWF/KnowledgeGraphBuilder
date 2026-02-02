@@ -82,11 +82,23 @@ class FusekiStore:
             url: Fuseki server base URL
             dataset_name: Dataset name to use
         """
-        # TODO: Initialize Fuseki client
-        # TODO: Verify connection to dataset
-        # TODO: Create dataset if not exists
+        import requests
+
         self.url = url
         self.dataset_name = dataset_name
+        self.session = requests.Session()
+        self.graph_url = f"{url}/data/{dataset_name}/update"
+        self.query_url = f"{url}/query"
+        self.sparql_url = f"{url}/{dataset_name}/sparql"
+
+        # Verify connection
+        try:
+            resp = self.session.get(f"{url}/$/datasets")
+            resp.raise_for_status()
+        except Exception as e:
+            raise ConnectionError(
+                f"Cannot connect to Fuseki at {url}: {e}"
+            ) from e
 
     def add_triple(self, subject: str, predicate: str, obj: str) -> None:
         """Add an RDF triple to Fuseki.
@@ -142,10 +154,24 @@ class FusekiStore:
 
         Args:
             ontology_ttl: Ontology in Turtle format
+            
+        Raises:
+            requests.RequestException: If POST to Fuseki fails
         """
-        # TODO: Parse ontology TTL
-        # TODO: POST to Fuseki graph endpoint
-        raise NotImplementedError("load_ontology() not yet implemented")
+        # POST Turtle data to Fuseki graph endpoint
+        headers = {"Content-Type": "application/x-turtle"}
+        
+        try:
+            resp = self.session.post(
+                self.graph_url,
+                data=ontology_ttl,
+                headers=headers,
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load ontology into Fuseki: {e}"
+            ) from e
 
     def validate_ontology(self) -> bool:
         """Validate ontology consistency.

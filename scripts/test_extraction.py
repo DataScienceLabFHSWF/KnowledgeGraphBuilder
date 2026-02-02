@@ -48,11 +48,11 @@ def load_sample_documents(max_docs: int = 3) -> list[tuple[str, str]]:
     print(f"\n📄 Found {len(pdf_files)} documents (loading first {max_docs})")
 
     documents = []
-    loader = DocumentLoaderFactory.get_loader("pdf")
 
     for pdf_file in pdf_files:
         try:
             print(f"  Loading: {pdf_file.name}", end=" ... ")
+            loader = DocumentLoaderFactory.get_loader(pdf_file)
             doc = loader.load(pdf_file)
             documents.append((pdf_file.name, doc.content))
             print(f"✓ ({len(doc.content)} chars)")
@@ -196,7 +196,7 @@ def main() -> None:
 
     # Step 4: Test extraction on first chunk from each document
     print("\n4️⃣ Running extractions...")
-    chunker = FixedSizeChunker(chunk_size=1000, overlap=100)
+    chunker = FixedSizeChunker()
 
     for filename, content in documents:
         # Take first 1000 chars for quick test

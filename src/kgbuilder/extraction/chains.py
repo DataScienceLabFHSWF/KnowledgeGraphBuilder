@@ -1,0 +1,254 @@
+"""LangChain-based extraction chains for entity and relation extraction.
+
+Implements unified LCEL (LangChain Expression Language) chains for:
+- Entity extraction with ontology guidance
+- Relation extraction with constraint validation
+- Confidence scoring and deduplication
+- Provenance tracking
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from langchain_community.chat_models import ChatOllama
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
+
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+from kgbuilder.extraction.schemas import EntityExtractionOutput, RelationExtractionOutput
+from kgbuilder.extraction.entity import OntologyClassDef
+from kgbuilder.extraction.relation import OntologyRelationDef
+
+logger = logging.getLogger(__name__)
+
+
+class ExtractionChains:
+    """Factory for creating extraction chains using LangChain LCEL.
+    
+    Provides standardized chains for entity and relation extraction
+    with full ontology integration and confidence scoring.
+    """
+
+    @staticmethod
+    def create_entity_extraction_chain(
+        model: str = "qwen3",
+        base_url: str = "http://localhost:11434",
+        temperature: float = 0.5,
+    ) -> Runnable:
+        """Create entity extraction chain using LCEL.
+        
+        Chain flow:
+        1. Format ontology classes for prompt
+        2. Send to LLM with structured output schema
+        3. Parse and validate output
+        4. Return ExtractedEntity objects
+        
+        Args:
+            model: Ollama model name
+            base_url: Ollama API base URL
+            temperature: LLM temperature (lower = more deterministic)
+            
+        Returns:
+            LCEL Runnable chain for entity extraction
+        """
+        # Initialize LLM
+        llm = ChatOllama(
+            model=model,
+            base_url=base_url,
+            temperature=temperature,
+        )
+
+        # Create output parser
+        parser = PydanticOutputParser(pydantic_object=EntityExtractionOutput)
+
+        # Create prompt template
+        prompt = ChatPromptTemplate.from_template(
+            """Extract entities from the following text. Identify all mentions of these entity types:
+
+{ontology_section}
+
+TEXT TO ANALYZE:
+{text}
+
+For each entity found:
+1. Assign a unique ID (ent_XXX format)
+2. Record the exact text as it appears
+3. Classify as one of the entity types above
+4. Estimate confidence (0.0-1.0) based on context clarity
+5. Note character positions in the original text
+6. Provide character context
+
+Extract all entities you can identify. Prioritize high-confidence, domain-relevant entities.
+
+{format_instructions}
+
+JSON Response:"""
+        ).partial(format_instructions=parser.get_format_instructions())
+
+        # Build chain
+        chain = prompt | llm | parser
+
+        logger.info(f"✓ Created entity extraction chain ({model})")
+        return chain
+
+    @staticmethod
+    def create_relation_extraction_chain(
+        model: str = "qwen3",
+        base_url: str = "http://localhost:11434",
+        temperature: float = 0.5,
+    ) -> Runnable:
+        """Create relation extraction chain using LCEL.
+        
+        Chain flow:
+        1. Format entities and ontology relations
+        2. Send to LLM with relation extraction prompt
+        3. Parse and validate output
+        4. Return ExtractedRelation objects with constraint checking
+        
+        Args:
+            model: Ollama model name
+            base_url: Ollama API base URL
+            temperature: LLM temperature
+            
+        Returns:
+            LCEL Runnable chain for relation extraction
+        """
+        # Initialize LLM
+        llm = ChatOllama(
+            model=model,
+            base_url=base_url,
+            temperature=temperature,
+        )
+
+        # Create output parser
+        parser = PydanticOutputParser(pydantic_object=RelationExtractionOutput)
+
+        # Create prompt template
+        prompt = ChatPromptTemplate.from_template(
+            """Extract relationships between the following entities from the text.
+
+ENTITIES MENTIONED:
+{entities_list}
+
+VALID RELATIONSHIPS:
+{relations_section}
+
+TEXT TO ANALYZE:
+{text}
+
+For each relationship found:
+1. Assign a unique ID (rel_XXX format)
+2. Identify source and target entity IDs from the list above
+3. Determine the relationship type from valid relationships
+4. Estimate confidence (0.0-1.0)
+5. Note the character positions of the relationship evidence
+6. Ensure domain and range constraints are satisfied
+
+Extract all valid relationships. Only include relationships between entities in the provided list.
+Respect domain/range constraints from the relationship definitions.
+
+{format_instructions}
+
+JSON Response:"""
+        ).partial(format_instructions=parser.get_format_instructions())
+
+        # Build chain
+        chain = prompt | llm | parser
+
+        logger.info(f"✓ Created relation extraction chain ({model})")
+        return chain
+
+    @staticmethod
+    def format_ontology_section(ontology_classes: list[OntologyClassDef]) -> str:
+        """Format ontology classes for prompt inclusion.
+        
+        Args:
+            ontology_classes: Entity type definitions
+            
+        Returns:
+            Formatted ontology section for prompt
+        """
+        lines = []
+        for cls in ontology_classes:
+            header = f"- **{cls.label}** ({cls.uri})"
+            lines.append(header)
+
+            if cls.description:
+                lines.append(f"  Description: {cls.description}")
+
+            if cls.examples:
+                examples_str = ", ".join(f'"{ex}"' for ex in cls.examples[:3])
+                lines.append(f"  Examples: {examples_str}")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def format_entities_list(entities: list[ExtractedEntity]) -> str:
+        """Format extracted entities for relation extraction prompt.
+        
+        Args:
+            entities: Extracted entities
+            
+        Returns:
+            Formatted entity list for prompt
+        """
+        lines = []
+        for ent in entities:
+            lines.append(
+                f"- {ent.id}: {ent.label} (type: {ent.entity_type}, "
+                f"confidence: {ent.confidence:.2f})"
+            )
+        return "\n".join(lines)
+
+    @staticmethod
+    def format_relations_section(
+        ontology_relations: list[OntologyRelationDef],
+    ) -> str:
+        """Format ontology relations for prompt inclusion.
+        
+        Args:
+            ontology_relations: Relation/property definitions
+            
+        Returns:
+            Formatted relations section for prompt
+        """
+        lines = []
+        for rel in ontology_relations:
+            header = f"- **{rel.label}** ({rel.uri})"
+            lines.append(header)
+
+            if rel.description:
+                lines.append(f"  Description: {rel.description}")
+
+            if rel.domain:
+                domain_str = ", ".join(rel.domain)
+                lines.append(f"  Domain: {domain_str}")
+
+            if rel.range:
+                range_str = ", ".join(rel.range)
+                lines.append(f"  Range: {range_str}")
+
+            if rel.is_functional:
+                lines.append("  Functional: Yes (at most one value)")
+            if rel.is_symmetric:
+                lines.append("  Symmetric: Yes")
+            if rel.is_transitive:
+                lines.append("  Transitive: Yes")
+
+        return "\n".join(lines)
+
+
+def build_extraction_pipeline() -> tuple[Runnable, Runnable]:
+    """Build complete extraction pipeline using LCEL.
+    
+    Returns:
+        Tuple of (entity_extraction_chain, relation_extraction_chain)
+    """
+    entity_chain = ExtractionChains.create_entity_extraction_chain()
+    relation_chain = ExtractionChains.create_relation_extraction_chain()
+    
+    logger.info("✓ Built complete extraction pipeline")
+    return entity_chain, relation_chain

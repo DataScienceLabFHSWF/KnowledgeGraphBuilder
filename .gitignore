@@ -211,4 +211,56 @@ data/Decommissioning_Files
 data/ontology
 kg_versions/
 experiments/
+
+# Neo4j data
+neo4j_data/
+neo4j/
+.neo4j/
+
+# Qdrant data
+qdrant_storage/
+qdrant_data/
+.qdrant/
+*.snapshot
+data/qdrant
+# Fuseki data
+fuseki_data/
+.fuseki/
+databases/
+data/fuseki
+
+# Docker volumes
+volumes/
+postgres_data/
+mongodb_data/
+
+# Local test data
+test_data/
+test_output/
+test_results/
+
+# Temporary extraction/processing
+.tmp/
+tmp/
+temp/
+*.tmp
+
+# LLM caches and artifacts
+.ollama/
+model_cache/
+embeddings_cache/
+
+# Experiment results
+results/
+output/
+logs/
+
+# OS specific
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+#local docs
 local-docs/

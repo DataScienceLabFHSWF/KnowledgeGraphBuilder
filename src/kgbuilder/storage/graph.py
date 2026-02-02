@@ -98,12 +98,34 @@ class Neo4jStore:
             username: Neo4j username
             password: Neo4j password
         """
-        # TODO: Initialize Neo4j driver
-        # TODO: Verify connection
-        # TODO: Create schema/constraints
+        from neo4j import GraphDatabase
+
         self.uri = uri
         self.username = username
         self.password = password
+        self.driver = GraphDatabase.driver(uri, auth=(username, password))
+        self._verify_connection()
+        self._create_constraints()
+
+    def _verify_connection(self) -> None:
+        """Verify Neo4j connection is working."""
+        with self.driver.session() as session:
+            result = session.run("RETURN 1 as ping")
+            result.consume()
+
+    def _create_constraints(self) -> None:
+        """Create uniqueness constraints for efficient lookups."""
+        with self.driver.session() as session:
+            # Create constraint on entity ID
+            session.run(
+                "CREATE CONSTRAINT entity_id_unique IF NOT EXISTS "
+                "FOR (e:Entity) REQUIRE e.id IS UNIQUE"
+            )
+            # Create constraint on document ID
+            session.run(
+                "CREATE CONSTRAINT document_id_unique IF NOT EXISTS "
+                "FOR (d:Document) REQUIRE d.id IS UNIQUE"
+            )
 
     def add_node(
         self,
@@ -118,10 +140,13 @@ class Neo4jStore:
             label: Node label/type
             properties: Node properties (including id)
         """
-        # TODO: Create or update node
-        # TODO: Handle label assignment
-        # TODO: Set properties
-        raise NotImplementedError("add_node() not yet implemented")
+        with self.driver.session() as session:
+            # Merge ensures idempotency
+            cypher = f"""
+            MERGE (n:{label} {{id: $node_id}})
+            SET n += $properties
+            """
+            session.run(cypher, node_id=node_id, properties=properties)
 
     def add_edge(
         self,
@@ -138,10 +163,18 @@ class Neo4jStore:
             relation_type: Relation type
             properties: Relation properties
         """
-        # TODO: Create or update relation
-        # TODO: Link source and target nodes
-        # TODO: Set relation properties
-        raise NotImplementedError("add_edge() not yet implemented")
+        with self.driver.session() as session:
+            cypher = f"""
+            MATCH (source {{id: $source_id}}), (target {{id: $target_id}})
+            MERGE (source)-[r:{relation_type}]->(target)
+            SET r += $properties
+            """
+            session.run(
+                cypher,
+                source_id=source_id,
+                target_id=target_id,
+                properties=properties,
+            )
 
     def query(self, cypher: str, params: dict[str, Any] | None = None) -> list[dict]:
         """Execute a Cypher query.
@@ -153,9 +186,10 @@ class Neo4jStore:
         Returns:
             Query results
         """
-        # TODO: Execute query with params
-        # TODO: Return result records
-        raise NotImplementedError("query() not yet implemented")
+        params = params or {}
+        with self.driver.session() as session:
+            result = session.run(cypher, params)
+            return [dict(record) for record in result]
 
     def add_entities(self, entities: list[ExtractedEntity]) -> None:
         """Batch add extracted entities.
@@ -163,9 +197,14 @@ class Neo4jStore:
         Args:
             entities: Extracted entities to persist
         """
-        # TODO: Iterate entities and call add_node()
-        # TODO: Handle batch operations for efficiency
-        raise NotImplementedError("add_entities() not yet implemented")
+        for entity in entities:
+            properties = {
+                "label": entity.label,
+                "entity_type": entity.entity_type,
+                "confidence": entity.confidence,
+                "description": entity.description,
+            }
+            self.add_node(entity.id, "Entity", properties)
 
     def add_relations(self, relations: list[ExtractedRelation]) -> None:
         """Batch add extracted relations.
@@ -173,12 +212,18 @@ class Neo4jStore:
         Args:
             relations: Extracted relations to persist
         """
-        # TODO: Iterate relations and call add_edge()
-        # TODO: Handle batch operations for efficiency
-        raise NotImplementedError("add_relations() not yet implemented")
+        for relation in relations:
+            properties = {
+                "predicate": relation.predicate,
+                "confidence": relation.confidence,
+            }
+            self.add_edge(
+                relation.source_entity_id,
+                relation.target_entity_id,
+                relation.predicate,
+                properties,
+            )
 
     def create_constraints(self) -> None:
         """Create Neo4j uniqueness constraints for KG IDs."""
-        # TODO: Create UNIQUE constraints on node IDs
-        # TODO: Create indexes for performance
-        raise NotImplementedError("create_constraints() not yet implemented")
+        self._create_constraints()
