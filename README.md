@@ -24,52 +24,73 @@ Ontology-driven Knowledge Graph Construction Pipeline
 cp .env.example .env
 
 # Install dependencies
-pip install -r pyproject.toml
+pip install -r requirements.txt
 
 # Start services
-docker-compose up -d neo4j qdrant
+docker-compose up -d neo4j qdrant fuseki
 ```
 
-### 2. Load Data
-```python
-from pathlib import Path
-from kgbuilder.document import DocumentLoaderFactory
+### 2. Ingest Documents
+```bash
+# Process all documents: load → chunk → embed → index
+# Handles PDF parsing, VLM extraction, embedding with Ollama, vector storage
+python scripts/ingest.py
 
-# Load documents
-loader = DocumentLoaderFactory.get_loader("pdf")
-docs = [loader.load(f) for f in Path("data/Decommissioning_Files").glob("*.pdf")]
-
-# Load ontology
-from rdflib import Graph
-ontology = Graph()
-ontology.parse("data/ontology/plan-ontology-v1.0.owl", format="xml")
+# Logs available at: tail -f /tmp/ingest.log
 ```
 
-### 3. Process Documents
-```python
-from kgbuilder.document.chunking import FixedSizeChunker
+### 3. Load Ontology to Fuseki
+```bash
+# Load ontology (plan-ontology-v1.0.owl) into Fuseki RDF store
+python scripts/load_ontology_to_fuseki.py
 
-# Chunk documents
-chunker = FixedSizeChunker(chunk_size=512, overlap=50)
-chunks = []
-for doc in docs[:3]:  # Start with 3 docs
-    chunks.extend(chunker.chunk(doc))
+# Ontology provides entity type constraints and relation definitions
 ```
 
-### 4. Extract & Store
-```python
-# Extract entities & relations (after LLM integration)
-# from kgbuilder.extraction import LLMEntityExtractor, LLMRelationExtractor
+### 4. Data Processing Pipeline
+The ingestion pipeline automatically:
+- **Loads**: PDF documents from `data/Decommissioning_Files/`
+- **Parses**: Extracts text with optional VLM support (qwen3)
+- **Chunks**: 512-token chunks with 50-token overlap
+- **Embeds**: Uses Ollama (qwen3-embedding, 4096-dim vectors)
+- **Indexes**: Stores in Qdrant vector DB (kgbuilder collection)
+- **Caches**: Document processing with automatic cache invalidation
 
-# Store in backends
-from kgbuilder.storage import Neo4jStore, QdrantStore
-graph_store = Neo4jStore(uri="bolt://localhost:7687")
-vector_store = QdrantStore(url="http://localhost:6333")
-```
+All results logged with structured logging (JSON format)
 
 ---
 
-## Data
+## Current Status
+
+### ✅ Release 0.1.0: Document Ingestion & Ontology Loading
+
+**Completed**:
+- Full document ingestion pipeline (33 German decommissioning PDFs)
+- PDF parsing with VLM extraction (qwen3)
+- Semantic chunking (512 tokens, 50 overlap)
+- Embedding with Ollama (qwen3-embedding, 4096-dim vectors)
+- Vector indexing in Qdrant
+- Ontology loading to Fuseki RDF store (342 triples)
+- Structured JSON logging and progress tracking
+- Document caching with cache invalidation
+
+**Storage Backends**:
+- **Qdrant**: Vector similarity search (kgbuilder collection, 4096-dim)
+- **Fuseki**: RDF triple store with ontology (kgbuilder dataset)
+- **Neo4j**: Ready for knowledge graph building (auth disabled in dev)
+- **Ollama**: Local LLM and embedding models
+
+**Example**: Process 33 PDFs (~3,500 chunks) with full embedding in ~30 minutes
+
+### 🔄 Planned: Release 0.2.0 (FusionRAG Retrieval)
+
+- Ontology-guided entity extraction using LLM
+- Semantic relation extraction from chunks
+- Knowledge graph assembly in Neo4j
+- Hybrid retrieval (vector + semantic + KG)
+- Query execution and validation
+
+---
 
 - **Ontology**: `data/ontology/plan-ontology-v1.0.owl` (28 KB) – AI Planning Ontology
 - **Documents**: `data/Decommissioning_Files/` – 33 German nuclear decommissioning PDFs (126 MB)
