@@ -2,32 +2,52 @@
 
 Implementation of Issues #5.1-#5.3: Knowledge Extraction
 
-TODO (Core interfaces):
-- [ ] Define EntityExtractor protocol
-- [ ] Define RelationExtractor protocol
-- [ ] Define ExtractionResult dataclass with provenance
-
-TODO (LLM-based extractors):
-- [ ] Implement LLMEntityExtractor with ontology-guided prompting
-  - Multi-pass extraction for complex documents
-  - Entity deduplication within document
-  - Confidence score calibration
-- [ ] Implement LLMRelationExtractor with ontology constraints
-  - Support for n-ary relations via reification
-  - Domain/range validation
-  - Cardinality constraints
-- [ ] Implement FindingsSynthesizer for research findings (YAML output)
-
-TODO (Quality & robustness):
-- [ ] Add coreference resolution
-- [ ] Add confidence thresholding
-- [ ] Add structured output validation (JSON schema)
-- [ ] Add error recovery and logging
-- [ ] Add unit tests with sample texts
-
-See Planning/ISSUES_BACKLOG.md Issues #5.1-#5.3 for acceptance criteria.
+Provides:
+- LLMEntityExtractor: Ontology-guided entity extraction with confidence scores
+- LLMRelationExtractor: Entity relation extraction
+- FindingsSynthesizer: Synthesis of extracted findings
+- Pydantic schemas for structured JSON output
 """
 
+from kgbuilder.extraction.entity import (
+    EntityExtractor,
+    LLMEntityExtractor,
+    OntologyClassDef,
+)
+from kgbuilder.extraction.relation import (
+    LLMRelationExtractor,
+    RelationExtractor,
+    OntologyRelationDef,
+)
+from kgbuilder.extraction.schemas import (
+    EntityExtractionOutput,
+    EntityItem,
+    FindingItem,
+    FindingsSynthesisOutput,
+    RelationExtractionOutput,
+    RelationItem,
+)
+from kgbuilder.extraction.synthesizer import FindingsSynthesizer
+
+__all__ = [
+    # Protocols
+    "EntityExtractor",
+    "RelationExtractor",
+    # Implementations
+    "LLMEntityExtractor",
+    "LLMRelationExtractor",
+    "FindingsSynthesizer",
+    # Data models
+    "OntologyClassDef",
+    "OntologyRelationDef",
+    # Schemas
+    "EntityExtractionOutput",
+    "EntityItem",
+    "RelationExtractionOutput",
+    "RelationItem",
+    "FindingsSynthesisOutput",
+    "FindingItem",
+]
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from .entity import EntityExtractor, LLMEntityExtractor, OntologyClassDef
 from .relation import LLMRelationExtractor, OntologyRelationDef, RelationExtractor

@@ -1,23 +1,17 @@
-"""Embedding providers and operations.
+"""Embedding and LLM providers.
 
-Implementation of Issue #3.1: Embedding Provider Interface
+Implementation of Issues #3.1, #3.2: Provider Interfaces
 
-TODO (OllamaEmbeddingProvider):
-- [ ] Implement embed_text() via Ollama API (httpx or requests)
-- [ ] Implement embed_batch() with configurable batch size
-- [ ] Query Ollama for actual model dimension and max_tokens
-- [ ] Add caching layer for embeddings (SQLite or Redis)
-- [ ] Add exponential backoff retry logic
-- [ ] Add model hot-swapping support
-- [ ] Add token counting for budget tracking
-- [ ] Add structured logging via structlog
-- [ ] Add unit tests with mocked Ollama responses
-- [ ] Add integration tests against real Ollama (optional)
+Provides:
+- OllamaProvider: Local LLM inference via Ollama (QWEN3, qwen3-next, etc.)
+- Structured and unstructured generation with Pydantic validation
+"""
 
-TODO (Future providers):
-- [ ] OpenAI embedding provider
-- [ ] HuggingFace embedding provider
+from kgbuilder.embedding.ollama import OllamaProvider
 
+__all__ = [
+    "OllamaProvider",
+]
 See Planning/ISSUES_BACKLOG.md Issue #3.1 for acceptance criteria.
 """
 

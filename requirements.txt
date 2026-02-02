@@ -1,0 +1,42 @@
+# KnowledgeGraphBuilder Requirements
+# Generated from pyproject.toml
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+pydantic>=2.0
+pydantic-settings>=2.0
+structlog>=24.1.0
+
+# Document processing
+pdfplumber>=0.11.0
+python-docx>=0.8.11
+python-pptx>=0.6.21
+docling>=1.0.0
+markitdown>=0.11.0
+
+# LLM & embedding (for Ollama integration)
+httpx>=0.25.0
+requests>=2.31.0
+numpy>=1.24
+
+# Graph databases
+neo4j>=5.19
+rdflib>=7.0
+
+# Vector database
+qdrant-client>=2.7.0
+
+# Validation
+pyshacl>=0.25.0
+
+# Utilities
+click>=8.1
+typer>=0.9
+
+# Development (optional, uncomment for dev environment)
+# pytest>=7.4
+# pytest-cov>=4.1
+# black>=23.0
+# ruff>=0.1
+# mypy>=1.7
+# pre-commit>=3.5
