@@ -33,7 +33,6 @@ from kgbuilder.validation import (
     OntologyValidator,
     SHACLValidator,
     Validator,
-    ValidationReport,
     ValidationViolation,
 )
 
@@ -67,7 +66,6 @@ __all__ = [
     "GraphStatistics",
     # Validation
     "Validator",
-    "ValidationReport",
     "ValidationViolation",
     "SHACLValidator",
     "OntologyValidator",
