@@ -69,9 +69,10 @@ def sample_edge_batch() -> list[Edge]:
     """Create a batch of sample edges."""
     return [
         Edge(
+            id=f"edge:{i:03d}",
             source_id=f"entity:{i:03d}",
             target_id=f"entity:{i+1:03d}",
-            relation_type="related_to" if i % 2 == 0 else "knows",
+            edge_type="related_to" if i % 2 == 0 else "knows",
             properties={"confidence": 0.9 - (i * 0.05)},
         )
         for i in range(1, 5)
@@ -136,11 +137,11 @@ class TestNeo4jGraphStore:
         """Test adding a single node."""
         mock_gd.driver.return_value = mock_neo4j_driver
         session = MagicMock()
-        mock_neo4j_driver.session.return_value = session
+        mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         # Mock node creation
         result = MagicMock()
-        result.single.return_value = MagicMock(value=MagicMock(return_value={"id": sample_node.id}))
+        result.single.return_value = {"id": sample_node.id}
         session.run.return_value = result
 
         store = Neo4jGraphStore("bolt://localhost:7687", ("neo4j", "password"))
@@ -462,16 +463,22 @@ class TestKGBuilderIntegration:
         primary = MagicMock()
         secondary = MagicMock()
 
-        # Setup mocks
-        primary.batch_create_nodes.return_value = [n.id for n in sample_node_batch]
-        primary.batch_create_edges.return_value = [e.source_id for e in sample_edge_batch]
+        # Setup mocks to return only the nodes/edges in the batch
+        def batch_nodes_side_effect(nodes):
+            return [n.id for n in nodes]
+        
+        def batch_edges_side_effect(edges):
+            return [e.id for e in edges]
+
+        primary.batch_create_nodes.side_effect = batch_nodes_side_effect
+        primary.batch_create_edges.side_effect = batch_edges_side_effect
         primary.health_check.return_value = True
         primary.get_statistics.return_value = GraphStatistics(
             node_count=5, edge_count=4, nodes_by_type={}, edges_by_type={}, avg_confidence=0.9
         )
 
-        secondary.batch_create_nodes.return_value = [n.id for n in sample_node_batch]
-        secondary.batch_create_edges.return_value = [e.source_id for e in sample_edge_batch]
+        secondary.batch_create_nodes.side_effect = batch_nodes_side_effect
+        secondary.batch_create_edges.side_effect = batch_edges_side_effect
         secondary.health_check.return_value = True
 
         config = KGBuilderConfig(sync_stores=True, batch_size=2)
