@@ -2,7 +2,7 @@
 
 > **Single Source of Truth** for all project planning, architecture, and implementation details.  
 > **Last Updated**: February 3, 2026  
-> **Project Status**: Phase 5 Complete | Phase 6 Starting
+> **Project Status**: Phase 5 Complete | Phase 6 COMPLETE (Relation Extraction Integrated) | Phase 7+ Pending
 
 ---
 
@@ -199,8 +199,8 @@ services:
 | 3 | Entity Extraction | ✅ Complete | 89 | RAG, LLM extraction, validation |
 | 4 | Autonomous Discovery | ✅ Complete | 70 | Question gen, discovery loop |
 | 5 | Confidence Tuning | ✅ Complete | 86 | Analysis, calibration, filtering |
-| **6** | **KG Assembly** | **🟢 Starting** | **-** | **Multi-store, export formats** |
-| 7 | Relationship Extraction | 🔴 Pending | - | Extract typed relations |
+| **6** | **Relation Extraction** | **✅ COMPLETE** | **~40** | **Cross-doc relations, LLM extraction** |
+| **7** | **KG Assembly & Storage** | **🟢 Starting** | **-** | **Multi-store, export formats** |
 | 8 | Validation Pipeline | 🔴 Pending | - | SHACL, domain rules |
 | 9 | Analytics & Evaluation | 🔴 Pending | - | Metrics, benchmarks |
 | 10 | CLI & Orchestration | 🔴 Pending | - | User interface |
@@ -260,12 +260,47 @@ All 6 tasks complete with 86 tests passing:
 - Multi-LLM consensus voting for disputed entities
 - Quality filtering with markdown/JSON reporting
 
+#### Phase 6: Relation Extraction ✅
+
+**COMPLETED** - Cross-document relation extraction fully integrated into `build_kg.py`:
+
+| Component | File | Status |
+|-----------|------|--------|
+| LLMRelationExtractor | `src/kgbuilder/extraction/relation.py` | ✅ Complete |
+| Relation Consolidation | `src/kgbuilder/extraction/synthesizer.py` | ✅ Complete |
+| Pipeline Integration | `scripts/build_kg.py` | ✅ Complete |
+| Cross-Document Retrieval | Helper functions in build_kg.py | ✅ Complete |
+
+**Key Features**:
+- ✅ LLM-based relation extraction with ontology constraints
+- ✅ Domain/range validation per relation type
+- ✅ Cardinality constraint enforcement (functional/inverse-functional)
+- ✅ **Cross-document relation discovery** via retriever queries
+- ✅ Relation confidence scoring with evidence
+- ✅ Neo4j assembly with both nodes and edges
+- ✅ Summary statistics including relation counts
+
+**Architecture**:
+```
+PHASE 5: Relation Extraction (NEW)
+  ├─ Build relation extractor
+  ├─ Load ontology relations
+  ├─ For each entity pair:
+  │   ├─ Query retriever for co-occurrence chunks
+  │   ├─ Extract relations from chunks (cross-document!)
+  │   ├─ Validate against ontology constraints
+  │   └─ Deduplicate by source→predicate→target
+  └─ Return consolidated relations
+```
+
+See [CROSS_DOCUMENT_RELATIONS.md](./CROSS_DOCUMENT_RELATIONS.md) for detailed design.
+
 ### What's Next
 
-#### Phase 6: KG Assembly & Multi-Store Integration (6-8h)
+#### Phase 7: KG Assembly & Multi-Store Integration (6-8h)
 
 ```
-Phase 5 Entities → GraphStore Protocol → Neo4j/RDF Stores → 5 Export Formats
+Phase 6 Entities + Relations → GraphStore Protocol → Neo4j/RDF Stores → 5 Export Formats
 ```
 
 **Tasks**:
