@@ -4,7 +4,9 @@ services:
   kgbuilder:
     build: .
     container_name: kgbuilder
-    command: ["sleep", "infinity"]
+    # Run the KG construction pipeline
+    # Override command to pass custom arguments, e.g.:
+    #   docker-compose run --rm kgbuilder --questions-per-class 5 --max-iterations 10
     volumes:
       - ./:/app
       - ./data:/app/data
@@ -13,23 +15,21 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - KGBUILDER_CONFIG=/app/config/config.yaml
-      - QDRANT_URL=${QDRANT_URL}
-      - NEO4J_URI=${NEO4J_URI}
-      - NEO4J_USER=${NEO4J_USER}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-      - FUSEKI_URL=${FUSEKI_URL}
-      - FUSEKI_USER=${FUSEKI_USER}
-      - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
-      - KGBUILDER_ENV=${KGBUILDER_ENV}
-      - KGBUILDER_SECRET_KEY=${KGBUILDER_SECRET_KEY}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-kgbuilder}
+      - NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-changeme}
+      - FUSEKI_URL=${FUSEKI_URL:-http://fuseki:3030}
+      - FUSEKI_DATASET=${FUSEKI_DATASET:-kgbuilder}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:8b}
     depends_on:
       - qdrant
       - neo4j
+      - fuseki
     networks:
       - kgbuilder-net
-    ports:
-      - "8000:8000"
 
   qdrant:
     image: qdrant/qdrant:latest

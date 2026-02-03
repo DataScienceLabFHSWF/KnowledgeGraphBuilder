@@ -41,5 +41,8 @@ WORKDIR /app
 # Install kgbuilder in editable mode
 RUN /root/.local/bin/pip install --no-cache-dir -e .
 
-# Default command: start Python shell for running scripts
-CMD ["python"]
+# Default entry point: run the KG building pipeline
+ENTRYPOINT ["python", "scripts/build_kg.py"]
+
+# Default arguments (can be overridden)
+CMD ["--help"]

@@ -3,7 +3,8 @@
 Implementation of Issue #6.1: KG Assembly Engine
 
 Provides:
-- SimpleKGAssembler: Document-to-KG pipeline orchestration
+- SimpleKGAssembler: Document-to-KG pipeline orchestration (Neo4j-specific)
+- KGAssembler (Protocol-based): Backend-agnostic assembler for any GraphStore
 - GraphStatistics: KG metrics and statistics
 - AssemblyResult: Result of KG assembly operation
 - LangChain LCEL-based orchestration
@@ -16,10 +17,24 @@ from kgbuilder.assembly.core import (
     SimpleKGAssembler,
 )
 
+# New protocol-based assembler (Phase 6)
+from kgbuilder.assembly.assembler import (
+    KGAssembler as ProtocolKGAssembler,
+    KGAssemblyResult,
+    assemble_to_json,
+    assemble_to_dict,
+)
+
 __all__ = [
+    # Legacy exports
     "SimpleKGAssembler",
     "KGAssembler",
     "GraphStatistics",
     "AssemblyResult",
+    # New protocol-based exports (Phase 6)
+    "ProtocolKGAssembler",
+    "KGAssemblyResult",
+    "assemble_to_json",
+    "assemble_to_dict",
 ]
 

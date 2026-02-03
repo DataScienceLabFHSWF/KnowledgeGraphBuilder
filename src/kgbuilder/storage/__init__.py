@@ -38,7 +38,20 @@ from .rdf import FusekiStore, RDFStore
 from .vector import QdrantStore, VectorStore
 from .retrieval import SemanticRetriever
 
+# New protocol-based exports (Phase 6)
+from .protocol import (
+    Node,
+    Edge,
+    QueryResult,
+    GraphStatistics,
+    GraphStore as GraphStoreProtocol,
+    InMemoryGraphStore,
+    create_graph_store,
+)
+from .export import KGExporter, ExportConfig, export_kg
+
 __all__ = [
+    # Legacy exports
     "VectorStore",
     "QdrantStore",
     "GraphStore",
@@ -46,4 +59,15 @@ __all__ = [
     "RDFStore",
     "FusekiStore",
     "SemanticRetriever",
+    # New protocol-based exports (Phase 6)
+    "Node",
+    "Edge",
+    "QueryResult",
+    "GraphStatistics",
+    "GraphStoreProtocol",
+    "InMemoryGraphStore",
+    "create_graph_store",
+    "KGExporter",
+    "ExportConfig",
+    "export_kg",
 ]
