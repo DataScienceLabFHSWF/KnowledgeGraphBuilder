@@ -25,6 +25,13 @@ from kgbuilder.assembly.assembler import (
     assemble_to_dict,
 )
 
+# Multi-store orchestrator (Phase 7)
+from kgbuilder.assembly.kg_builder import (
+    KGBuilder,
+    KGBuilderConfig,
+    KGBuildResult,
+)
+
 __all__ = [
     # Legacy exports
     "SimpleKGAssembler",
@@ -36,5 +43,9 @@ __all__ = [
     "KGAssemblyResult",
     "assemble_to_json",
     "assemble_to_dict",
+    # Multi-store orchestrator (Phase 7)
+    "KGBuilder",
+    "KGBuilderConfig",
+    "KGBuildResult",
 ]
 
