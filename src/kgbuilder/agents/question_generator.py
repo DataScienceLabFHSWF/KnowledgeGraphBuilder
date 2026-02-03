@@ -212,7 +212,7 @@ class QuestionGenerationAgent:
             return prioritized
 
         except Exception as e:
-            self._logger.error("question_generation_failed", error=str(e), exc_info=True)
+            self._logger.error("question_generation_failed")
             raise RuntimeError(f"Failed to generate questions: {e}") from e
 
     def _calculate_coverage(

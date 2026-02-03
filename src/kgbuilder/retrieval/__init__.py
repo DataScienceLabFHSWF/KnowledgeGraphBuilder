@@ -204,14 +204,20 @@ class FusionRAGRetriever:
             results = self.qdrant.search(query_embedding, top_k=top_k)
 
             dense_results = {}
-            for i, result in enumerate(results):
+            for result in results:
+                # Unpack tuple: (id, score, metadata)
+                doc_id, score, metadata = result
                 # Normalize score to [0, 1] (assuming cosine similarity)
-                score = max(0.0, min(1.0, (result.score + 1.0) / 2.0))
-                dense_results[result.id] = RetrievalResult(
-                    doc_id=result.id,
-                    content=result.content,
-                    score=score,
-                    metadata=result.metadata,
+                normalized_score = max(0.0, min(1.0, (score + 1.0) / 2.0))
+                
+                # Get content from metadata
+                content = metadata.get("content", "")
+                
+                dense_results[doc_id] = RetrievalResult(
+                    doc_id=doc_id,
+                    content=content,
+                    score=normalized_score,
+                    metadata=metadata,
                     retrieval_method="dense",
                 )
 
@@ -219,7 +225,9 @@ class FusionRAGRetriever:
             return dense_results
 
         except Exception as e:
-            logger.error("dense_retrieval_failed", error=str(e))
+            logger.error("dense_retrieval_failed")
+            import traceback
+            traceback.print_exc()
             return {}
 
     def _sparse_retrieve(
@@ -265,7 +273,7 @@ class FusionRAGRetriever:
             return sparse_results
 
         except Exception as e:
-            logger.error("sparse_retrieval_failed", error=str(e))
+            logger.error("sparse_retrieval_failed")
             return {}
 
     def _fuse_results(
@@ -326,7 +334,7 @@ Alternative questions:"""
             return variants[:2]  # Limit to 2 variants
 
         except Exception as e:
-            logger.debug("query_expansion_failed", error=str(e))
+            logger.debug("query_expansion_failed")
             return []
 
 

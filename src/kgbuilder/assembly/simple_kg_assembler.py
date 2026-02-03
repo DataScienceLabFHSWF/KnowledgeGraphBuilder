@@ -103,7 +103,7 @@ class SimpleKGAssembler:
                 uri=neo4j_uri,
             )
         except ServiceUnavailable as e:
-            logger.error("neo4j_connection_failed", uri=neo4j_uri, error=str(e))
+            logger.error("neo4j_connection_failed", uri=neo4j_uri)
             raise
 
     def assemble(
@@ -250,7 +250,7 @@ class SimpleKGAssembler:
 
         except Exception as e:
             error_msg = f"Assembly failed: {str(e)}"
-            logger.error("assembly_failed", error=str(e))
+            logger.error("assembly_failed")
             errors.append(error_msg)
 
         return KGAssemblyResult(

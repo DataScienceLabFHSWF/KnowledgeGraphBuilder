@@ -5,6 +5,7 @@ Supports:
 - Text generation (unstructured)
 - Structured JSON output with Pydantic validation
 - Multiple model support (QWEN3, qwen3-next, etc.)
+- Embedding generation via embedding models
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import json
 import logging
 from typing import Any
 
+import numpy as np
 import requests
 from pydantic import BaseModel, ValidationError
 
@@ -199,3 +201,39 @@ class OllamaProvider:
         except Exception as e:
             logger.error(f"Structured generation failed: {e}")
             raise RuntimeError(f"Structured generation error: {e}") from e
+
+    def embed_query(self, query: str, embedding_model: str = "qwen3-embedding") -> Any:
+        """Generate embedding for a query using Ollama embedding model.
+
+        Args:
+            query: Text to embed
+            embedding_model: Embedding model name (default: qwen3-embedding)
+
+        Returns:
+            Numpy array of embeddings
+
+        Raises:
+            RuntimeError: If embedding API call fails
+        """
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/embed",
+                json={
+                    "model": embedding_model,
+                    "input": query,
+                },
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            result = response.json()
+            embeddings = result.get("embeddings", [])
+            
+            if not embeddings or not embeddings[0]:
+                raise RuntimeError("No embeddings returned from Ollama")
+            
+            # Return first embedding (embeddings is list of lists)
+            return np.array(embeddings[0], dtype=np.float32)
+        except Exception as e:
+            logger.error(f"Embedding failed: {e}")
+            raise RuntimeError(f"Embedding error: {e}") from e
+

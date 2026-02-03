@@ -144,7 +144,7 @@ Answer:"""
             return answer
 
         except Exception as e:
-            logger.error("generation_failed", error=str(e), exc_info=True)
+            logger.error("generation_failed")
             return "Error generating response"
 
     def answer(self, query: str) -> RAGResponse:

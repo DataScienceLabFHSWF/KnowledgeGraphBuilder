@@ -93,7 +93,7 @@ class LLMEntityExtractor:
     def extract(
         self,
         text: str,
-        ontology_classes: list[OntologyClassDef],
+        ontology_classes: list[OntologyClassDef] | None = None,
         existing_entities: list[ExtractedEntity] | None = None,
     ) -> list[ExtractedEntity]:
         """Extract entities from text with ontology guidance.

@@ -123,6 +123,7 @@ class IterativeDiscoveryLoop:
         retriever: Retriever,
         extractor: EntityExtractor,
         question_generator: QuestionGenerationAgent,
+        ontology_classes: list[Any] | None = None,
     ) -> None:
         """Initialize discovery loop.
 
@@ -130,10 +131,12 @@ class IterativeDiscoveryLoop:
             retriever: Retriever implementation for document search
             extractor: EntityExtractor implementation for entity extraction
             question_generator: QuestionGenerationAgent for question generation
+            ontology_classes: Optional list of ontology class definitions for extraction guidance
         """
         self._retriever = retriever
         self._extractor = extractor
         self._question_gen = question_generator
+        self._ontology_classes = ontology_classes
         self._findings: dict[str, ExtractedEntity] = {}
         self._provenance: dict[str, set[str]] = {}  # entity_id -> source docs
         self._logger = structlog.get_logger(__name__)
@@ -144,6 +147,7 @@ class IterativeDiscoveryLoop:
         max_iterations: int = 5,
         coverage_target: float = 0.85,
         top_k_docs: int = 10,
+        ontology_classes: list[Any] | None = None,
     ) -> DiscoveryResult:
         """Run iterative discovery loop.
 
@@ -152,17 +156,22 @@ class IterativeDiscoveryLoop:
             max_iterations: Maximum iterations to run
             coverage_target: Stop when coverage >= this threshold
             top_k_docs: Number of documents to retrieve per question
+            ontology_classes: List of ontology class definitions for extraction guidance
 
         Returns:
             DiscoveryResult with all findings and metadata
         """
         start_time = time.time()
+        
+        # Use provided classes or fall back to instance variable
+        classes_to_use = ontology_classes if ontology_classes is not None else self._ontology_classes
 
         self._logger.info(
             "discovery_start",
             max_iterations=max_iterations,
             coverage_target=coverage_target,
             top_k_docs=top_k_docs,
+            ontology_classes_provided=classes_to_use is not None,
         )
 
         # Initialize
@@ -196,7 +205,7 @@ class IterativeDiscoveryLoop:
                 pre_iteration_count = len(self._findings)
 
                 for question in current_questions:
-                    self._process_question(question, top_k_docs)
+                    self._process_question(question, top_k_docs, classes_to_use)
                     questions_processed += 1
 
                 # Calculate coverage after this iteration
@@ -295,7 +304,10 @@ class IterativeDiscoveryLoop:
             )
 
     def _process_question(
-        self, question: ResearchQuestion, top_k_docs: int
+        self,
+        question: ResearchQuestion,
+        top_k_docs: int,
+        ontology_classes: list[Any] | None = None,
     ) -> None:
         """Process a single research question.
 
@@ -308,6 +320,7 @@ class IterativeDiscoveryLoop:
         Args:
             question: Research question to process
             top_k_docs: Number of documents to retrieve
+            ontology_classes: Optional list of ontology classes for extraction guidance
         """
         self._logger.info(
             "processing_question",
@@ -331,8 +344,11 @@ class IterativeDiscoveryLoop:
             # 2. Extract entities from each document
             for result in retrieved:
                 try:
-                    # Extract entities from this document
-                    entities = self._extractor.extract(text=result.content)
+                    # Extract entities from this document with ontology guidance
+                    entities = self._extractor.extract(
+                        text=result.content,
+                        ontology_classes=ontology_classes
+                    )
 
                     # 3. Update findings and provenance
                     for entity in entities:
@@ -359,7 +375,6 @@ class IterativeDiscoveryLoop:
                         "extraction_failed_for_document",
                         question_id=question.question_id,
                         doc_id=result.doc_id,
-                        error=str(e),
                     )
                     continue
 
@@ -367,8 +382,9 @@ class IterativeDiscoveryLoop:
             self._logger.error(
                 "question_processing_failed",
                 question_id=question.question_id,
-                error=str(e),
             )
+            import traceback
+            traceback.print_exc()
 
     def _calculate_coverage(self) -> float:
         """Calculate coverage of ontology classes.
