@@ -211,25 +211,31 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
     print("PHASE 4d: KG Assembly (SimpleKGAssembler)")
     print("=" * 80)
 
-    # Mock Neo4j driver
-    mock_driver = MagicMock()
-    mock_session = MagicMock()
-    mock_driver.session.return_value.__enter__.return_value = mock_session
-    mock_driver.session.return_value.__exit__.return_value = None
-
-    # Create assembler with mock driver
-    assembler = SimpleKGAssembler(
-        neo4j_uri="bolt://localhost:7687",
-        auth=("neo4j", "password")  # Default credentials
-    )
-    assembler._driver = mock_driver  # Override with mock
+    try:
+        # Try to connect to actual Neo4j
+        assembler = SimpleKGAssembler(
+            neo4j_uri="bolt://localhost:7687",
+            auth=("neo4j", "password")
+        )
+    except Exception as e:
+        print(f"\n⚠️  Neo4j connection failed: {e}")
+        print("   Simulating assembly with mock results...")
+        # Fallback: simulate assembly result
+        return {
+            "nodes_created": len(entities),
+            "relationships_created": 2,
+            "coverage": 0.85,
+            "iterations": 2,
+            "errors": ["Neo4j unavailable - simulated run"],
+            "warnings": [],
+        }
 
     # Create relationships
     relations = [
         ExtractedRelation(
             id="rel_1",
-            source_id="pwr",
-            target_id="u235",
+            source_id="bwr",
+            target_id="uranium_235",
             predicate="Uses",
             confidence=0.93,
             evidence=[],
@@ -237,7 +243,7 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
         ),
         ExtractedRelation(
             id="rel_2",
-            source_id="pwr",
+            source_id="bwr",
             target_id="emergency_cooling",
             predicate="Contains",
             confidence=0.90,
@@ -246,37 +252,38 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
         ),
     ]
 
-    # Assemble
-    result = assembler.assemble(
-        entities=entities,
-        relations=relations,
-        coverage=0.85,
-        iterations=2,
-    )
+    try:
+        # Assemble
+        result = assembler.assemble(
+            entities=entities,
+            relations=relations,
+            coverage=0.85,
+            iterations=2,
+        )
 
-    print(f"\n✓ Assembly Results:")
-    print(f"  - Nodes Created: {result.nodes_created}")
-    print(f"  - Relationships Created: {result.relationships_created}")
-    print(f"  - Coverage: {result.coverage:.2f}")
-    print(f"  - Iterations: {result.iterations}")
-    print(f"  - Errors: {len(result.errors)}")
-    print(f"  - Warnings: {len(result.warnings)}")
+        print(f"\n✓ Assembly Results:")
+        print(f"  - Nodes Created: {result.nodes_created}")
+        print(f"  - Relationships Created: {result.relationships_created}")
+        print(f"  - Coverage: {result.coverage:.2f}")
+        print(f"  - Iterations: {result.iterations}")
+        print(f"  - Errors: {len(result.errors)}")
+        print(f"  - Warnings: {len(result.warnings)}")
 
-    if result.statistics:
-        print(f"\n  Statistics:")
-        for key, value in result.statistics.items():
-            print(f"    - {key}: {value}")
+        if result.statistics:
+            print(f"\n  Statistics:")
+            for key, value in result.statistics.items():
+                print(f"    - {key}: {value}")
 
-    assembler.close()
-
-    return {
-        "nodes_created": result.nodes_created,
-        "relationships_created": result.relationships_created,
-        "coverage": result.coverage,
-        "iterations": result.iterations,
-        "errors": result.errors,
-        "warnings": result.warnings,
-    }
+        return {
+            "nodes_created": result.nodes_created,
+            "relationships_created": result.relationships_created,
+            "coverage": result.coverage,
+            "iterations": result.iterations,
+            "errors": result.errors,
+            "warnings": result.warnings,
+        }
+    finally:
+        assembler.close()
 
 
 def main() -> None:
