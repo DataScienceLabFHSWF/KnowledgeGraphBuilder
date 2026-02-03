@@ -287,8 +287,8 @@ def test_confidence_boost_max_10_percent(
 
     result = synthesizer.synthesize(entities)
 
-    # Average: 0.80, boost capped at 0.1, so max = 0.90
-    assert result[0].confidence <= 0.90
+    # Average: 0.80, boost capped at 0.1, so max = 0.90 (with floating point tolerance)
+    assert result[0].confidence <= 0.9001  # Allow for floating point precision
     assert result[0].merged_count == 12
 
 
