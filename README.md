@@ -63,26 +63,45 @@ All results logged with structured logging (JSON format)
 ## Current Status
 
 ### ✅ Release 0.1.0: Document Ingestion & Ontology Loading
-
-**Completed**:
 - Full document ingestion pipeline (33 German decommissioning PDFs)
 - PDF parsing with VLM extraction (qwen3)
 - Semantic chunking (512 tokens, 50 overlap)
 - Embedding with Ollama (qwen3-embedding, 4096-dim vectors)
 - Vector indexing in Qdrant
 - Ontology loading to Fuseki RDF store (342 triples)
-- Structured JSON logging and progress tracking
-- Document caching with cache invalidation
+
+### ✅ Release 0.2.0: FusionRAG Retrieval & Entity/Relation Extraction
+- RAG-based retrieval from vector database
+- LLM-guided entity extraction with confidence scoring
+- Relation extraction with type validation
+- Iterative refinement loop for improved accuracy
+
+### ✅ Release 0.3.0: Knowledge Graph Assembly & Validation
+- Entity deduplication and synthesis
+- Relation validation and conflict resolution
+- Neo4j knowledge graph construction
+- RDF/JSON-LD export support
+
+### ✅ Release 0.4.0: Autonomous Discovery Pipeline
+- **QuestionGenerationAgent**: Generates strategic research questions from ontology
+- **IterativeDiscoveryLoop**: Autonomously discovers entities matching each question
+- **FindingsSynthesizer**: Deduplicates and merges discovered findings
+- **SimpleKGAssembler**: Assembles findings into Neo4j knowledge graph
+
+**Phase 4 Test Results**:
+- 89 total tests across 4 components
+- 87% average coverage
+- 100% pass rate
+- End-to-end pipeline validated against live Neo4j
+- Successfully generated KG with 5 nodes and 2 relationships
 
 **Storage Backends**:
 - **Qdrant**: Vector similarity search (kgbuilder collection, 4096-dim)
 - **Fuseki**: RDF triple store with ontology (kgbuilder dataset)
-- **Neo4j**: Ready for knowledge graph building (auth disabled in dev)
+- **Neo4j**: Knowledge graph with entity relationships (port 7687)
 - **Ollama**: Local LLM and embedding models
 
-**Example**: Process 33 PDFs (~3,500 chunks) with full embedding in ~30 minutes
-
-### 🔄 Planned: Release 0.2.0 (FusionRAG Retrieval)
+### 🔄 Next: Release 0.5.0 (Query Interface & Visualization)
 
 - Ontology-guided entity extraction using LLM
 - Semantic relation extraction from chunks
