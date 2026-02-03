@@ -73,14 +73,15 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
 from kgbuilder.assembly.simple_kg_assembler import SimpleKGAssembler
-from kgbuilder.extraction.synthesizer import FindingsSynthesizer
+from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
 from kgbuilder.extraction.entity import OntologyClassDef
+from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
 from kgbuilder.storage.ontology import FusekiOntologyService
 from kgbuilder.storage.vector import QdrantStore
 from kgbuilder.retrieval import FusionRAGRetriever
 from kgbuilder.extraction.entity import LLMEntityExtractor
 from kgbuilder.embedding import OllamaProvider
-from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 
 
 # =============================================================================
@@ -271,6 +272,204 @@ def convert_class_names_to_definitions(
     return definitions
 
 
+def build_relation_extractor(confidence_threshold: float = 0.5) -> LLMRelationExtractor:
+    """Build LLM-based relation extractor with ontology guidance.
+    
+    Uses structured prompting to extract relationships between entities
+    with domain/range validation and cardinality constraints.
+    
+    Args:
+        confidence_threshold: Minimum confidence for inclusion (0.0-1.0)
+        
+    Returns:
+        Configured LLMRelationExtractor instance
+    """
+    logger.info(
+        "relation_extractor_building",
+        type="LLMRelationExtractor",
+        confidence_threshold=confidence_threshold
+    )
+
+    llm = OllamaProvider(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_URL
+    )
+
+    extractor = LLMRelationExtractor(
+        llm_provider=llm,
+        confidence_threshold=confidence_threshold,
+        max_retries=3
+    )
+
+    logger.info("relation_extractor_built", type="LLMRelationExtractor")
+    return extractor
+
+
+def get_default_relation_definitions() -> list[OntologyRelationDef]:
+    """Get default relation definitions for extraction.
+    
+    These are common relation types used in knowledge graphs.
+    In production, these would come from the ontology in Fuseki.
+    
+    Returns:
+        List of OntologyRelationDef objects
+    """
+    return [
+        OntologyRelationDef(
+            uri="http://example.org/ontology#relatedTo",
+            label="relatedTo",
+            description="General relation between two entities",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#partOf",
+            label="partOf",
+            description="Entity is part of another entity",
+            is_transitive=True,
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#hasPart",
+            label="hasPart",
+            description="Entity has another entity as part",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#locatedIn",
+            label="locatedIn",
+            description="Entity is located in a location",
+            is_transitive=True,
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#involves",
+            label="involves",
+            description="An activity or event involves an entity",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#causes",
+            label="causes",
+            description="One entity/event causes another",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#precedes",
+            label="precedes",
+            description="One entity/event precedes another temporally",
+            is_transitive=True,
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#associatedWith",
+            label="associatedWith",
+            description="Entity is associated with another entity",
+            is_symmetric=True,
+        ),
+    ]
+
+
+def extract_relations_from_entities(
+    synthesized_entities: list[SynthesizedEntity],
+    retriever: FusionRAGRetriever,
+    relation_extractor: LLMRelationExtractor,
+    ontology_relations: list[OntologyRelationDef],
+    top_k: int = 5,
+) -> list[ExtractedRelation]:
+    """Extract relations between synthesized entities.
+    
+    Strategy:
+    1. For each entity pair, search for chunks mentioning both
+    2. Extract relations from those chunks
+    3. Aggregate and deduplicate relations
+    
+    Args:
+        synthesized_entities: Deduplicated entities from synthesis
+        retriever: FusionRAG retriever for finding relevant chunks
+        relation_extractor: LLM relation extractor
+        ontology_relations: Valid relation types from ontology
+        top_k: Number of chunks to retrieve per query
+        
+    Returns:
+        List of extracted relations
+    """
+    all_relations: list[ExtractedRelation] = []
+    processed_pairs: set[tuple[str, str]] = set()
+    
+    # Convert synthesized entities to extracted entities for the extractor
+    entities_for_extraction = [
+        ExtractedEntity(
+            id=se.id,
+            label=se.label,
+            entity_type=se.entity_type,
+            description=se.description or "",
+            confidence=se.confidence,
+            evidence=se.evidence,
+        )
+        for se in synthesized_entities
+    ]
+    
+    # Build entity lookup by label for quick matching
+    entity_labels = {e.label.lower(): e for e in entities_for_extraction}
+    
+    # Process entities in batches - query for chunks that might contain relations
+    for i, entity in enumerate(synthesized_entities):
+        # Query for chunks mentioning this entity
+        query = f"{entity.label} relationships connections"
+        
+        try:
+            results = retriever.retrieve(query=query, top_k=top_k)
+            
+            for result in results:
+                # Check which other entities appear in this chunk
+                chunk_text = result.content.lower()
+                entities_in_chunk = [
+                    e for e in entities_for_extraction
+                    if e.label.lower() in chunk_text and e.id != entity.id
+                ]
+                
+                if entities_in_chunk:
+                    # Extract relations from this chunk
+                    try:
+                        relations = relation_extractor.extract(
+                            text=result.content,
+                            entities=[
+                                e for e in entities_for_extraction 
+                                if e.label.lower() in chunk_text
+                            ],
+                            ontology_relations=ontology_relations,
+                        )
+                        
+                        for rel in relations:
+                            # Avoid duplicate relations
+                            pair_key = (rel.source_entity_id, rel.target_entity_id, rel.predicate)
+                            reverse_key = (rel.target_entity_id, rel.source_entity_id, rel.predicate)
+                            
+                            if pair_key not in processed_pairs and reverse_key not in processed_pairs:
+                                all_relations.append(rel)
+                                processed_pairs.add(pair_key)
+                                
+                    except Exception as e:
+                        logger.warning(
+                            "relation_extraction_chunk_failed",
+                            entity_id=entity.id,
+                            error=str(e)
+                        )
+                        continue
+                        
+        except Exception as e:
+            logger.warning(
+                "relation_retrieval_failed",
+                entity_id=entity.id,
+                error=str(e)
+            )
+            continue
+        
+        # Log progress every 10 entities
+        if (i + 1) % 10 == 0:
+            logger.info(
+                "relation_extraction_progress",
+                entities_processed=i + 1,
+                total_entities=len(synthesized_entities),
+                relations_found=len(all_relations)
+            )
+    
+    return all_relations
+
+
 # =============================================================================
 # MAIN PIPELINE
 # =============================================================================
@@ -425,19 +624,64 @@ def main() -> None:
         print(f"  - Merged: {merge_count} ({merge_rate:.1%})\n")
 
         # =====================================================================
-        # PHASE 5: KNOWLEDGE GRAPH ASSEMBLY
+        # PHASE 5: RELATION EXTRACTION
         # =====================================================================
-        print("PHASE 5: KG Assembly & Persistence")
+        print("PHASE 5: Relation Extraction")
         print("-" * 80)
 
-        logger.info("assembly_starting", entity_count=len(synthesized_entities))
+        relation_extractor = build_relation_extractor(
+            confidence_threshold=args.confidence_threshold
+        )
+        ontology_relations = get_default_relation_definitions()
+
+        logger.info(
+            "relation_extraction_starting",
+            entity_count=len(synthesized_entities),
+            relation_types=len(ontology_relations)
+        )
+        print(f"Extracting relations between {len(synthesized_entities)} entities...")
+
+        extracted_relations = extract_relations_from_entities(
+            synthesized_entities=synthesized_entities,
+            retriever=retriever,
+            relation_extractor=relation_extractor,
+            ontology_relations=ontology_relations,
+            top_k=args.top_k,
+        )
+
+        logger.info(
+            "relation_extraction_complete",
+            relations_extracted=len(extracted_relations)
+        )
+        print(f"✓ Relation extraction complete")
+        print(f"  - Relations extracted: {len(extracted_relations)}")
+        
+        # Show relation type distribution
+        if extracted_relations:
+            relation_types = {}
+            for rel in extracted_relations:
+                rel_type = rel.predicate.split("#")[-1] if "#" in rel.predicate else rel.predicate
+                relation_types[rel_type] = relation_types.get(rel_type, 0) + 1
+            print(f"  - Relation types: {dict(sorted(relation_types.items(), key=lambda x: -x[1])[:5])}")
+        print()
+
+        # =====================================================================
+        # PHASE 6: KNOWLEDGE GRAPH ASSEMBLY
+        # =====================================================================
+        print("PHASE 6: KG Assembly & Persistence")
+        print("-" * 80)
+
+        logger.info("assembly_starting", entity_count=len(synthesized_entities), relation_count=len(extracted_relations))
         
         assembler = SimpleKGAssembler(
             neo4j_uri=NEO4J_URI,
             auth=(NEO4J_USER, NEO4J_PASSWORD)
         )
 
-        assembly_result = assembler.assemble(entities=synthesized_entities)
+        assembly_result = assembler.assemble(
+            entities=synthesized_entities,
+            relations=extracted_relations
+        )
 
         logger.info(
             "assembly_complete",
@@ -476,6 +720,8 @@ def main() -> None:
         print(f"  Entities discovered:   {len(discovered_entities)}")
         print(f"  Entities synthesized:  {len(synthesized_entities)}")
         print(f"  Merge rate:            {merge_rate:.1%}")
+        print(f"\nRelation Extraction:")
+        print(f"  Relations extracted:   {len(extracted_relations)}")
         print(f"\nNeo4j Graph:")
         print(f"  Nodes created:         {assembly_result.nodes_created}")
         print(f"  Relationships created: {assembly_result.relationships_created}")

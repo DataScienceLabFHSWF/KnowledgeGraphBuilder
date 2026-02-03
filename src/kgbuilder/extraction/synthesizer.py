@@ -343,10 +343,69 @@ class FindingsSynthesizer:
                 confidence=synth_entity.confidence,
             )
 
-        # TODO: Add relation consolidation if relations provided
-        # For now, entities are the focus
+        # Add relation consolidation if relations provided
+        if relations:
+            self._consolidate_relations(findings, relations)
 
         return findings
+
+    def _consolidate_relations(
+        self,
+        findings: dict[str, SynthesizedFinding],
+        relations: list[ExtractedRelation],
+    ) -> None:
+        """Consolidate relations into findings.
+
+        Groups relations by (source, predicate, target) and aggregates
+        confidence and evidence across multiple extractions.
+
+        Args:
+            findings: Synthesized findings to augment with relations
+            relations: Extracted relations to consolidate
+        """
+        # Group relations by (source_id, predicate, target_id)
+        rel_groups: dict[tuple[str, str, str], list[ExtractedRelation]] = {}
+        for rel in relations:
+            key = (rel.source_entity_id, rel.predicate, rel.target_entity_id)
+            if key not in rel_groups:
+                rel_groups[key] = []
+            rel_groups[key].append(rel)
+
+        # Consolidate each relation group
+        for (source_id, predicate, target_id), rel_list in rel_groups.items():
+            if source_id not in findings:
+                continue
+
+            # Aggregate confidence across all occurrences
+            avg_confidence = sum(r.confidence for r in rel_list) / len(rel_list)
+
+            # Merge all evidence
+            all_evidence: list[Evidence] = []
+            for rel in rel_list:
+                all_evidence.extend(rel.evidence)
+
+            # Store in findings
+            if predicate not in findings[source_id].relations:
+                findings[source_id].relations[predicate] = []
+
+            findings[source_id].relations[predicate].append(target_id)
+
+            # Update evidence and confidence for the source entity
+            findings[source_id].evidence.extend(all_evidence)
+            # Boost confidence with merged relation count
+            findings[source_id].confidence = min(
+                findings[source_id].confidence + 0.02 * len(rel_list),
+                1.0
+            )
+
+            self._logger.debug(
+                "consolidate_relation",
+                source=source_id,
+                predicate=predicate,
+                target=target_id,
+                relation_count=len(rel_list),
+                avg_confidence=f"{avg_confidence:.2f}",
+            )
 
     def deduplicate_entities(
         self,
@@ -417,15 +476,40 @@ class FindingsSynthesizer:
         Returns:
             YAML string representation
         """
-        # TODO: Implement YAML export
-        # For now, return simple string representation
-        lines = ["# Research Findings\n"]
+        lines: list[str] = []
+        lines.append("# Research Findings")
+        lines.append(f"# Generated from {len(findings)} entities")
+        lines.append("")
+        lines.append("findings:")
+
         for entity_id, finding in findings.items():
-            lines.append(f"- id: {finding.entity_id}")
-            lines.append(f"  label: {finding.entity_label}")
-            lines.append(f"  type: {finding.entity_type}")
-            lines.append(f"  confidence: {finding.confidence:.2f}")
-            lines.append(f"  evidence_count: {len(finding.evidence)}")
+            lines.append(f"  - id: {entity_id}")
+            lines.append(f"    label: {finding.entity_label}")
+            lines.append(f"    type: {finding.entity_type}")
+            lines.append(f"    confidence: {finding.confidence:.2f}")
+
+            # Add attributes if present
+            if finding.attributes:
+                lines.append("    attributes:")
+                for attr_name, attr_values in finding.attributes.items():
+                    values_str = ", ".join(str(v) for v in attr_values)
+                    lines.append(f"      {attr_name}: [{values_str}]")
+
+            # Add relations if present
+            if finding.relations:
+                lines.append("    relations:")
+                for predicate, objects in finding.relations.items():
+                    objects_str = ", ".join(str(o) for o in objects)
+                    lines.append(f"      {predicate}: [{objects_str}]")
+
+            # Add evidence summary
+            if finding.evidence:
+                lines.append(f"    evidence_count: {len(finding.evidence)}")
+                # Show first evidence source if available
+                if finding.evidence[0].source_text:
+                    preview = finding.evidence[0].source_text[:100].replace("\n", " ")
+                    lines.append(f"    first_evidence: \"{preview}...\"")
+
             lines.append("")
 
         return "\n".join(lines)
