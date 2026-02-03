@@ -19,13 +19,53 @@ from kgbuilder.core.models import ExtractedEntity
 
 @runtime_checkable
 class OntologyService(Protocol):
-    """Protocol for ontology query services."""
+    """Protocol for ontology query services.
+    
+    Provides query methods for analyzing ontology structure, class hierarchies,
+    and relations to guide question generation and discovery prioritization.
+    """
 
     def get_all_classes(self) -> list[str]:
         """Get all entity classes from ontology.
 
         Returns:
-            List of class names
+            List of class names (URIs or labels depending on implementation)
+        """
+        ...
+
+    def get_class_hierarchy(self, class_name: str) -> dict[str, Any]:
+        """Get hierarchy information for a class.
+
+        Args:
+            class_name: Class to query
+
+        Returns:
+            Dict with 'parents' (list[str]), 'children' (list[str]), 'depth' (int)
+        """
+        ...
+
+    def get_class_relations(
+        self, class_name: str
+    ) -> dict[str, list[str]]:
+        """Get relations involving a class.
+
+        Args:
+            class_name: Class to query
+
+        Returns:
+            Dict mapping relation types to target classes
+            Example: {'hasParent': ['Document'], 'requires': ['System']}
+        """
+        ...
+
+    def get_class_description(self, class_name: str) -> str | None:
+        """Get description or label for a class.
+
+        Args:
+            class_name: Class to query
+
+        Returns:
+            Description string or None if not available
         """
         ...
 
@@ -85,7 +125,7 @@ class QuestionGenerationAgent:
     def generate_questions(
         self,
         max_questions: int = 50,
-        covered_threshold: float = 0.1,
+        covered_threshold: int = 1,
         coverage_percentage_threshold: float = 0.8,
     ) -> list[ResearchQuestion]:
         """Generate prioritized research questions.
@@ -93,10 +133,19 @@ class QuestionGenerationAgent:
         Questions target under-covered classes in the ontology.
         Prioritized by class hierarchy and importance.
 
+        Strategy:
+        1. Load ontology classes
+        2. Calculate coverage (count of extracted entities per class)
+        3. Find under-covered classes (count < threshold)
+        4. Generate questions for each under-covered class
+        5. Prioritize by: hierarchy level, relation importance, coverage gap
+        6. Return sorted list (highest priority first)
+
         Args:
-            max_questions: Maximum questions to generate
-            covered_threshold: Min # entities to consider class "covered" (absolute)
-            coverage_percentage_threshold: Min coverage % before asking about class
+            max_questions: Maximum questions to generate (default: 50)
+            covered_threshold: Minimum entity count to consider class "covered"
+                (default: 1 - ask about any class with <1 instance, i.e., none)
+            coverage_percentage_threshold: Unused currently, kept for API compatibility
 
         Returns:
             Sorted list of research questions (highest priority first)
@@ -288,44 +337,101 @@ class QuestionGenerationAgent:
     ) -> float:
         """Get hierarchy level of a class (0 for root, higher for deeper).
 
+        Hierarchy level is determined by depth in class hierarchy:
+        - Root classes (no parents): depth = 0
+        - Mid-level: depth = 0.5
+        - Leaf nodes: depth = 1.0
+
         Args:
             class_name: Class to check
-            ontology_classes: All classes (not sufficient for full hierarchy)
+            ontology_classes: All classes for context
 
         Returns:
-            Hierarchy level (0 = root, ~0.5 = mid-level, ~1.0 = leaf)
+            Hierarchy level normalized to 0.0-1.0 range
         """
-        # Simple heuristic: classes at beginning of alphabetical list tend to be root
-        # In a real system, this would query the ontology directly for parent classes
-        position = ontology_classes.index(class_name) if class_name in ontology_classes else 0
-        level = position / max(len(ontology_classes), 1)
-        return level
+        try:
+            hierarchy_info = self._ontology.get_class_hierarchy(class_name)
+            depth = hierarchy_info.get("depth", 0)
+            # Normalize depth: assume max depth is ~5 levels in typical ontologies
+            normalized = min(depth / 5.0, 1.0)
+            return normalized
+        except Exception as e:
+            self._logger.debug(
+                "hierarchy_level_lookup_failed",
+                class_name=class_name,
+                error=str(e),
+            )
+            # Fallback: use alphabetical position as weak heuristic
+            position = (
+                ontology_classes.index(class_name)
+                if class_name in ontology_classes
+                else 0
+            )
+            fallback_level = position / max(len(ontology_classes), 1)
+            return fallback_level
 
     def _is_relation_domain(self, class_name: str) -> bool:
         """Check if class is part of relation domain (has relations in ontology).
 
+        A class is in the relation domain if it participates in any relations
+        (as source or target). This indicates the class is important for linking
+        different parts of the knowledge graph.
+
         Args:
             class_name: Class to check
 
         Returns:
-            True if class participates in relations
+            True if class participates in relations, False otherwise
         """
-        # In real implementation, this would query the ontology for relations
-        # For now, return True for most classes (assume they have relations)
-        return True
+        try:
+            relations = self._ontology.get_class_relations(class_name)
+            has_relations = bool(relations)
+            if has_relations:
+                self._logger.debug(
+                    "class_in_relation_domain",
+                    class_name=class_name,
+                    relation_types=list(relations.keys()),
+                )
+            return has_relations
+        except Exception as e:
+            self._logger.debug(
+                "relation_domain_lookup_failed",
+                class_name=class_name,
+                error=str(e),
+            )
+            # Fallback: assume all classes have relations (conservative)
+            return True
 
     def _get_relation_count(self, class_name: str) -> int:
         """Get count of relations involving this class.
 
+        This counts the total number of relation instances (not types) the class
+        participates in. Classes that connect many other classes get higher count.
+
         Args:
             class_name: Class to check
 
         Returns:
-            Number of relations this class participates in
+            Number of distinct relations this class participates in
         """
-        # In real implementation, this would query the ontology
-        # For now, return a default value
-        return 1
+        try:
+            relations = self._ontology.get_class_relations(class_name)
+            # Count total relations (number of relation types)
+            relation_count = len(relations)
+            self._logger.debug(
+                "relation_count_calculated",
+                class_name=class_name,
+                relation_count=relation_count,
+            )
+            return relation_count
+        except Exception as e:
+            self._logger.debug(
+                "relation_count_lookup_failed",
+                class_name=class_name,
+                error=str(e),
+            )
+            # Fallback: return 1 (assumes class has at least one relation)
+            return 1
 
     def generate_follow_up_questions(
         self,
