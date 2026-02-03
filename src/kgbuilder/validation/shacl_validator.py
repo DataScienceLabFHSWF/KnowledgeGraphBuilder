@@ -293,26 +293,86 @@ class SHACLValidator:
     def _convert_store_to_rdf(self, store: GraphStore) -> rdflib.Graph:
         """Convert graph store to RDF format for SHACL validation.
 
+        Supports Neo4j, RDF, and in-memory graph stores. Creates RDF triples
+        from KG nodes and edges, mapping them to ontology concepts.
+
         Args:
-            store: GraphStore to convert
+            store: GraphStore to convert (Neo4j, RDF, or in-memory)
 
         Returns:
             RDFLib graph with RDF representation
+
+        Raises:
+            ValueError: If store conversion fails
         """
         graph = rdflib.Graph()
-
-        # Namespace
         ns = rdflib.Namespace(self.ontology_uri)
 
         try:
-            # Query all nodes and edges, convert to RDF
-            # For now, create basic RDF structure
-            # In production, would use proper store export
-
             logger.debug("converting_store_to_rdf", store_type=type(store).__name__)
 
+            # Get all nodes from store
+            nodes = store.get_all_nodes()
+            for node in nodes:
+                # Create RDF URI for node
+                node_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}/{node.id}")
+
+                # Add node type triple
+                node_type_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}")
+                graph.add((node_uri, rdflib.RDF.type, node_type_uri))
+
+                # Add node properties
+                if node.label:
+                    graph.add(
+                        (
+                            node_uri,
+                            rdflib.RDFS.label,
+                            rdflib.Literal(node.label),
+                        )
+                    )
+
+                # Add custom properties
+                for key, value in node.properties.items():
+                    if value is not None:
+                        prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{key}")
+                        literal_value = rdflib.Literal(value)
+                        graph.add((node_uri, prop_uri, literal_value))
+
+            # Get all edges from store
+            edges = store.get_all_edges()
+            for edge in edges:
+                # Create RDF URIs
+                source_uri = rdflib.URIRef(
+                    f"{self.ontology_uri}/{edge.source_node_type}/{edge.source_id}"
+                )
+                target_uri = rdflib.URIRef(
+                    f"{self.ontology_uri}/{edge.target_node_type}/{edge.target_id}"
+                )
+                predicate_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}")
+
+                # Add edge triple
+                graph.add((source_uri, predicate_uri, target_uri))
+
+                # Add edge properties
+                for key, value in edge.properties.items():
+                    if value is not None:
+                        prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}_{key}")
+                        # Store edge properties as string properties for now
+                        graph.add((source_uri, prop_uri, rdflib.Literal(value)))
+
+            logger.info(
+                "store_converted_to_rdf",
+                nodes=len(nodes),
+                edges=len(edges),
+                triples=len(graph),
+            )
+
+        except AttributeError as e:
+            logger.error("store_attribute_error", error=str(e), store_type=type(store).__name__)
+            raise ValueError(f"Unsupported store type: {type(store).__name__}") from e
         except Exception as e:
-            logger.warning("store_conversion_partial", error=str(e))
+            logger.error("store_conversion_failed", error=str(e))
+            raise ValueError(f"Failed to convert store to RDF: {str(e)}") from e
 
         return graph
 

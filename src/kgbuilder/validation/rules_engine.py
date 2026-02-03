@@ -89,6 +89,9 @@ class InversePropertyRule(SemanticRule):
     def check(self, store: GraphStore) -> list[RuleViolation]:
         """Check inverse property rule.
 
+        For each (A, property, B) triple, verifies that (B, inverse, A)
+        exists. Creates violations for missing inverse relations.
+
         Args:
             store: GraphStore to check
 
@@ -101,30 +104,42 @@ class InversePropertyRule(SemanticRule):
             return violations
 
         try:
-            # Query for all edges with the property
-            query = f"""
-            MATCH (a)-[r:{self.property_uri}]->(b)
-            RETURN a.id as source, b.id as target
-            """
+            logger.debug("checking_inverse_property", rule=self.name)
 
-            results = store.query(query)
-            if not hasattr(results, "records"):
-                # Handle different result types
-                return violations
-
-            # Check if inverse exists for each edge
-            for record in results.records if hasattr(results, "records") else []:
-                source = record.get("source")
-                target = record.get("target")
+            # Get all edges with the property
+            edges = store.get_all_edges()
+            for edge in edges:
+                if edge.edge_type != self.property_uri:
+                    continue
 
                 # Check if inverse relation exists
-                inverse_query = f"""
-                MATCH ({target})-[:{self.inverse_uri}]->({source})
-                RETURN COUNT(*) as cnt
-                """
+                inverse_exists = False
+                for other_edge in edges:
+                    if (
+                        other_edge.edge_type == self.inverse_uri
+                        and other_edge.source_id == edge.target_id
+                        and other_edge.target_id == edge.source_id
+                    ):
+                        inverse_exists = True
+                        break
 
-                inverse_result = store.query(inverse_query)
-                # Handle result checking
+                if not inverse_exists:
+                    violations.append(
+                        RuleViolation(
+                            rule_name=self.name,
+                            rule_description=self.description,
+                            subject_id=edge.target_id,
+                            predicate=self.inverse_uri,
+                            object_id=edge.source_id,
+                            reason=f"Missing inverse relation: {self.inverse_uri}({edge.target_id}, {edge.source_id})",
+                        )
+                    )
+
+            logger.info(
+                "inverse_property_checked",
+                rule=self.name,
+                violation_count=len(violations),
+            )
 
         except Exception as e:
             logger.warning(
@@ -162,6 +177,9 @@ class TransitiveRule(SemanticRule):
     def check(self, store: GraphStore) -> list[RuleViolation]:
         """Check transitive rule.
 
+        Finds all paths of length 2: A -[property]-> B -[property]-> C
+        For each such path, verifies that a direct edge A -[property]-> C exists.
+
         Args:
             store: GraphStore to check
 
@@ -174,14 +192,46 @@ class TransitiveRule(SemanticRule):
             return violations
 
         try:
-            # Find paths of length 2
-            query = f"""
-            MATCH (a)-[:{self.property_uri}]->(b)-[:{self.property_uri}]->(c)
-            RETURN DISTINCT a.id as source, c.id as target
-            """
+            logger.debug("checking_transitive_property", rule=self.name)
 
-            results = store.query(query)
-            # For each path A->B->C, check if A->C exists directly
+            # Get all edges with the property
+            edges = store.get_all_edges()
+            property_edges = [e for e in edges if e.edge_type == self.property_uri]
+
+            # Find 2-step paths: A -> B -> C
+            for edge1 in property_edges:
+                for edge2 in property_edges:
+                    # Check if target of edge1 is source of edge2
+                    if edge1.target_id != edge2.source_id:
+                        continue
+
+                    # Check if direct edge exists: edge1.source -> edge2.target
+                    direct_exists = False
+                    for direct_edge in property_edges:
+                        if (
+                            direct_edge.source_id == edge1.source_id
+                            and direct_edge.target_id == edge2.target_id
+                        ):
+                            direct_exists = True
+                            break
+
+                    if not direct_exists:
+                        violations.append(
+                            RuleViolation(
+                                rule_name=self.name,
+                                rule_description=self.description,
+                                subject_id=edge1.source_id,
+                                predicate=self.property_uri,
+                                object_id=edge2.target_id,
+                                reason=f"Missing transitive closure: {self.property_uri}({edge1.source_id}, {edge2.target_id}) via {edge1.target_id}",
+                            )
+                        )
+
+            logger.info(
+                "transitive_checked",
+                rule=self.name,
+                violation_count=len(violations),
+            )
 
         except Exception as e:
             logger.warning("transitive_check_failed", rule=self.name, error=str(e))
@@ -218,6 +268,10 @@ class DomainRangeRule(SemanticRule):
     def check(self, store: GraphStore) -> list[RuleViolation]:
         """Check domain/range constraints.
 
+        Validates that all edges with this property:
+        - Have source nodes of types in domain_types
+        - Have target nodes of types in range_types
+
         Args:
             store: GraphStore to check
 
@@ -230,11 +284,50 @@ class DomainRangeRule(SemanticRule):
             return violations
 
         try:
-            # Query for all edges with property
-            # Check source node type is in domain_types
-            # Check target node type is in range_types
+            logger.debug("checking_domain_range", rule=self.name)
 
-            pass
+            edges = store.get_all_edges()
+            nodes_by_id = {n.id: n for n in store.get_all_nodes()}
+
+            for edge in edges:
+                if edge.edge_type != self.property_uri:
+                    continue
+
+                # Check source node type (domain)
+                source_node = nodes_by_id.get(edge.source_id)
+                if source_node and self.domain_types:
+                    if source_node.node_type not in self.domain_types:
+                        violations.append(
+                            RuleViolation(
+                                rule_name=self.name,
+                                rule_description=self.description,
+                                subject_id=edge.source_id,
+                                predicate=self.property_uri,
+                                object_id=edge.target_id,
+                                reason=f"Domain violation: {edge.source_id} is {source_node.node_type}, expected one of {self.domain_types}",
+                            )
+                        )
+
+                # Check target node type (range)
+                target_node = nodes_by_id.get(edge.target_id)
+                if target_node and self.range_types:
+                    if target_node.node_type not in self.range_types:
+                        violations.append(
+                            RuleViolation(
+                                rule_name=self.name,
+                                rule_description=self.description,
+                                subject_id=edge.source_id,
+                                predicate=self.property_uri,
+                                object_id=edge.target_id,
+                                reason=f"Range violation: {edge.target_id} is {target_node.node_type}, expected one of {self.range_types}",
+                            )
+                        )
+
+            logger.info(
+                "domain_range_checked",
+                rule=self.name,
+                violation_count=len(violations),
+            )
 
         except Exception as e:
             logger.warning(
@@ -269,6 +362,9 @@ class FunctionalPropertyRule(SemanticRule):
     def check(self, store: GraphStore) -> list[RuleViolation]:
         """Check functional property constraint.
 
+        A functional property can appear at most once per subject.
+        Creates violations for subjects with multiple values.
+
         Args:
             store: GraphStore to check
 
@@ -281,10 +377,40 @@ class FunctionalPropertyRule(SemanticRule):
             return violations
 
         try:
-            # Find subjects with multiple values for this property
-            # Create violations for each excess value
+            logger.debug("checking_functional_property", rule=self.name)
 
-            pass
+            # Count edges by source for this property
+            edges = store.get_all_edges()
+            property_edges = [e for e in edges if e.edge_type == self.property_uri]
+
+            # Count occurrences per source
+            source_counts: dict[str, list] = {}
+            for edge in property_edges:
+                if edge.source_id not in source_counts:
+                    source_counts[edge.source_id] = []
+                source_counts[edge.source_id].append(edge)
+
+            # Check for subjects with multiple values
+            for subject_id, subject_edges in source_counts.items():
+                if len(subject_edges) > 1:
+                    # Create violation for each excess edge
+                    for edge in subject_edges[1:]:  # Skip first, report excess
+                        violations.append(
+                            RuleViolation(
+                                rule_name=self.name,
+                                rule_description=self.description,
+                                subject_id=subject_id,
+                                predicate=self.property_uri,
+                                object_id=edge.target_id,
+                                reason=f"Functional property violation: {subject_id} has {len(subject_edges)} values for {self.property_uri}",
+                            )
+                        )
+
+            logger.info(
+                "functional_checked",
+                rule=self.name,
+                violation_count=len(violations),
+            )
 
         except Exception as e:
             logger.warning("functional_check_failed", rule=self.name, error=str(e))
