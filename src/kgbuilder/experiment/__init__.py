@@ -11,6 +11,11 @@ Key Components:
 - Reporter: Multi-format report generation
 """
 
+from kgbuilder.experiment.analyzer import (
+    ComparativeAnalysis,
+    ConvergenceAnalysis,
+    ExperimentAnalyzer,
+)
 from kgbuilder.experiment.config import (
     ConfigVariant,
     EvaluationConfig,
@@ -33,4 +38,7 @@ __all__ = [
     "ExperimentResults",
     "ConfigRunner",
     "ExperimentManager",
+    "ConvergenceAnalysis",
+    "ComparativeAnalysis",
+    "ExperimentAnalyzer",
 ]
