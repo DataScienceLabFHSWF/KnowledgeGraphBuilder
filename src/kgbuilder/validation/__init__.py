@@ -30,6 +30,9 @@ Public API:
     - TransitiveRule: Validate transitive closure
     - DomainRangeRule: Validate domain/range constraints
     - FunctionalPropertyRule: Validate functional properties
+
+    Reporting:
+    - ReportGenerator: Export validation results to JSON/Markdown/HTML
 """
 
 from kgbuilder.validation.consistency_checker import ConsistencyChecker, ConsistencyReport
@@ -42,6 +45,7 @@ from kgbuilder.validation.models import (
     ValidationViolation,
     ViolationSeverity,
 )
+from kgbuilder.validation.reporter import ReportGenerator
 from kgbuilder.validation.rules_engine import (
     DomainRangeRule,
     FunctionalPropertyRule,
@@ -69,6 +73,7 @@ __all__ = [
     "FunctionalPropertyRule",
     "ConsistencyChecker",
     "ConsistencyReport",
+    "ReportGenerator",
 ]
 
 __all__ = [
