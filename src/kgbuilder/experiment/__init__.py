@@ -28,6 +28,14 @@ from kgbuilder.experiment.manager import (
     ExperimentResults,
     ExperimentRun,
 )
+from kgbuilder.experiment.plotter import (
+    ExperimentPlotter,
+    PlotConfig,
+)
+from kgbuilder.experiment.reporter import (
+    ExperimentReport,
+    ExperimentReporter,
+)
 
 __all__ = [
     "KGBuilderParams",
@@ -41,4 +49,8 @@ __all__ = [
     "ConvergenceAnalysis",
     "ComparativeAnalysis",
     "ExperimentAnalyzer",
+    "PlotConfig",
+    "ExperimentPlotter",
+    "ExperimentReport",
+    "ExperimentReporter",
 ]
