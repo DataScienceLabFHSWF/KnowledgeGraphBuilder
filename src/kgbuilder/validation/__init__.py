@@ -55,8 +55,18 @@ from kgbuilder.validation.rules_engine import (
     TransitiveRule,
 )
 from kgbuilder.validation.shacl_validator import SHACLValidator
+from kgbuilder.validation.validators import (
+    CompetencyQuestionValidator,
+    OntologyValidator,
+)
+from kgbuilder.validation.validators import (
+    CompetencyQuestionValidator,
+    OntologyValidator,
+    Validator,
+)
 
 __all__ = [
+    "Validator",
     "ValidationResult",
     "ValidationViolation",
     "ViolationSeverity",
@@ -65,6 +75,8 @@ __all__ = [
     "ConflictType",
     "DuplicateSet",
     "SHACLValidator",
+    "OntologyValidator",
+    "CompetencyQuestionValidator",
     "RulesEngine",
     "SemanticRule",
     "InversePropertyRule",
@@ -75,14 +87,3 @@ __all__ = [
     "ConsistencyReport",
     "ReportGenerator",
 ]
-
-__all__ = [
-    "Validator",
-    "ValidationReport",
-    "ValidationViolation",
-    "SHACLValidator",
-    "OntologyValidator",
-    "CompetencyQuestionValidator",
-]
-
-__all__ = []

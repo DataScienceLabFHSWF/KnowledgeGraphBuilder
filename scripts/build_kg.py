@@ -30,7 +30,7 @@ Usage (Docker):
 Usage (Local):
   python scripts/build_kg.py \\
     --questions-per-class 5 \\
-    --max-iterations 10 \\
+    --max-iterations 2 \\
     --similarity-threshold 0.85 \\
     --confidence-threshold 0.6
 """
@@ -111,7 +111,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--max-iterations",
         type=int,
-        default=5,
+        default=2,
         help="Maximum iterations for discovery loop per question"
     )
     
