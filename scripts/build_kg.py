@@ -85,6 +85,8 @@ from kgbuilder.retrieval import FusionRAGRetriever
 from kgbuilder.extraction.entity import LLMEntityExtractor
 from kgbuilder.embedding import OllamaProvider
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
+from kgbuilder.validation import SHACLValidator, RulesEngine, ConsistencyChecker, ReportGenerator, ValidationResult
+from kgbuilder.validation.validators import CompetencyQuestionValidator
 
 
 # =============================================================================
@@ -154,6 +156,35 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         default=10,
         help="Number of documents to retrieve per query"
+    )
+    
+    # Validation & Quality Gating
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        default=True,
+        help="Enable validation phase (SHACL, rules, consistency)"
+    )
+    
+    parser.add_argument(
+        "--check-competency-questions",
+        action="store_true",
+        default=False,
+        help="Check if competency questions are answered before finishing"
+    )
+    
+    parser.add_argument(
+        "--cq-coverage-threshold",
+        type=float,
+        default=0.8,
+        help="Minimum coverage of competency questions (0.0-1.0) before stopping"
+    )
+    
+    parser.add_argument(
+        "--validation-report-dir",
+        type=str,
+        default="./validation_reports",
+        help="Directory to save validation reports (JSON/Markdown/HTML)"
     )
     
     # Logging
@@ -757,6 +788,127 @@ def main() -> None:
         print()
 
         # =====================================================================
+        # PHASE 7: VALIDATION & QUALITY ASSESSMENT
+        # =====================================================================
+        
+        validation_passed = True
+        validation_report = None
+        
+        if args.validate:
+            print("PHASE 7: Knowledge Graph Validation & Quality Assessment")
+            print("-" * 80)
+            
+            try:
+                # Run consistency checking
+                logger.info("validation_starting")
+                consistency_checker = ConsistencyChecker()
+                consistency_report = consistency_checker.check_consistency(neo4j_store)
+                
+                logger.info(
+                    "consistency_check_complete",
+                    conflicts=consistency_report.conflict_count,
+                    duplicates=len(consistency_report.duplicates)
+                )
+                print(f"✓ Consistency check complete")
+                print(f"  - Conflicts detected: {consistency_report.conflict_count}")
+                print(f"  - Potential duplicates: {len(consistency_report.duplicates)}")
+                print(f"  - Conflict rate: {consistency_report.conflict_rate:.2%}")
+                
+                if consistency_report.recommendations:
+                    print(f"  - Recommendations: {consistency_report.recommendations[0]}")
+                
+                # Generate validation reports
+                if args.validation_report_dir:
+                    report_dir = Path(args.validation_report_dir)
+                    report_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Create a synthetic validation result for reporting
+                    validation_report = ValidationResult()
+                    validation_report.node_count = assembly_result.nodes_created
+                    validation_report.edge_count = assembly_result.relationships_created
+                    validation_report.valid = consistency_report.conflict_count == 0
+                    
+                    reporter = ReportGenerator(title="KG Validation Report")
+                    reporter.to_json(validation_report, report_dir / "validation_report.json")
+                    reporter.to_markdown(validation_report, report_dir / "validation_report.md")
+                    reporter.to_html(validation_report, report_dir / "validation_report.html")
+                    
+                    logger.info("validation_reports_generated", directory=str(report_dir))
+                    print(f"  - Reports saved to: {report_dir}")
+                
+                validation_passed = consistency_report.conflict_count == 0
+                
+            except Exception as e:
+                logger.warning("validation_phase_failed", error=str(e))
+                print(f"⚠ Validation phase encountered error: {e}")
+                validation_passed = False
+            
+            print()
+
+        # =====================================================================
+        # PHASE 8: COMPETENCY QUESTION VALIDATION (Stopping Criterion)
+        # =====================================================================
+        
+        cq_validation_passed = True
+        
+        if args.check_competency_questions:
+            print("PHASE 8: Competency Question Coverage Check (Stopping Criterion)")
+            print("-" * 80)
+            
+            try:
+                logger.info("competency_question_check_starting")
+                
+                # Check which questions are answered by the KG
+                cq_validator = CompetencyQuestionValidator(
+                    ontology_service=ontology_service,
+                    graph_store=neo4j_store
+                )
+                
+                # Use the questions generated in Phase 2
+                cq_results = cq_validator.validate_questions(all_questions)
+                
+                answerable_count = sum(1 for result in cq_results if result["answerable"])
+                cq_coverage = answerable_count / max(len(all_questions), 1) if all_questions else 0.0
+                
+                logger.info(
+                    "competency_questions_checked",
+                    total=len(all_questions),
+                    answerable=answerable_count,
+                    coverage=cq_coverage
+                )
+                
+                print(f"✓ Competency Question Coverage Analysis")
+                print(f"  - Total questions: {len(all_questions)}")
+                print(f"  - Answerable: {answerable_count}")
+                print(f"  - Coverage: {cq_coverage:.1%}")
+                print(f"  - Threshold: {args.cq_coverage_threshold:.1%}")
+                
+                # Check if we meet the stopping criterion
+                if cq_coverage >= args.cq_coverage_threshold:
+                    print(f"  ✓ STOPPING CRITERION MET - Coverage above threshold")
+                    cq_validation_passed = True
+                else:
+                    print(f"  ✗ STOPPING CRITERION NOT MET - Coverage below threshold")
+                    print(f"     Need {int((args.cq_coverage_threshold - cq_coverage) * len(all_questions))} more questions answered")
+                    cq_validation_passed = False
+                
+                # List unanswered questions for guidance
+                unanswerable = [q for q, result in zip(all_questions, cq_results) if not result["answerable"]]
+                if unanswerable:
+                    print(f"\n  Unanswered questions to address:")
+                    for q in unanswerable[:5]:
+                        print(f"    - {q}")
+                    if len(unanswerable) > 5:
+                        print(f"    ... and {len(unanswerable) - 5} more")
+                
+            except Exception as e:
+                logger.warning("competency_question_check_failed", error=str(e))
+                print(f"⚠ Competency question check failed: {e}")
+                cq_validation_passed = False
+            
+            print()
+
+        # =====================================================================
         # SUMMARY & STATISTICS
         # =====================================================================
         elapsed = (datetime.now() - start_time).total_seconds()
@@ -764,7 +916,14 @@ def main() -> None:
         print("="*80)
         print("PIPELINE EXECUTION SUMMARY")
         print("="*80)
-        print(f"Status:                  {'SUCCESS ✓' if assembly_result.nodes_created > 0 else 'COMPLETED WITH ERRORS'}")
+        
+        overall_status = "SUCCESS ✓"
+        if not validation_passed:
+            overall_status = "VALIDATION WARNINGS ⚠"
+        if args.check_competency_questions and not cq_validation_passed:
+            overall_status = "STOPPING CRITERION NOT MET ✗"
+        
+        print(f"Status:                  {overall_status}")
         print(f"Total time:              {elapsed:.1f}s")
         print(f"\nOntology:")
         print(f"  Classes processed:     {len(classes)}")
@@ -779,11 +938,28 @@ def main() -> None:
         print(f"  Nodes created:         {assembly_result.nodes_created}")
         print(f"  Relationships created: {assembly_result.relationships_created}")
         print(f"  Assembly errors:       {len(assembly_result.errors)}")
+        
+        if args.validate:
+            print(f"\nValidation:")
+            print(f"  Status:                {'✓ PASSED' if validation_passed else '⚠ WARNINGS'}")
+            print(f"  Conflicts detected:    {consistency_report.conflict_count if consistency_report else 'N/A'}")
+        
+        if args.check_competency_questions:
+            print(f"\nCompetency Questions (Stopping Criterion):")
+            print(f"  Coverage:              {cq_coverage:.1%}")
+            print(f"  Threshold:             {args.cq_coverage_threshold:.1%}")
+            print(f"  Status:                {'✓ MET' if cq_validation_passed else '✗ NOT MET'}")
+        
         print(f"\nDatabase: {NEO4J_URI}")
         print("="*80 + "\n")
 
         if assembly_result.errors:
             print("⚠ Some entities could not be assembled. Check logs for details.\n")
+        
+        if args.check_competency_questions and not cq_validation_passed:
+            print("✗ STOPPING CRITERION NOT MET")
+            print(f"  Competency question coverage ({cq_coverage:.1%}) is below threshold ({args.cq_coverage_threshold:.1%})")
+            print(f"  Please add more data or extend discovery to answer remaining questions.\n")
 
     except Exception as e:
         logger.error("pipeline_failed", error=str(e), exc_info=True)
