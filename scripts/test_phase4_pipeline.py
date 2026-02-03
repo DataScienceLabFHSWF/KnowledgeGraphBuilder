@@ -215,7 +215,7 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
         # Try to connect to actual Neo4j
         assembler = SimpleKGAssembler(
             neo4j_uri="bolt://localhost:7687",
-            auth=("neo4j", "password")
+            auth=("neo4j", "changeme")  # Docker default credentials
         )
     except Exception as e:
         print(f"\n⚠️  Neo4j connection failed: {e}")
@@ -234,21 +234,19 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
     relations = [
         ExtractedRelation(
             id="rel_1",
-            source_id="bwr",
-            target_id="uranium_235",
+            source_entity_id="bwr",
+            target_entity_id="uranium_235",
             predicate="Uses",
             confidence=0.93,
             evidence=[],
-            sources=["discovery"],
         ),
         ExtractedRelation(
             id="rel_2",
-            source_id="bwr",
-            target_id="emergency_cooling",
+            source_entity_id="bwr",
+            target_entity_id="emergency_cooling",
             predicate="Contains",
             confidence=0.90,
             evidence=[],
-            sources=["discovery"],
         ),
     ]
 

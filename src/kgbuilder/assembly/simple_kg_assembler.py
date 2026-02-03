@@ -293,8 +293,9 @@ class SimpleKGAssembler:
             Exception: If node creation fails
         """
         # Cypher query to create/update node
-        query = """
-        MERGE (n:{entity_type} {{id: $entity_id}})
+        # Note: Labels must be specified directly in Cypher, not as parameters
+        query = f"""
+        MERGE (n:{entity.entity_type} {{id: $entity_id}})
         SET n.label = $label,
             n.description = $description,
             n.confidence = $confidence,
@@ -306,7 +307,6 @@ class SimpleKGAssembler:
         """
 
         params = {
-            "entity_type": entity.entity_type,
             "entity_id": entity.id,
             "label": entity.label,
             "description": entity.description,
@@ -378,15 +378,19 @@ class SimpleKGAssembler:
         - confidence property (for ranking)
         """
         queries = [
-            "CREATE INDEX IF NOT EXISTS FOR (n) ON (n.id)",
-            "CREATE INDEX IF NOT EXISTS FOR (n) ON (n.label)",
-            "CREATE INDEX IF NOT EXISTS FOR (n) ON (n.confidence)",
+            "CREATE INDEX id_index IF NOT EXISTS FOR (n:Node) ON (n.id)",
+            "CREATE INDEX label_index IF NOT EXISTS FOR (n:Node) ON (n.label)",
+            "CREATE INDEX confidence_index IF NOT EXISTS FOR (n:Node) ON (n.confidence)",
         ]
 
         try:
             with self._driver.session() as session:
                 for query in queries:
-                    session.run(query)
+                    try:
+                        session.run(query)
+                    except Exception:
+                        # Index may already exist, that's ok
+                        pass
             logger.debug("indices_created")
         except Exception as e:
             logger.warning("index_creation_failed", error=str(e))
