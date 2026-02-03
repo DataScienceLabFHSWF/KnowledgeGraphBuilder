@@ -1,0 +1,62 @@
+{
+  "name": "KG Quality Baseline",
+  "description": "Compare different extraction configurations for KG quality",
+  "output_dir": "./experiment_results/baseline",
+  "num_runs": 1,
+  "parallel_jobs": 2,
+  "seed": 42,
+  "variants": [
+    {
+      "name": "baseline",
+      "description": "Default parameters",
+      "params": {
+        "model": "qwen3:8b",
+        "max_iterations": 2,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "questions_per_class": 3
+      },
+      "metadata": {
+        "tuning": "default"
+      }
+    },
+    {
+      "name": "strict",
+      "description": "High confidence and similarity thresholds",
+      "params": {
+        "model": "qwen3:8b",
+        "max_iterations": 2,
+        "similarity_threshold": 0.90,
+        "confidence_threshold": 0.75,
+        "questions_per_class": 3
+      },
+      "metadata": {
+        "tuning": "conservative"
+      }
+    },
+    {
+      "name": "permissive",
+      "description": "Low thresholds, more entities extracted",
+      "params": {
+        "model": "qwen3:8b",
+        "max_iterations": 2,
+        "similarity_threshold": 0.70,
+        "confidence_threshold": 0.50,
+        "questions_per_class": 3
+      },
+      "metadata": {
+        "tuning": "aggressive"
+      }
+    }
+  ],
+  "evaluation": {
+    "qa_dataset_path": "data/qa_benchmark.json",
+    "metrics": ["accuracy", "f1_score", "coverage", "completeness"],
+    "similarity_threshold": 0.8,
+    "max_results": 10
+  },
+  "metadata": {
+    "experimenter": "KG Team",
+    "purpose": "Baseline quality metrics"
+  }
+}
