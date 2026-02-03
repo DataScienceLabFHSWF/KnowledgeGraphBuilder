@@ -27,6 +27,7 @@ from kgbuilder.experiment.manager import (
     ExperimentManager,
     ExperimentResults,
     ExperimentRun,
+    generate_run_id,
 )
 from kgbuilder.experiment.plotter import (
     ExperimentPlotter,

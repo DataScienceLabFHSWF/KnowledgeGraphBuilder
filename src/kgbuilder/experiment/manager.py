@@ -2,12 +2,20 @@
 
 Orchestrates running multiple KG construction configurations and
 collecting metrics from each.
+
+Key Design Decisions:
+- All experiments share a SINGLE Ollama server (no multiple instances)
+- LLM calls are serialized to avoid timeout issues from request queueing
+- Each run gets a unique ID for tracking and Neo4j namespace isolation
+- Run metadata is persisted to JSON for reproducibility and debugging
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -20,11 +28,28 @@ from kgbuilder.experiment.config import ConfigVariant, ExperimentConfig
 logger = structlog.get_logger(__name__)
 
 
+def generate_run_id() -> str:
+    """Generate unique run ID for experiment tracking.
+    
+    Format: exp_{timestamp}_{short_uuid}
+    Example: exp_20260203_143022_a1b2c3d4
+    
+    This ID should be used as:
+    - Neo4j node label prefix or property for namespace isolation
+    - Directory name for run artifacts
+    - Reference in logs and reports
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    short_uuid = uuid.uuid4().hex[:8]
+    return f"exp_{timestamp}_{short_uuid}"
+
+
 @dataclass
 class ExperimentRun:
     """Results from running a single experiment variant.
 
     Attributes:
+        run_id: Unique identifier for this run (for Neo4j namespace, logging)
         variant: ConfigVariant that was run
         run_number: Run number (1-indexed)
         status: Status ("pending", "running", "completed", "failed")
@@ -34,9 +59,10 @@ class ExperimentRun:
         kg_metrics: KG construction metrics (nodes, edges, time)
         eval_metrics: Evaluation metrics (accuracy, F1, coverage, etc.)
         error: Error message if failed
-        metadata: Additional metadata
+        metadata: Additional metadata (includes system info, git commit, etc.)
     """
 
+    run_id: str
     variant: ConfigVariant
     run_number: int = 1
     status: str = "pending"
@@ -51,6 +77,7 @@ class ExperimentRun:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
+            "run_id": self.run_id,
             "variant_name": self.variant.name,
             "run_number": self.run_number,
             "status": self.status,
@@ -62,6 +89,25 @@ class ExperimentRun:
             "error": self.error,
             "metadata": self.metadata,
         }
+    
+    def save_metadata(self, output_dir: Path) -> Path:
+        """Save run metadata to JSON file.
+        
+        Args:
+            output_dir: Directory to save metadata
+            
+        Returns:
+            Path to saved metadata file
+        """
+        run_dir = output_dir / self.run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        
+        metadata_path = run_dir / "run_metadata.json"
+        with open(metadata_path, "w") as f:
+            json.dump(self.to_dict(), f, indent=2, default=str)
+        
+        logger.debug("run_metadata_saved", path=str(metadata_path), run_id=self.run_id)
+        return metadata_path
 
 
 @dataclass
@@ -107,6 +153,15 @@ class ConfigRunner:
 
     Orchestrates building a KG for a specific ConfigVariant and collecting
     metrics about the process and results.
+    
+    IMPORTANT: This runner is designed for SEQUENTIAL execution of LLM calls.
+    All experiments share a single Ollama server - running multiple LLM calls
+    in parallel will cause request queueing and timeouts.
+    
+    Each run gets a unique run_id that should be used for:
+    - Neo4j namespace isolation (as node label or property)
+    - Output directory structure
+    - Log correlation
     """
 
     def __init__(self, output_dir: Path) -> None:
@@ -123,40 +178,59 @@ class ConfigRunner:
         self,
         variant: ConfigVariant,
         run_number: int = 1,
+        run_id: str | None = None,
     ) -> ExperimentRun:
         """Run a single configuration variant.
 
         Args:
             variant: ConfigVariant to run
             run_number: Run number (1-indexed)
+            run_id: Optional run ID (generated if not provided)
 
         Returns:
             ExperimentRun with results
         """
-        run = ExperimentRun(variant=variant, run_number=run_number)
+        # Generate unique run ID if not provided
+        if run_id is None:
+            run_id = generate_run_id()
+        
+        run = ExperimentRun(run_id=run_id, variant=variant, run_number=run_number)
         run.status = "running"
         run.start_time = datetime.now()
+        
+        # Add system metadata
+        run.metadata["run_id"] = run_id
+        run.metadata["variant_name"] = variant.name
+        run.metadata["started_at"] = run.start_time.isoformat()
+        run.metadata["params"] = variant.params.to_dict()
 
         try:
             logger.info(
                 "config_run_starting",
                 variant_name=variant.name,
                 run_number=run_number,
+                run_id=run_id,
             )
 
             # TODO: Integrate with actual KG builder
-            # For now, simulate the run
+            # When integrating, pass run_id to KG builder for Neo4j namespace:
+            #   kg_builder.build(params=variant.params, run_id=run_id)
+            # The run_id should be used as a label or property on all nodes/edges
             kg_metrics = self._simulate_kg_build(variant)
             eval_metrics = self._simulate_evaluation(variant)
 
             run.kg_metrics = kg_metrics
             run.eval_metrics = eval_metrics
             run.status = "completed"
+            
+            # Add completion metadata
+            run.metadata["completed_at"] = datetime.now().isoformat()
 
             logger.info(
                 "config_run_completed",
                 variant_name=variant.name,
                 run_number=run_number,
+                run_id=run_id,
                 nodes=kg_metrics.get("nodes", 0),
                 accuracy=eval_metrics.get("accuracy", 0),
             )
@@ -164,10 +238,13 @@ class ConfigRunner:
         except Exception as e:
             run.status = "failed"
             run.error = str(e)
+            run.metadata["error_at"] = datetime.now().isoformat()
+            run.metadata["error_type"] = type(e).__name__
             logger.error(
                 "config_run_failed",
                 variant_name=variant.name,
                 run_number=run_number,
+                run_id=run_id,
                 error=str(e),
             )
 
@@ -177,6 +254,9 @@ class ConfigRunner:
                 run.duration_seconds = (
                     run.end_time - run.start_time
                 ).total_seconds()
+            
+            # Save run metadata to file
+            run.save_metadata(self.output_dir)
 
         return run
 
@@ -232,7 +312,22 @@ class ExperimentManager:
     """Orchestrates running multiple experiment variants.
 
     Manages execution of complete experiments with multiple variants,
-    handling parallel execution and result aggregation.
+    handling result aggregation and metadata tracking.
+    
+    IMPORTANT DESIGN DECISIONS:
+    1. LLM calls are executed SEQUENTIALLY (not in parallel) to avoid
+       Ollama request queueing and timeouts. All experiments share a
+       single Ollama server instance.
+    
+    2. Each run gets a unique run_id for:
+       - Neo4j namespace isolation (all nodes/edges tagged with run_id)
+       - Output directory structure (results/{run_id}/)
+       - Log correlation and debugging
+    
+    3. Run metadata is persisted to JSON files for reproducibility.
+    
+    4. The parallel_jobs setting controls OTHER parallelizable work
+       (e.g., document loading, embedding), NOT LLM calls.
     """
 
     def __init__(self, config: ExperimentConfig) -> None:
@@ -242,18 +337,20 @@ class ExperimentManager:
             config: ExperimentConfig for this experiment
         """
         self.config = config
+        self.experiment_id = generate_run_id()  # Master experiment ID
         self.runner = ConfigRunner(config.get_output_dir())
         logger.info(
             "experiment_manager_initialized",
             name=config.name,
+            experiment_id=self.experiment_id,
             num_variants=len(config.variants),
         )
 
     def run_experiments(self) -> ExperimentResults:
         """Run all experiment variants.
 
-        Executes all variants according to configuration, supporting
-        parallel execution.
+        Executes all variants SEQUENTIALLY to avoid Ollama timeouts.
+        Each run gets a unique run_id for tracking.
 
         Returns:
             ExperimentResults with all runs and metrics
@@ -266,22 +363,22 @@ class ExperimentManager:
         logger.info(
             "experiments_starting",
             name=self.config.name,
+            experiment_id=self.experiment_id,
             num_variants=len(self.config.variants),
             num_runs=self.config.num_runs,
-            parallel_jobs=self.config.parallel_jobs,
+            note="LLM calls are sequential to avoid Ollama timeouts",
         )
 
-        # Generate all runs
+        # Generate all runs with unique IDs
         all_runs = []
         for variant in self.config.variants:
             for run_num in range(1, self.config.num_runs + 1):
-                all_runs.append((variant, run_num))
+                run_id = f"{self.experiment_id}_{variant.name}_{run_num}"
+                all_runs.append((variant, run_num, run_id))
 
-        # Execute runs (sequential or parallel)
-        if self.config.parallel_jobs > 1:
-            runs = self._run_parallel(all_runs)
-        else:
-            runs = self._run_sequential(all_runs)
+        # Execute runs SEQUENTIALLY (LLM calls cannot be parallelized safely)
+        # The parallel_jobs setting is for other parallelizable work, not LLM
+        runs = self._run_sequential(all_runs)
 
         results.runs = runs
         results.end_time = datetime.now()
@@ -297,67 +394,79 @@ class ExperimentManager:
 
         # Aggregate metrics
         results.aggregate_metrics = self._aggregate_metrics(runs)
+        
+        # Save experiment-level metadata
+        self._save_experiment_metadata(results)
 
         logger.info(
             "experiments_completed",
             name=self.config.name,
+            experiment_id=self.experiment_id,
             completed_runs=results.completed_runs,
             failed_runs=results.failed_runs,
             total_duration_seconds=round(results.total_duration_seconds, 2),
         )
 
         return results
+    
+    def _save_experiment_metadata(self, results: ExperimentResults) -> Path:
+        """Save experiment-level metadata to JSON.
+        
+        Args:
+            results: Experiment results
+            
+        Returns:
+            Path to saved metadata file
+        """
+        output_dir = Path(self.config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        metadata = {
+            "experiment_id": self.experiment_id,
+            "experiment_name": self.config.name,
+            "started_at": results.start_time.isoformat() if results.start_time else None,
+            "completed_at": results.end_time.isoformat() if results.end_time else None,
+            "total_duration_seconds": results.total_duration_seconds,
+            "completed_runs": results.completed_runs,
+            "failed_runs": results.failed_runs,
+            "config": self.config.to_dict(),
+            "run_ids": [r.run_id for r in results.runs],
+            "aggregate_metrics": results.aggregate_metrics,
+        }
+        
+        metadata_path = output_dir / f"{self.experiment_id}_metadata.json"
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f, indent=2, default=str)
+        
+        logger.info("experiment_metadata_saved", path=str(metadata_path))
+        return metadata_path
 
     def _run_sequential(
-        self, all_runs: list[tuple[ConfigVariant, int]]
+        self, all_runs: list[tuple[ConfigVariant, int, str]]
     ) -> list[ExperimentRun]:
         """Run all variants sequentially.
+        
+        This is the ONLY execution mode for LLM-based experiments.
+        Parallel execution would cause Ollama request queueing and timeouts.
 
         Args:
-            all_runs: List of (variant, run_number) tuples
+            all_runs: List of (variant, run_number, run_id) tuples
 
         Returns:
             List of ExperimentRun results
         """
         runs = []
-        for variant, run_num in all_runs:
-            run = self.runner.run(variant, run_num)
+        total = len(all_runs)
+        for idx, (variant, run_num, run_id) in enumerate(all_runs, 1):
+            logger.info(
+                "run_progress",
+                current=idx,
+                total=total,
+                variant=variant.name,
+                run_id=run_id,
+            )
+            run = self.runner.run(variant, run_num, run_id=run_id)
             runs.append(run)
-        return runs
-
-    def _run_parallel(
-        self, all_runs: list[tuple[ConfigVariant, int]]
-    ) -> list[ExperimentRun]:
-        """Run variants in parallel.
-
-        Args:
-            all_runs: List of (variant, run_number) tuples
-
-        Returns:
-            List of ExperimentRun results
-        """
-        # Use asyncio for parallel execution
-        async def run_all():
-            semaphore = asyncio.Semaphore(self.config.parallel_jobs)
-
-            async def run_one(variant, run_num):
-                async with semaphore:
-                    # Run in executor to avoid blocking
-                    loop = asyncio.get_event_loop()
-                    return await loop.run_in_executor(
-                        None, self.runner.run, variant, run_num
-                    )
-
-            tasks = [run_one(v, n) for v, n in all_runs]
-            return await asyncio.gather(*tasks)
-
-        # Run the async executor
-        try:
-            runs = asyncio.run(run_all())
-        except RuntimeError:
-            # Fallback if event loop already running
-            runs = self._run_sequential(all_runs)
-
         return runs
 
     @staticmethod

@@ -18,7 +18,7 @@ Environment Variables:
   FUSEKI_DATASET      - Fuseki dataset name (default: kgbuilder)
   QDRANT_URL          - Qdrant vector DB (default: http://localhost:6333)
   QDRANT_COLLECTION   - Qdrant collection name (default: kgbuilder)
-  OLLAMA_URL          - Ollama LLM server (default: http://localhost:11434)
+    OLLAMA_URL          - Ollama LLM server (default: http://localhost:18134, GPU container)
   OLLAMA_MODEL        - Ollama model name (default: qwen3:8b)
   NEO4J_URI           - Neo4j database URI (default: bolt://localhost:7687)
   NEO4J_USER          - Neo4j username (default: neo4j)
@@ -62,7 +62,7 @@ NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "changeme")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "kgbuilder")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:18134")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 
 
@@ -950,8 +950,16 @@ def main() -> None:
             print(f"  Threshold:             {args.cq_coverage_threshold:.1%}")
             print(f"  Status:                {'✓ MET' if cq_validation_passed else '✗ NOT MET'}")
         
+
         print(f"\nDatabase: {NEO4J_URI}")
         print("="*80 + "\n")
+
+        # Log total Ollama token usage if available
+        try:
+            from kgbuilder.embedding.ollama import OllamaProvider
+            OllamaProvider.log_total_token_usage()
+        except Exception as e:
+            print(f"[Token Usage] Could not log Ollama token usage: {e}")
 
         if assembly_result.errors:
             print("⚠ Some entities could not be assembled. Check logs for details.\n")

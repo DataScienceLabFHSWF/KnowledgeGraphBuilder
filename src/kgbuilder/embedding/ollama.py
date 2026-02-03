@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class OllamaProvider:
+    # Class-level token usage counters
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
     """Ollama-based LLM provider for local model inference.
 
     Supports QWEN3, qwen3-next, and other Ollama-available models.
@@ -94,6 +97,9 @@ class OllamaProvider:
         return self.model
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
+        """Generate unstructured text output and count tokens."""
+        # Simple token count: whitespace split
+        prompt_tokens = len(prompt.split())
         """Generate unstructured text output.
 
         Args:
@@ -122,10 +128,22 @@ class OllamaProvider:
             )
             response.raise_for_status()
             result = response.json()
-            return result.get("response", "")
+            completion = result.get("response", "")
+            completion_tokens = len(completion.split())
+            # Accumulate totals
+            OllamaProvider.total_prompt_tokens += prompt_tokens
+            OllamaProvider.total_completion_tokens += completion_tokens
+            logger.debug(f"OllamaProvider: prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens}, total_prompt={OllamaProvider.total_prompt_tokens}, total_completion={OllamaProvider.total_completion_tokens}")
+            return completion
         except Exception as e:
             logger.error(f"Generation failed: {e}")
             raise RuntimeError(f"LLM generation error: {e}") from e
+    @classmethod
+    def log_total_token_usage(cls) -> None:
+        """Log total token usage for all OllamaProvider calls."""
+        logger.info(
+            f"Total Ollama token usage: prompts={cls.total_prompt_tokens}, completions={cls.total_completion_tokens}, total={cls.total_prompt_tokens + cls.total_completion_tokens}"
+        )
 
     def generate_structured(
         self,
