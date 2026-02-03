@@ -49,6 +49,7 @@ from .protocol import (
     create_graph_store,
 )
 from .export import KGExporter, ExportConfig, export_kg
+from .neo4j_store import Neo4jGraphStore
 
 __all__ = [
     # Legacy exports
@@ -59,13 +60,14 @@ __all__ = [
     "RDFStore",
     "FusekiStore",
     "SemanticRetriever",
-    # New protocol-based exports (Phase 6)
+    # New protocol-based exports (Phase 6-7)
     "Node",
     "Edge",
     "QueryResult",
     "GraphStatistics",
     "GraphStoreProtocol",
     "InMemoryGraphStore",
+    "Neo4jGraphStore",
     "create_graph_store",
     "KGExporter",
     "ExportConfig",
