@@ -72,12 +72,15 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
+from kgbuilder.assembly.kg_builder import KGBuilder, KGBuilderConfig
 from kgbuilder.assembly.simple_kg_assembler import SimpleKGAssembler
 from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
 from kgbuilder.extraction.entity import OntologyClassDef
 from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
 from kgbuilder.storage.ontology import FusekiOntologyService
 from kgbuilder.storage.vector import QdrantStore
+from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+from kgbuilder.storage.protocol import Node, Edge
 from kgbuilder.retrieval import FusionRAGRetriever
 from kgbuilder.extraction.entity import LLMEntityExtractor
 from kgbuilder.embedding import OllamaProvider
@@ -673,14 +676,64 @@ def main() -> None:
 
         logger.info("assembly_starting", entity_count=len(synthesized_entities), relation_count=len(extracted_relations))
         
-        assembler = SimpleKGAssembler(
-            neo4j_uri=NEO4J_URI,
+        # Initialize Neo4j graph store (Phase 7 multi-store support)
+        neo4j_store = Neo4jGraphStore(
+            uri=NEO4J_URI,
             auth=(NEO4J_USER, NEO4J_PASSWORD)
         )
+        
+        # Create KGBuilder with Neo4j as primary store
+        builder = KGBuilder(
+            primary_store=neo4j_store,
+            config=KGBuilderConfig(
+                primary_store="neo4j",
+                sync_stores=False,  # No secondary store in this pipeline
+                batch_size=1000,
+                auto_retry=True
+            )
+        )
+        
+        # Convert SynthesizedEntity to Node format
+        nodes = [
+            Node(
+                id=entity.id,
+                label=entity.label,
+                node_type=entity.entity_type,
+                properties={
+                    "confidence": entity.confidence,
+                    "description": entity.description,
+                    "provenance": [e.source for e in entity.evidence]
+                }
+            )
+            for entity in synthesized_entities
+        ]
+        
+        # Convert ExtractedRelation to Edge format
+        edges = [
+            Edge(
+                source_id=rel.source_id,
+                target_id=rel.target_id,
+                relation_type=rel.relation_type,
+                properties={
+                    "confidence": rel.confidence,
+                    "provenance": [e.source for e in rel.evidence]
+                }
+            )
+            for rel in extracted_relations
+        ]
+        
+        # Build graph using new orchestrator
+        build_result = builder.build(entities=nodes, relations=edges)
 
-        assembly_result = assembler.assemble(
-            entities=synthesized_entities,
-            relations=extracted_relations
+        # Maintain backward compatibility with old AssemblyResult format
+        assembly_result = SimpleKGAssembler.KGAssemblyResult(
+            nodes_created=build_result.nodes_created,
+            relationships_created=build_result.edges_created,
+            coverage=1.0,
+            iterations=1,
+            errors=build_result.errors,
+            warnings=build_result.warnings,
+            statistics=build_result.statistics
         )
 
         logger.info(
