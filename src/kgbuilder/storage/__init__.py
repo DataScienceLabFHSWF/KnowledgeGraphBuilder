@@ -50,6 +50,7 @@ from .protocol import (
 )
 from .export import KGExporter, ExportConfig, export_kg
 from .neo4j_store import Neo4jGraphStore
+from .rdf_store import RDFGraphStore
 
 __all__ = [
     # Legacy exports
@@ -68,6 +69,7 @@ __all__ = [
     "GraphStoreProtocol",
     "InMemoryGraphStore",
     "Neo4jGraphStore",
+    "RDFGraphStore",
     "create_graph_store",
     "KGExporter",
     "ExportConfig",
