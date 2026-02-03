@@ -1,52 +1,80 @@
-"""KG validation (SHACL, ontology, competency questions).
+"""Validation pipeline for Knowledge Graph quality assurance.
 
-Implementation of Issues #7.1-#7.3: Validation Framework
+Provides a comprehensive validation framework with:
+- SHACL shape-based constraint validation
+- Semantic rule execution engine
+- Conflict and duplicate detection
+- Multi-format reporting
 
-TODO (Core interfaces):
-- [ ] Define Validator protocol (validate -> ValidationReport)
-- [ ] Define ValidationReport with violations and statistics
+Phase 8 Implementation: Comprehensive KG Validation Pipeline
+See Planning/PHASE_8_PLAN.md for detailed specifications.
 
-TODO (SHACL Validator - Issue #7.2):
-- [ ] Implement SHACLValidator using pyshacl
-  - Load SHACL shape graphs
-  - Validate against ontology constraints
-  - Report violations with suggestions
-- [ ] Support cardinality constraints
-- [ ] Support pattern constraints
-- [ ] Generate fix suggestions
-- [ ] Add unit tests with sample shapes
+Public API:
+    Models:
+    - ValidationResult: Aggregated validation outcome
+    - ValidationViolation: Individual constraint violation
+    - RuleViolation: Semantic rule violation
+    - Conflict: Detected conflict in KG
+    - DuplicateSet: Duplicate entity group
+    - ViolationSeverity: Severity enum
+    - ConflictType: Conflict type enum
 
-TODO (Ontology Validator):
-- [ ] Validate node types against ontology classes
-- [ ] Validate edge predicates against ontology relations
-- [ ] Check domain/range constraints
-- [ ] Check property types
+    Validators:
+    - SHACLValidator: SHACL constraint validation
+    - RulesEngine: Semantic rule execution
+    - ConsistencyChecker: Conflict detection
 
-TODO (Competency Question Validator - Issue #7.3):
-- [ ] Parse CQs (questions and/or SPARQL templates)
-- [ ] Execute CQ queries against graph
-- [ ] Report which CQs are answerable
-- [ ] Track CQ coverage percentage
-- [ ] Suggest improvements for unanswerable CQs
-- [ ] Add unit tests
+    Semantic Rules:
+    - SemanticRule: Base class for custom rules
+    - InversePropertyRule: Validate inverse relations
+    - TransitiveRule: Validate transitive closure
+    - DomainRangeRule: Validate domain/range constraints
+    - FunctionalPropertyRule: Validate functional properties
 
-TODO (Quality):
-- [ ] Generate detailed validation reports
-- [ ] Add confidence scores to violations
-- [ ] Add structured logging
-- [ ] Add integration tests
-
-See Planning/ISSUES_BACKLOG.md Issues #7.1-#7.3 for acceptance criteria.
+    Reporting:
+    - ReportGenerator: Export validation results to JSON/Markdown/HTML
 """
 
-from .validators import (
-    CompetencyQuestionValidator,
-    OntologyValidator,
-    SHACLValidator,
-    Validator,
-    ValidationReport,
+from kgbuilder.validation.consistency_checker import ConsistencyChecker, ConsistencyReport
+from kgbuilder.validation.models import (
+    Conflict,
+    ConflictType,
+    DuplicateSet,
+    RuleViolation,
+    ValidationResult,
     ValidationViolation,
+    ViolationSeverity,
 )
+from kgbuilder.validation.reporter import ReportGenerator
+from kgbuilder.validation.rules_engine import (
+    DomainRangeRule,
+    FunctionalPropertyRule,
+    InversePropertyRule,
+    RulesEngine,
+    SemanticRule,
+    TransitiveRule,
+)
+from kgbuilder.validation.shacl_validator import SHACLValidator
+
+__all__ = [
+    "ValidationResult",
+    "ValidationViolation",
+    "ViolationSeverity",
+    "RuleViolation",
+    "Conflict",
+    "ConflictType",
+    "DuplicateSet",
+    "SHACLValidator",
+    "RulesEngine",
+    "SemanticRule",
+    "InversePropertyRule",
+    "TransitiveRule",
+    "DomainRangeRule",
+    "FunctionalPropertyRule",
+    "ConsistencyChecker",
+    "ConsistencyReport",
+    "ReportGenerator",
+]
 
 __all__ = [
     "Validator",
