@@ -2,7 +2,7 @@
 
 > **Single Source of Truth** for all project planning, architecture, and implementation details.  
 > **Last Updated**: February 3, 2026  
-> **Project Status**: Phase 5 Complete | Phase 6 COMPLETE (Relation Extraction Integrated) | Phase 7+ Pending
+> **Project Status**: Phase 5 Complete | Phase 6 COMPLETE (Relation Extraction Integrated) | Phase 7 COMPLETE (Multi-Store Implementation)
 
 ---
 
@@ -200,7 +200,7 @@ services:
 | 4 | Autonomous Discovery | ✅ Complete | 70 | Question gen, discovery loop |
 | 5 | Confidence Tuning | ✅ Complete | 86 | Analysis, calibration, filtering |
 | **6** | **Relation Extraction** | **✅ COMPLETE** | **~40** | **Cross-doc relations, LLM extraction** |
-| **7** | **KG Assembly & Storage** | **🟢 Starting** | **-** | **Multi-store, export formats** |
+| **7** | **KG Assembly & Multi-Store** | **✅ COMPLETE** | **36** | **Neo4j, RDF/SPARQL, KGBuilder** |
 | 8 | Validation Pipeline | 🔴 Pending | - | SHACL, domain rules |
 | 9 | Analytics & Evaluation | 🔴 Pending | - | Metrics, benchmarks |
 | 10 | CLI & Orchestration | 🔴 Pending | - | User interface |
@@ -210,28 +210,27 @@ services:
 ### Dependency Graph
 
 ```
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
+Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7
                                             ↓
-                              ┌─────────────┼─────────────┐
-                              ↓             ↓             ↓
-                          Phase 7       Phase 10      Phase 11
-                              ↓         (parallel)    (parallel)
-                          Phase 8           ↓             ↓
-                              ↓             ↓             ↓
-                          Phase 9       Phase 12      Phase 12
+                              ┌─────────────┼──────────────────┐
+                              ↓             ↓                  ↓
+                          Phase 8       Phase 10           Phase 11
+                              ↓         (parallel)         (parallel)
+                          Phase 9           ↓                  ↓
+                              ↓             ↓                  ↓
+                          Phase 12      Phase 12           Phase 12
 ```
 
 ### Time Estimates
 
 | Phase | Estimate | Status |
 |-------|----------|--------|
-| Phases 1-5 | ~50h | ✅ Complete |
-| Phase 6 | 6-8h | 🟢 Starting |
-| Phase 7 | 20h | Pending |
-| Phase 8 | 16h | Pending |
+| Phases 1-6 | ~56h | ✅ Complete |
+| Phase 7 | 20h | ✅ Complete |
+| Phase 8 | 16h | 🟢 Starting |
 | Phase 9 | 18h | Pending |
 | Phase 10-12 | 50h | Pending (parallel) |
-| **Total** | **~160h** | **~35% complete** |
+| **Total** | **~160h** | **~48% complete** |
 
 ---
 
@@ -239,15 +238,45 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
 
 ### What's Complete
 
-#### Phase 5: Confidence Tuning ✅
+#### Phase 6: Relation Extraction ✅
 
-All 6 tasks complete with 86 tests passing:
+**COMPLETED** - Cross-document relation extraction fully integrated into `build_kg.py`:
+
+| Component | File | Status |
+|-----------|------|--------|
+| LLMRelationExtractor | `src/kgbuilder/extraction/relation.py` | ✅ Complete |
+| Relation Consolidation | `src/kgbuilder/extraction/synthesizer.py` | ✅ Complete |
+| Pipeline Integration | `scripts/build_kg.py` | ✅ Complete |
+| Cross-Document Retrieval | Helper functions in build_kg.py | ✅ Complete |
+
+**Key Features**:
+- ✅ LLM-based relation extraction with ontology constraints
+- ✅ Domain/range validation per relation type
+- ✅ Cardinality constraint enforcement (functional/inverse-functional)
+- ✅ **Cross-document relation discovery** via retriever queries
+- ✅ Relation confidence scoring with evidence
+- ✅ Neo4j assembly with both nodes and edges
+
+#### Phase 7: KG Assembly & Multi-Store ✅
+
+**COMPLETED** - Multi-store knowledge graph architecture with unified GraphStore protocol:
 
 | Task | Component | Lines | Tests | Coverage |
 |------|-----------|-------|-------|----------|
-| 5.1 | ConfidenceAnalyzer | 135 | 4 | 95%+ |
-| 5.2 | ConfidenceBooster | 89 | 9 | 95%+ |
-| 5.3 | CoreferenceResolver | 173 | 9 | 90%+ |
+| 7.1 | Neo4jGraphStore | 507 | 8 | 45% |
+| 7.2 | RDFGraphStore | 561 | 8 | 46% |
+| 7.3 | KGBuilder Orchestrator | 394 | 13 | 75% |
+| 7.4 | build_kg.py Integration | 23 | - | Integrated |
+| 7.5 | Testing & Documentation | 830 | 36 | 22% coverage |
+
+**Key Capabilities**:
+- ✅ **Neo4jGraphStore**: Full CRUD, Cypher queries, batch operations, statistics
+- ✅ **RDFGraphStore**: SPARQL endpoint support, triple management, export to Turtle/JSON-LD
+- ✅ **KGBuilder**: Multi-store coordination, auto query routing (SPARQL vs Cypher)
+- ✅ **Dual-Write**: Synchronization between primary and secondary stores
+- ✅ **Export Formats**: JSON-LD, RDF/Turtle, N-Triples, Cypher, GraphML
+- ✅ **Error Handling**: Graceful degradation, retry logic, comprehensive logging
+- ✅ **36 Tests**: All passing, covering Neo4j, RDF, and orchestrator
 | 5.4 | ConfidenceCalibrator | 145 | 21 | 95%+ |
 | 5.5 | ConsensusVoter | 242 | 17 | 88%+ |
 | 5.6 | EntityQualityFilter | 287 | 26 | 92%+ |
