@@ -55,14 +55,43 @@ class SimpleKGAssembler:
     """
 
     def __init__(self, neo4j_uri: str, auth: tuple[str, str]) -> None:
-        """Initialize KG assembler with Neo4j connection.
+        """Initialize KG assembler with Neo4j connection and validation.
+
+        Phase 4d Component: Assembles deduplicated entities and relationships
+        into a Neo4j knowledge graph with full provenance tracking, performance
+        indices, and statistics computation.
+
+        Connection Lifecycle:
+        - Connects to Neo4j at specified URI using bolt protocol
+        - Authenticates using provided credentials
+        - Validates connection with test query (RETURN 1)
+        - Prepares driver for batch operations
+        - Must call close() to cleanup resources
 
         Args:
-            neo4j_uri: Neo4j database URI (e.g., "bolt://localhost:7687")
-            auth: Tuple of (username, password)
+            neo4j_uri: str
+                Neo4j bolt connection URI
+                Format: "bolt://[host]:[port]"
+                Examples: "bolt://localhost:7687", "bolt://neo4j.example.com:7687"
+            auth: tuple[str, str]
+                Neo4j authentication credentials
+                Format: (username, password)
+                Example: ("neo4j", "password")
 
         Raises:
-            ServiceUnavailable: If Neo4j connection fails
+            ServiceUnavailable: If cannot connect to Neo4j at URI
+            AuthError: If authentication fails (invalid credentials)
+            RuntimeError: If connection validation query fails
+
+        Example:
+            >>> try:
+            ...     assembler = SimpleKGAssembler(
+            ...         neo4j_uri="bolt://localhost:7687",
+            ...         auth=("neo4j", "password")
+            ...     )
+            ...     result = assembler.assemble(entities, relations)
+            ... finally:
+            ...     assembler.close()  # Always cleanup
         """
         try:
             self._driver = GraphDatabase.driver(neo4j_uri, auth=auth)
@@ -84,24 +113,83 @@ class SimpleKGAssembler:
         coverage: float = 0.0,
         iterations: int = 0,
     ) -> KGAssemblyResult:
-        """Assemble findings into Neo4j knowledge graph.
+        """Assemble deduplicated entities and relations into Neo4j knowledge graph.
 
-        Creates nodes for each entity and relationships between them.
-        Stores confidence scores and provenance information.
+        This is the final Phase 4d step: takes synthesized entities and relations
+        and commits them to Neo4j with full provenance, confidence tracking, and
+        performance optimization.
+
+        Assembly Process:
+        1. Begin transaction for ACID compliance
+        2. Create/merge nodes for each entity:
+           - Node label from entity_type (ontology class)
+           - Properties: id, label, description, confidence, merged_count
+           - Metadata: evidence_count, sources, created_at
+        3. Create relationships between entities:
+           - Relationship type from predicate
+           - Properties: confidence, evidence_count, created_at
+        4. Create performance indices for fast queries:
+           - Index on node id (unique)
+           - Index on node label (search)
+           - Index on confidence (filtering)
+        5. Compute graph statistics:
+           - Node counts by type
+           - Relationship counts by type
+           - Average confidence scores
+           - Merged entity statistics
+        6. Commit transaction (all-or-nothing)
+        7. Return assembly results with statistics
 
         Args:
-            entities: Deduplicated entities from Phase 4c
-            relations: Optional relations between entities
-            coverage: Coverage percentage achieved by discovery
-            iterations: Number of discovery iterations
+            entities: list[SynthesizedEntity]
+                Deduplicated entities from Phase 4c
+                Must have: id, label, entity_type, confidence
+                Node label in Neo4j will be entity_type value
+            relations: list[ExtractedRelation] | None
+                Relations/edges between entities (optional)
+                Each relation must reference valid entity ids
+                Default None = no relationships
+            coverage: float
+                Coverage percentage achieved by discovery (0.0-1.0)
+                Used for progress tracking and statistics
+                Example: 0.85 = 85% of entities discovered
+            iterations: int
+                Number of discovery iterations completed
+                Used for performance metrics and tracking
+                Example: 5 iterations to achieve coverage
 
         Returns:
-            KGAssemblyResult with statistics
+            KGAssemblyResult
+                Assembly result with:
+                - nodes_created: int (count of created nodes)
+                - relationships_created: int (count of edges)
+                - coverage: float (discovery coverage achieved)
+                - iterations: int (iterations completed)
+                - errors: list[str] (assembly errors, if any)
+                - warnings: list[str] (warnings, if any)
+                - statistics: dict[str, Any] (graph metrics)
+                  * node_count, relationship_count
+                  * nodes_by_type, relationships_by_type
+                  * avg_confidence, max_confidence, min_confidence
+                  * merged_entity_stats
+
+        Raises:
+            ValueError: If entities list is empty
+            RuntimeError: If transaction fails and rolls back
+            neo4j.Error: For various Neo4j operation failures
 
         Example:
             >>> entities = [SynthesizedEntity(...)]
-            >>> result = assembler.assemble(entities, coverage=0.85, iterations=3)
-            >>> assert result.nodes_created == len(entities)
+            >>> relations = [ExtractedRelation(...)]
+            >>> result = assembler.assemble(
+            ...     entities=entities,
+            ...     relations=relations,
+            ...     coverage=0.85,
+            ...     iterations=3
+            ... )
+            >>> print(f"Created {result.nodes_created} nodes")
+            >>> print(f"Graph coverage: {result.coverage:.1%}")
+            >>> print(f"Statistics: {result.statistics}")
         """
         logger.info(
             "assembly_start",

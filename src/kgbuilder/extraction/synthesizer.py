@@ -55,22 +55,44 @@ class SynthesizedFinding:
 class FindingsSynthesizer:
     """Synthesizes extracted entities/relations into consolidated findings.
 
-    Responsibilities:
-    1. Deduplicate entities across multiple extractions
-    2. Merge evidence from multiple sources
-    3. Aggregate confidence scores
-    4. Resolve contradictions
-    5. Calculate coverage metrics
+    Phase 4c Component: Deduplicates and merges entities from multiple discovery
+    iterations into a single clean entity set with aggregated confidence.
 
-    Uses edit distance + type matching for deduplication (0.7 * label_sim + 0.3 * type_match).
+    Deduplication Algorithm:
+    1. Group entities by type (ontology class)
+    2. Within each type, find similar entities using edit distance + type matching
+       Similarity = 0.7 * label_similarity(Levenshtein) + 0.3 * type_match
+    3. Merge groups with similarity >= threshold (default: 0.90)
+    4. For each merge:
+       - Keep primary entity (highest confidence)
+       - Aggregate evidence from all merged entities
+       - Boost confidence: avg + boost(capped at 10% or merged_count-1)
+       - Track merged_count (how many were merged)
+       - Combine sources (which extractors found it)
+
+    Attributes:
+        _similarity_threshold: Minimum similarity (0.0-1.0) for entity merging
+            Default 0.90 = conservative (high precision, may miss some duplicates)
+            Lower values = aggressive deduplication (catch more duplicates)
+        _logger: Structured logger for synthesis process tracking
     """
 
     def __init__(self, similarity_threshold: float = 0.90) -> None:
-        """Initialize findings synthesizer.
+        """Initialize findings synthesizer with deduplication threshold.
 
         Args:
-            similarity_threshold: Minimum similarity (0.0-1.0) for merging entities.
-                Higher = stricter matching. Default 0.90 is conservative.
+            similarity_threshold: float
+                Minimum similarity (0.0-1.0) for merging entities as duplicates.
+                0.90 = conservative (only merge very similar entities)
+                0.75 = moderate (reasonable deduplication)
+                0.50 = aggressive (merge many entities, high recall)
+                Default 0.90 prioritizes precision (fewer false merges).
+
+        Raises:
+            ValueError: If similarity_threshold not in [0.0, 1.0]
+
+        Example:
+            >>> synthesizer = FindingsSynthesizer(similarity_threshold=0.85)
         """
         self._similarity_threshold = similarity_threshold
         self._logger = structlog.get_logger(__name__)
