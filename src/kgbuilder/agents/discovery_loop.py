@@ -15,18 +15,59 @@ Orchestrates the discovery process:
 from __future__ import annotations
 
 import structlog
+import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from kgbuilder.agents.question_generator import QuestionGenerationAgent, ResearchQuestion
 from kgbuilder.core.models import ExtractedEntity
 
-# TODO: Phase 4b - these imports will be added in next phase
-# from kgbuilder.extraction.ensemble import EnsembleExtractor
-# from kgbuilder.retrieval.fusion import FusionRAGRetriever
-
 
 logger = structlog.get_logger(__name__)
+
+
+@runtime_checkable
+class Retriever(Protocol):
+    """Protocol for document retrieval implementations."""
+
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 10,
+    ) -> list[Any]:
+        """Retrieve documents for a query.
+
+        Args:
+            query: Search query text
+            top_k: Number of results to return
+
+        Returns:
+            List of retrieval results with doc_id and content attributes
+        """
+        ...
+
+
+@runtime_checkable
+class EntityExtractor(Protocol):
+    """Protocol for entity extraction implementations."""
+
+    def extract(
+        self,
+        text: str,
+        ontology_classes: list[Any] | None = None,
+        existing_entities: list[ExtractedEntity] | None = None,
+    ) -> list[ExtractedEntity]:
+        """Extract entities from text.
+
+        Args:
+            text: Source text to extract from
+            ontology_classes: Valid entity types (optional)
+            existing_entities: Known entities for deduplication (optional)
+
+        Returns:
+            List of extracted entities
+        """
+        ...
 
 
 @dataclass
@@ -79,15 +120,15 @@ class IterativeDiscoveryLoop:
 
     def __init__(
         self,
-        retriever: FusionRAGRetriever,
-        extractor: EnsembleExtractor,
+        retriever: Retriever,
+        extractor: EntityExtractor,
         question_generator: QuestionGenerationAgent,
     ) -> None:
         """Initialize discovery loop.
 
         Args:
-            retriever: FusionRAGRetriever for document search
-            extractor: EnsembleExtractor for entity extraction
+            retriever: Retriever implementation for document search
+            extractor: EntityExtractor implementation for entity extraction
             question_generator: QuestionGenerationAgent for question generation
         """
         self._retriever = retriever
@@ -115,7 +156,6 @@ class IterativeDiscoveryLoop:
         Returns:
             DiscoveryResult with all findings and metadata
         """
-        import time
         start_time = time.time()
 
         self._logger.info(
