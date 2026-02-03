@@ -157,19 +157,33 @@ class FusekiStore:
         # TODO: POST to Fuseki graph endpoint
         raise NotImplementedError("add_triple() not yet implemented")
 
-    def query_sparql(self, sparql: str) -> list[dict[str, str]]:
+    def query_sparql(self, sparql: str) -> dict:
         """Execute SPARQL query against Fuseki.
 
         Args:
             sparql: SPARQL query string
 
         Returns:
-            Query results as list of binding dicts
+            Query results as dict with 'results' containing 'bindings'
         """
-        # TODO: POST SPARQL query to endpoint
-        # TODO: Parse JSON results
-        # TODO: Return result bindings
-        raise NotImplementedError("query_sparql() not yet implemented")
+        import json
+        
+        try:
+            # POST SPARQL query to Fuseki
+            resp = self.session.post(
+                self.sparql_url,
+                data={"query": sparql},
+                headers={"Accept": "application/sparql-results+json"},
+                timeout=30
+            )
+            resp.raise_for_status()
+            
+            # Parse JSON results
+            return resp.json()
+        except Exception as e:
+            raise RuntimeError(
+                f"SPARQL query failed: {e}"
+            ) from e
 
     def export_rdf(self, format: str = "turtle") -> str:
         """Export RDF graph from Fuseki.
