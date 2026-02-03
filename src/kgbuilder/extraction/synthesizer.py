@@ -229,10 +229,12 @@ class FindingsSynthesizer:
         # Track sources (extractors)
         sources: list[str] = []
         for entity in group:
-            if entity.properties and "source" in entity.properties:
-                source = entity.properties["source"]
+            if hasattr(entity, "attributes") and entity.attributes and "source" in entity.attributes:
+                source = entity.attributes["source"]
                 if source and source not in sources:
                     sources.append(source)
+            elif hasattr(entity, "sources") and entity.sources:
+                sources.extend([s for s in entity.sources if s not in sources])
 
         self._logger.debug(
             "merge_group",
