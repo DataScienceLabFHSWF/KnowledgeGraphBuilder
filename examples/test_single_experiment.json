@@ -1,0 +1,16 @@
+{
+  "name": "KG Quality Test - Single Variant",
+  "description": "Test Phase 5 relations with JSON parsing fixes",
+  "output_dir": "experiment_results/test_relations",
+  "variants": [
+    {
+      "name": "test_relations",
+      "params": {
+        "max_iterations": 1,
+        "top_k_docs": 5,
+        "confidence_threshold": 0.6,
+        "model": "qwen3:8b"
+      }
+    }
+  ]
+}

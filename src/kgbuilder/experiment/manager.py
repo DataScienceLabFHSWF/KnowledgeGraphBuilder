@@ -466,7 +466,7 @@ class ConfigRunner:
             discover_result = discovery_loop.run_discovery(
                 max_iterations=variant.params.max_iterations,
                 coverage_target=0.85,
-                top_k_docs=10,
+                top_k_docs=5,  # Reduced from 10 to minimize context size for docker Ollama
                 ontology_classes=ontology_classes,
                 extract_relations=True,  # NEW: One-pass entity + relation extraction
             )

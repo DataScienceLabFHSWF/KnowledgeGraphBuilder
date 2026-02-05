@@ -37,7 +37,7 @@ class OllamaProvider:
         base_url: str = "http://localhost:11434",
         temperature: float = 0.7,
         top_p: float = 0.9,
-        timeout: int = 120,
+        timeout: int = 300,
     ) -> None:
         """Initialize Ollama provider.
 
@@ -46,7 +46,7 @@ class OllamaProvider:
             base_url: Ollama API base URL
             temperature: Sampling temperature (0-2)
             top_p: Top-p nucleus sampling
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (300s for docker Ollama performance)
 
         Raises:
             ConnectionError: If Ollama service is not running
