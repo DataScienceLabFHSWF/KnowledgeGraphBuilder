@@ -48,6 +48,9 @@ coverage.xml
 *.cover
 *.py.cover
 .hypothesis/
+
+# Weights & Biases
+wandb/
 .pytest_cache/
 cover/
 

@@ -301,9 +301,26 @@ Extract all entities you can identify with confidence >= 0.5."""
         entities = []
 
         for item in output.entities:
+            # Handle LLM arithmetic expressions in character positions
+            # LLM sometimes outputs "266 - 12 + 8" instead of "262"
+            start_char = item.start_char
+            end_char = item.end_char
+            
+            if isinstance(start_char, str):
+                try:
+                    start_char = int(eval(start_char))
+                except Exception:
+                    start_char = 0
+            
+            if isinstance(end_char, str):
+                try:
+                    end_char = int(eval(end_char))
+                except Exception:
+                    end_char = start_char + len(item.label)
+            
             # Validate character positions
-            start = max(0, min(item.start_char, len(source_text)))
-            end = min(len(source_text), item.end_char)
+            start = max(0, min(start_char, len(source_text)))
+            end = min(len(source_text), end_char)
             
             if start >= end:
                 logger.warning(

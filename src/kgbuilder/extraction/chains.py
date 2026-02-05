@@ -79,9 +79,12 @@ Extract all entities. For each entity, provide:
 - label: the exact text of the entity
 - entity_type: one of the types listed above
 - confidence: how confident (0.0 to 1.0)
-- start_char: character position where entity starts
-- end_char: character position where entity ends
+- start_char: character position where entity starts (MUST BE AN INTEGER NUMBER, not an expression)
+- end_char: character position where entity ends (MUST BE AN INTEGER NUMBER, not an expression. Example: if start is 266 and label is 18 chars, write 284 not 266+18)
 - context: surrounding text for context
+
+IMPORTANT: All character positions must be actual numbers, computed values.
+DO NOT output arithmetic like "266 + 18" - compute it to "284"
 
 Return ONLY valid JSON matching this format:
 {{"entities": [
@@ -93,10 +96,46 @@ Return ONLY valid JSON matching this format:
         ).partial(format_instructions=parser.get_format_instructions())
 
         # Build chain with error handling
+        import re
+        
+        def fix_json_arithmetic(text: str) -> str:
+            """Fix invalid JSON arithmetic expressions like 'end_char: 266 + 18'.
+            
+            Converts unquoted arithmetic expressions to their computed values.
+            This is needed because some LLMs output arithmetic in JSON values.
+            
+            Examples:
+              '"end_char": 266 + 18,' -> '"end_char": 284,'
+              '"end_char": 266 - 12 + 8,' -> '"end_char": 262,'
+            """
+            # Pattern: "key": number +/- number (possibly with spaces and multiple operations)
+            pattern = r'(\"[^\"]+\"\\s*:\\s*)(\\d+(?:\\s*[+\\-*/]\\s*\\d+)+)(\\s*[,}\\n])'
+            
+            def replace_expr(match):
+                prefix = match.group(1)
+                expr = match.group(2)
+                suffix = match.group(3)
+                try:
+                    # Safely evaluate the arithmetic expression
+                    expr_clean = expr.replace(' ', '')
+                    # Only allow basic arithmetic
+                    if all(c in '0123456789+-*/' for c in expr_clean):
+                        result = int(eval(expr_clean))  # Safe: validated characters only
+                        return f'{prefix}{result}{suffix}'
+                except Exception:
+                    return match.group(0)
+                return match.group(0)
+            
+            fixed = re.sub(pattern, replace_expr, text)
+            return fixed
+        
         def safe_parse(x):
             try:
-                return parser.parse(x.content)
-            except:
+                # First, fix arithmetic expressions in the JSON
+                json_text = fix_json_arithmetic(x.content)
+                return parser.parse(json_text)
+            except Exception as e:
+                logger.warning(f"JSON parsing failed, returning empty: {str(e)[:100]}")
                 # Return empty result on parse error
                 return EntityExtractionOutput(entities=[])
         
