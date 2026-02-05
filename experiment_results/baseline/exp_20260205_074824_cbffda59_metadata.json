@@ -1,0 +1,87 @@
+{
+  "experiment_id": "exp_20260205_074824_cbffda59",
+  "experiment_name": "KG Quality Baseline",
+  "started_at": "2026-02-05T07:48:24.339187",
+  "completed_at": "2026-02-05T07:48:32.533432",
+  "total_duration_seconds": 8.194245,
+  "completed_runs": 0,
+  "failed_runs": 3,
+  "config": {
+    "name": "KG Quality Baseline",
+    "description": "Compare different extraction configurations for KG quality",
+    "output_dir": "./experiment_results/baseline",
+    "num_runs": 1,
+    "parallel_jobs": 2,
+    "seed": 42,
+    "variants": [
+      {
+        "name": "baseline",
+        "description": "Default parameters",
+        "params": {
+          "model": "qwen3:8b",
+          "max_iterations": 2,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3
+        },
+        "metadata": {
+          "tuning": "default"
+        }
+      },
+      {
+        "name": "strict",
+        "description": "High confidence and similarity thresholds",
+        "params": {
+          "model": "qwen3:8b",
+          "max_iterations": 2,
+          "similarity_threshold": 0.9,
+          "confidence_threshold": 0.75,
+          "classes_limit": null,
+          "questions_per_class": 3
+        },
+        "metadata": {
+          "tuning": "conservative"
+        }
+      },
+      {
+        "name": "permissive",
+        "description": "Low thresholds, more entities extracted",
+        "params": {
+          "model": "qwen3:8b",
+          "max_iterations": 2,
+          "similarity_threshold": 0.7,
+          "confidence_threshold": 0.5,
+          "classes_limit": null,
+          "questions_per_class": 3
+        },
+        "metadata": {
+          "tuning": "aggressive"
+        }
+      }
+    ],
+    "evaluation": {
+      "qa_dataset_path": "data/qa_benchmark.json",
+      "metrics": [
+        "accuracy",
+        "f1_score",
+        "coverage",
+        "completeness"
+      ],
+      "similarity_threshold": 0.8,
+      "max_results": 10
+    },
+    "metadata": {
+      "experimenter": "KG Team",
+      "purpose": "Baseline quality metrics"
+    }
+  },
+  "run_ids": [
+    "exp_20260205_074824_cbffda59_baseline_1",
+    "exp_20260205_074824_cbffda59_strict_1",
+    "exp_20260205_074824_cbffda59_permissive_1"
+  ],
+  "aggregate_metrics": {
+    "error": "No completed runs"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260205_075658_52b4f284_baseline_1",
+  "variant_name": "baseline",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-02-05T07:56:58.625012",
+  "end_time": "2026-02-05T07:57:08.437535",
+  "duration_seconds": 9.81,
+  "kg_metrics": {
+    "nodes": 0,
+    "edges": 0,
+    "build_time_seconds": 7.26,
+    "model": "qwen3:8b",
+    "max_iterations": 2
+  },
+  "eval_metrics": {
+    "accuracy": 0.71,
+    "f1_score": 0.6599999999999999,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 38
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260205_075658_52b4f284_baseline_1",
+    "variant_name": "baseline",
+    "started_at": "2026-02-05T07:56:58.625012",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "completed_at": "2026-02-05T07:57:07.378011"
+  }
+}

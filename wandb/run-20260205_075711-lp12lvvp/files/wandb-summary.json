@@ -1,0 +1,1 @@
+{"completeness":0.75,"_step":0,"coverage":0.85,"_timestamp":1.770274636500928e+09,"nodes":0,"build_time_seconds":4.69,"accuracy":0.7250000000000001,"f1_score":0.675,"_runtime":5,"edges":0,"correct_answers":39,"total_questions":54,"model":"qwen3:8b","max_iterations":2,"duration_seconds":0,"_wandb":{"runtime":5}}

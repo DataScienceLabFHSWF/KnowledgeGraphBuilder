@@ -93,6 +93,7 @@ class DiscoveryResult:
     total_entities_discovered: int
     total_time_sec: float
     entities: list[ExtractedEntity] = field(default_factory=list)
+    relations: list[Any] = field(default_factory=list)  # NEW: Phase 5 relations
     iterations: list[IterationResult] = field(default_factory=list)
     error_message: str | None = None
 
@@ -124,6 +125,8 @@ class IterativeDiscoveryLoop:
         extractor: EntityExtractor,
         question_generator: QuestionGenerationAgent,
         ontology_classes: list[Any] | None = None,
+        relation_extractor: Any | None = None,  # NEW: For Phase 5
+        ontology_relations: list[Any] | None = None,  # NEW: For Phase 5
     ) -> None:
         """Initialize discovery loop.
 
@@ -132,13 +135,18 @@ class IterativeDiscoveryLoop:
             extractor: EntityExtractor implementation for entity extraction
             question_generator: QuestionGenerationAgent for question generation
             ontology_classes: Optional list of ontology class definitions for extraction guidance
+            relation_extractor: Optional RelationExtractor for Phase 5 (NEW)
+            ontology_relations: Optional list of ontology relation definitions (NEW)
         """
         self._retriever = retriever
         self._extractor = extractor
         self._question_gen = question_generator
         self._ontology_classes = ontology_classes
+        self._relation_extractor = relation_extractor  # NEW
+        self._ontology_relations = ontology_relations  # NEW
         self._findings: dict[str, ExtractedEntity] = {}
         self._provenance: dict[str, set[str]] = {}  # entity_id -> source docs
+        self._relations: list[Any] = []  # NEW: Store extracted relations
         self._logger = structlog.get_logger(__name__)
 
     def run_discovery(
@@ -148,6 +156,7 @@ class IterativeDiscoveryLoop:
         coverage_target: float = 0.85,
         top_k_docs: int = 10,
         ontology_classes: list[Any] | None = None,
+        extract_relations: bool = True,  # NEW: Phase 5 flag
     ) -> DiscoveryResult:
         """Run iterative discovery loop.
 
@@ -157,6 +166,7 @@ class IterativeDiscoveryLoop:
             coverage_target: Stop when coverage >= this threshold
             top_k_docs: Number of documents to retrieve per question
             ontology_classes: List of ontology class definitions for extraction guidance
+            extract_relations: Whether to extract relations (Phase 5) during discovery (NEW)
 
         Returns:
             DiscoveryResult with all findings and metadata
@@ -269,6 +279,7 @@ class IterativeDiscoveryLoop:
                 total_entities_discovered=len(final_entities),
                 total_time_sec=total_time,
                 entities=final_entities,
+                relations=self._relations,  # NEW: Include Phase 5 relations
                 iterations=iterations,
             )
 
@@ -277,6 +288,7 @@ class IterativeDiscoveryLoop:
                 success=True,
                 iterations=iteration,
                 entities=len(final_entities),
+                relations=len(self._relations),  # NEW: Log relation count
                 coverage=f"{coverage:.2f}",
                 time_sec=f"{total_time:.2f}",
             )
@@ -289,6 +301,7 @@ class IterativeDiscoveryLoop:
                 "discovery_failed",
                 error=str(e),
                 iterations=iteration,
+                relations=len(self._relations),  # NEW: Log relations even on error
                 time_sec=f"{total_time:.2f}",
                 exc_info=True,
             )
@@ -299,6 +312,7 @@ class IterativeDiscoveryLoop:
                 total_entities_discovered=len(self._findings),
                 total_time_sec=total_time,
                 entities=list(self._findings.values()),
+                relations=self._relations,  # NEW: Return partial relations
                 iterations=iterations,
                 error_message=str(e),
             )
@@ -363,6 +377,32 @@ class IterativeDiscoveryLoop:
                         if entity.confidence > self._findings[entity.id].confidence:
                             self._findings[entity.id] = entity
 
+                    # 4. Extract relations from the text (NEW - Phase 5)
+                    if extract_relations and self._relation_extractor and self._ontology_relations and entities:
+                        try:
+                            relations = self._relation_extractor.extract(
+                                text=result.content,
+                                entities=entities,
+                                ontology_relations=self._ontology_relations
+                            )
+                            self._relations.extend(relations)
+                            
+                            if relations:
+                                self._logger.debug(
+                                    "relations_extracted_from_document",
+                                    question_id=question.question_id,
+                                    doc_id=result.doc_id,
+                                    relation_count=len(relations),
+                                )
+                        except Exception as e:
+                            self._logger.debug(
+                                "relation_extraction_failed_for_document",
+                                question_id=question.question_id,
+                                doc_id=result.doc_id,
+                                error=str(e),
+                            )
+                            # Continue on relation extraction failure (don't block entity success)
+                    
                     self._logger.debug(
                         "extracted_from_document",
                         question_id=question.question_id,

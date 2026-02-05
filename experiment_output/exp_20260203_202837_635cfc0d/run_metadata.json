@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260203_202837_635cfc0d",
+  "variant_name": "single_run",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-02-03T20:28:37.900463",
+  "end_time": "2026-02-03T20:28:41.426191",
+  "duration_seconds": 3.53,
+  "kg_metrics": {
+    "nodes": 70,
+    "edges": 40,
+    "build_time_seconds": 1.5,
+    "model": "qwen3:8b",
+    "max_iterations": 2
+  },
+  "eval_metrics": {
+    "accuracy": 0.71,
+    "f1_score": 0.6599999999999999,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 38
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260203_202837_635cfc0d",
+    "variant_name": "single_run",
+    "started_at": "2026-02-03T20:28:37.900463",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "completed_at": "2026-02-03T20:28:40.395601"
+  }
+}

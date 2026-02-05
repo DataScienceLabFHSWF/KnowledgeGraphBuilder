@@ -1,0 +1,27 @@
+{
+  "run_id": "exp_20260205_075504_c3eb3e0a_strict_1",
+  "variant_name": "strict",
+  "run_number": 1,
+  "status": "failed",
+  "start_time": "2026-02-05T07:55:08.390770",
+  "end_time": "2026-02-05T07:55:09.653069",
+  "duration_seconds": 1.26,
+  "kg_metrics": {},
+  "eval_metrics": {},
+  "error": "name 'LLMRelationExtractor' is not defined",
+  "metadata": {
+    "run_id": "exp_20260205_075504_c3eb3e0a_strict_1",
+    "variant_name": "strict",
+    "started_at": "2026-02-05T07:55:08.390770",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.9,
+      "confidence_threshold": 0.75,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "error_at": "2026-02-05T07:55:09.651568",
+    "error_type": "NameError"
+  }
+}

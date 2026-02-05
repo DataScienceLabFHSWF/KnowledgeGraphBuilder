@@ -40,9 +40,17 @@ from __future__ import annotations
 import sys
 import os
 import argparse
+
 from pathlib import Path
 from typing import Any
 from datetime import datetime
+
+# --- Load .env automatically for all runs ---
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))

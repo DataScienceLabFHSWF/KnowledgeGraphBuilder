@@ -94,6 +94,67 @@ class FusekiOntologyService:
             logger.error("ontology_load_failed")
             raise RuntimeError(f"Failed to load ontology from Fuseki: {e}") from e
 
+    def get_class_properties(self, class_label: str) -> list[tuple[str, str, str]]:
+        """Get data properties (attributes) for a specific class.
+        
+        Extracts owl:DatatypeProperty instances where this class is the domain.
+        Returns list of (property_name, property_type, property_description) tuples.
+        
+        Args:
+            class_label: Class label/name to query
+            
+        Returns:
+            List of (property_name, property_type_string, description) tuples
+        """
+        try:
+            sparql = f"""
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            SELECT DISTINCT ?propLabel ?range ?comment
+            WHERE {{
+                ?class a owl:Class ;
+                       rdfs:label ?classLabel .
+                ?prop a owl:DatatypeProperty ;
+                       rdfs:domain ?class ;
+                       rdfs:label ?propLabel .
+                OPTIONAL {{ ?prop rdfs:range ?range . }}
+                OPTIONAL {{ ?prop rdfs:comment ?comment . }}
+                FILTER(REGEX(STR(?classLabel), "{class_label}", "i"))
+            }}
+            ORDER BY ?propLabel
+            """
+            
+            result = self.store.query_sparql(sparql)
+            properties = []
+            
+            for binding in result.get("results", {}).get("bindings", []):
+                prop_label = binding.get("propLabel", {}).get("value", "")
+                range_uri = binding.get("range", {}).get("value", "xsd:string")
+                comment = binding.get("comment", {}).get("value", "")
+                
+                # Map XSD types to simple strings
+                type_map = {
+                    "xsd:string": "string",
+                    "xsd:date": "date",
+                    "xsd:dateTime": "datetime",
+                    "xsd:float": "float",
+                    "xsd:double": "float",
+                    "xsd:integer": "integer",
+                    "xsd:boolean": "boolean",
+                }
+                data_type = type_map.get(range_uri, "string")
+                
+                if prop_label:
+                    properties.append((prop_label, data_type, comment))
+            
+            logger.info("class_properties_loaded", class_label=class_label, count=len(properties))
+            return properties
+            
+        except Exception as e:
+            logger.warning("class_properties_load_failed", class_label=class_label, error=str(e))
+            return []
+
     def get_class_relations(self, class_uri: str) -> list[str]:
         """Get relations/properties for a specific class.
         

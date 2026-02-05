@@ -52,6 +52,17 @@ class EntityExtractor(Protocol):
 
 
 @dataclass
+class OntologyPropertyDef:
+    """Ontology property definition for entity attributes."""
+    
+    name: str
+    data_type: str  # "string", "date", "float", "integer", "boolean"
+    description: str | None = None
+    required: bool = False
+    examples: list[str] = field(default_factory=list)
+
+
+@dataclass
 class OntologyClassDef:
     """Ontology class definition for extraction guidance."""
 
@@ -60,6 +71,7 @@ class OntologyClassDef:
     description: str | None = None
     examples: list[str] = field(default_factory=list)
     parent_uri: str | None = None
+    properties: list[OntologyPropertyDef] = field(default_factory=list)  # NEW: Rich schema
 
 
 class LLMEntityExtractor:

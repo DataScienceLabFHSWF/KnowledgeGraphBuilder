@@ -1,0 +1,27 @@
+{
+  "run_id": "exp_20260205_075007_7a2db42a_permissive_1",
+  "variant_name": "permissive",
+  "run_number": 1,
+  "status": "failed",
+  "start_time": "2026-02-05T07:50:13.334036",
+  "end_time": "2026-02-05T07:50:14.574189",
+  "duration_seconds": 1.24,
+  "kg_metrics": {},
+  "eval_metrics": {},
+  "error": "QuestionGenerationAgent.__init__() got an unexpected keyword argument 'llm'",
+  "metadata": {
+    "run_id": "exp_20260205_075007_7a2db42a_permissive_1",
+    "variant_name": "permissive",
+    "started_at": "2026-02-05T07:50:13.334036",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.7,
+      "confidence_threshold": 0.5,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "error_at": "2026-02-05T07:50:14.572683",
+    "error_type": "TypeError"
+  }
+}

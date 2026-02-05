@@ -1,0 +1,1 @@
+{"edges":40,"f1_score":0.6599999999999999,"correct_answers":38,"_runtime":2,"completeness":0.75,"duration_seconds":0,"build_time_seconds":1.5,"accuracy":0.71,"_timestamp":1.7701469203964171e+09,"_step":0,"model":"qwen3:8b","nodes":70,"max_iterations":2,"_wandb":{"runtime":2},"coverage":0.85,"total_questions":54}

@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260205_075658_52b4f284_strict_1",
+  "variant_name": "strict",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-02-05T07:57:10.718064",
+  "end_time": "2026-02-05T07:57:17.121832",
+  "duration_seconds": 6.4,
+  "kg_metrics": {
+    "nodes": 0,
+    "edges": 0,
+    "build_time_seconds": 4.69,
+    "model": "qwen3:8b",
+    "max_iterations": 2
+  },
+  "eval_metrics": {
+    "accuracy": 0.7250000000000001,
+    "f1_score": 0.675,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 39
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260205_075658_52b4f284_strict_1",
+    "variant_name": "strict",
+    "started_at": "2026-02-05T07:57:10.718064",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.9,
+      "confidence_threshold": 0.75,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "completed_at": "2026-02-05T07:57:16.500457"
+  }
+}

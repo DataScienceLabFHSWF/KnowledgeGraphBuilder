@@ -200,6 +200,11 @@ class OllamaProvider:
                 json_str = json_str[:-3]
             json_str = json_str.strip()
 
+            # Fix unescaped backslashes in JSON (LLM sometimes generates these)
+            # Replace single backslashes not followed by another backslash or quote
+            import re
+            json_str = re.sub(r'\\(?!\\|")', r'\\\\', json_str)
+
             # Parse and validate
             data = json.loads(json_str)
             result = schema.model_validate(data)
@@ -209,10 +214,7 @@ class OllamaProvider:
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {raw_output}")
-            raise ValidationError.from_exception_data(
-                f"JSON parsing failed: {e}",
-                [{"type": "json_parsing_error", "msg": str(e)}],
-            ) from e
+            raise RuntimeError(f"JSON parsing failed: {e}") from e
         except ValidationError as e:
             logger.error(f"Schema validation failed: {e}")
             raise

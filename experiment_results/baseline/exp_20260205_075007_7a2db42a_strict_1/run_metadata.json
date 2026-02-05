@@ -1,0 +1,27 @@
+{
+  "run_id": "exp_20260205_075007_7a2db42a_strict_1",
+  "variant_name": "strict",
+  "run_number": 1,
+  "status": "failed",
+  "start_time": "2026-02-05T07:50:11.073288",
+  "end_time": "2026-02-05T07:50:12.386545",
+  "duration_seconds": 1.31,
+  "kg_metrics": {},
+  "eval_metrics": {},
+  "error": "QuestionGenerationAgent.__init__() got an unexpected keyword argument 'llm'",
+  "metadata": {
+    "run_id": "exp_20260205_075007_7a2db42a_strict_1",
+    "variant_name": "strict",
+    "started_at": "2026-02-05T07:50:11.073288",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.9,
+      "confidence_threshold": 0.75,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "error_at": "2026-02-05T07:50:12.385799",
+    "error_type": "TypeError"
+  }
+}

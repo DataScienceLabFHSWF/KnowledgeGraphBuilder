@@ -180,6 +180,13 @@ class ConfigRunner:
         run_number: int = 1,
         run_id: str | None = None,
     ) -> ExperimentRun:
+        """Run a single configuration variant with wandb logging."""
+        # Try to import wandb, else warn
+        try:
+            import wandb
+        except ImportError:
+            wandb = None
+            logger.warning("wandb not installed, skipping experiment logging")
         """Run a single configuration variant.
 
         Args:
@@ -193,16 +200,38 @@ class ConfigRunner:
         # Generate unique run ID if not provided
         if run_id is None:
             run_id = generate_run_id()
-        
+
         run = ExperimentRun(run_id=run_id, variant=variant, run_number=run_number)
         run.status = "running"
         run.start_time = datetime.now()
-        
+
         # Add system metadata
         run.metadata["run_id"] = run_id
         run.metadata["variant_name"] = variant.name
         run.metadata["started_at"] = run.start_time.isoformat()
         run.metadata["params"] = variant.params.to_dict()
+
+        # --- WANDB: Start a run for this variant ---
+        wandb_run = None
+        if wandb is not None:
+            import os
+            wandb_project = os.environ.get("WANDB_PROJECT", "kg-builder")
+            wandb_api_key = os.environ.get("WANDB_API_KEY")
+            if wandb_api_key:
+                os.environ["WANDB_API_KEY"] = wandb_api_key
+            wandb_run = wandb.init(
+                project=wandb_project,
+                name=f"{variant.name}_run{run_number}_{run_id}",
+                config={
+                    **variant.params.to_dict(),
+                    "variant_name": variant.name,
+                    "run_id": run_id,
+                    "run_number": run_number,
+                },
+                reinit=True,
+                tags=[variant.name],
+                notes=variant.description,
+            )
 
         try:
             logger.info(
@@ -212,17 +241,14 @@ class ConfigRunner:
                 run_id=run_id,
             )
 
-            # TODO: Integrate with actual KG builder
-            # When integrating, pass run_id to KG builder for Neo4j namespace:
-            #   kg_builder.build(params=variant.params, run_id=run_id)
-            # The run_id should be used as a label or property on all nodes/edges
-            kg_metrics = self._simulate_kg_build(variant)
+            # Run actual KG building pipeline
+            kg_metrics = self._build_kg(variant, run_id, wandb_run=wandb_run)
             eval_metrics = self._simulate_evaluation(variant)
 
             run.kg_metrics = kg_metrics
             run.eval_metrics = eval_metrics
             run.status = "completed"
-            
+
             # Add completion metadata
             run.metadata["completed_at"] = datetime.now().isoformat()
 
@@ -234,6 +260,20 @@ class ConfigRunner:
                 nodes=kg_metrics.get("nodes", 0),
                 accuracy=eval_metrics.get("accuracy", 0),
             )
+
+            # --- WANDB: Log metrics and artifacts ---
+            if wandb_run is not None:
+                # Log all metrics
+                wandb_run.log({**kg_metrics, **eval_metrics, "duration_seconds": run.duration_seconds})
+                # Save run metadata as artifact
+                run_metadata_path = run.save_metadata(self.output_dir)
+                artifact = wandb.Artifact(
+                    name=f"run_metadata_{run_id}",
+                    type="run_metadata",
+                    description=f"Run metadata for {variant.name} run {run_number}",
+                )
+                artifact.add_file(str(run_metadata_path))
+                wandb_run.log_artifact(artifact)
 
         except Exception as e:
             run.status = "failed"
@@ -254,35 +294,269 @@ class ConfigRunner:
                 run.duration_seconds = (
                     run.end_time - run.start_time
                 ).total_seconds()
-            
-            # Save run metadata to file
+            # Save run metadata to file (again, in case of error)
             run.save_metadata(self.output_dir)
+            # --- WANDB: Finish run ---
+            if wandb_run is not None:
+                wandb_run.finish()
 
         return run
 
-    @staticmethod
-    def _simulate_kg_build(variant: ConfigVariant) -> dict[str, Any]:
-        """Simulate KG building (placeholder).
+    def _build_kg(self, variant: ConfigVariant, run_id: str, wandb_run: Any = None) -> dict[str, Any]:
+        """Build KG using the actual pipeline.
 
         Args:
-            variant: ConfigVariant being run
+            variant: ConfigVariant with KG params
+            run_id: Unique run ID for Neo4j namespace
+            wandb_run: Optional wandb run for continuous logging
 
         Returns:
-            Simulated KG metrics
+            KG metrics (nodes, edges, build_time, etc.)
         """
-        # Placeholder: in real implementation, would call actual KG builder
-        time.sleep(1)  # Simulate work
+        import os
+        from kgbuilder.agents.question_generator import QuestionGenerationAgent
+        from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
+        from kgbuilder.storage.ontology import FusekiOntologyService
+        from kgbuilder.storage.vector import QdrantStore
+        from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+        from kgbuilder.retrieval import FusionRAGRetriever
+        from kgbuilder.embedding import OllamaProvider
+        from kgbuilder.assembly.kg_builder import KGBuilder, KGBuilderConfig
+        from kgbuilder.storage.protocol import Node
+        from kgbuilder.extraction.entity import LLMEntityExtractor, OntologyPropertyDef
+        from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
 
-        nodes = 50 + (variant.params.max_iterations * 10)
-        edges = 30 + (variant.params.max_iterations * 5)
+        build_start = time.time()
 
-        return {
-            "nodes": nodes,
-            "edges": edges,
-            "build_time_seconds": 1.5,
-            "model": variant.params.model,
-            "max_iterations": variant.params.max_iterations,
-        }
+        try:
+            # Get environment config
+            fuseki_url = os.getenv("FUSEKI_URL", "http://localhost:3030")
+            fuseki_dataset = os.getenv("FUSEKI_DATASET", "kgbuilder")
+            qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+            qdrant_collection = os.getenv("QDRANT_COLLECTION", "kgbuilder")
+            ollama_url = os.getenv("OLLAMA_URL", "http://localhost:18134")
+            neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+            neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")
+
+            # Initialize services
+            logger.info("kg_build_initializing_services", run_id=run_id)
+            
+            # Log initialization to wandb
+            if wandb_run is not None:
+                wandb_run.log({"status": "initializing_services"})
+            
+            # Ontology service
+            ontology_service = FusekiOntologyService(
+                fuseki_url=fuseki_url,
+                dataset_name=fuseki_dataset
+            )
+            
+            # Vector store
+            vector_store = QdrantStore(
+                url=qdrant_url,
+                collection_name=qdrant_collection
+            )
+            
+            # LLM & Embeddings
+            llm = OllamaProvider(
+                model=variant.params.model,
+                base_url=ollama_url
+            )
+            
+            # Retriever
+            retriever = FusionRAGRetriever(
+                qdrant_store=vector_store,
+                llm_provider=llm,
+                dense_weight=0.7,
+                sparse_weight=0.3
+            )
+            
+            # Question generation
+            question_gen = QuestionGenerationAgent(
+                ontology_service=ontology_service
+            )
+            
+            # Entity extractor
+            entity_extractor = LLMEntityExtractor(
+                llm_provider=llm,
+                confidence_threshold=variant.params.confidence_threshold
+            )
+            
+            # Relation extractor (NEW - Phase 5)
+            relation_extractor = LLMRelationExtractor(
+                llm_provider=llm,
+                confidence_threshold=variant.params.confidence_threshold
+            )
+            
+            # Neo4j store
+            neo4j_store = Neo4jGraphStore(
+                uri=neo4j_uri,
+                auth=(neo4j_user, neo4j_password)
+            )
+            
+            # Get ontology classes with properties for extraction guidance (RICH SCHEMA)
+            from kgbuilder.extraction.entity import OntologyClassDef
+            class_labels = ontology_service.get_all_classes()
+            ontology_classes = []
+            
+            for label in class_labels:
+                # Load properties for each class from ontology (NEW)
+                properties_tuples = ontology_service.get_class_properties(label)
+                properties = [
+                    OntologyPropertyDef(
+                        name=prop_name,
+                        data_type=prop_type,
+                        description=prop_desc if prop_desc else None
+                    )
+                    for prop_name, prop_type, prop_desc in properties_tuples
+                ]
+                
+                ontology_classes.append(
+                    OntologyClassDef(
+                        uri=f"http://ontology#/{label}",
+                        label=label,
+                        description=None,
+                        properties=properties,  # NEW: Rich schema
+                    )
+                )
+            
+            logger.info("ontology_classes_loaded", count=len(ontology_classes), run_id=run_id)
+            
+            # Get ontology relations for extraction (NEW - Phase 5)
+            ontology_relations = []
+            try:
+                # Query ontology for all object properties (relations)
+                relation_uris = ontology_service.get_class_relations(None)  # Get all relations
+                ontology_relations = [
+                    OntologyRelationDef(
+                        uri=f"http://ontology#/{rel}",
+                        label=rel,
+                        description=None,
+                    )
+                    for rel in relation_uris
+                ]
+            except Exception as e:
+                logger.warning("ontology_relations_load_failed", error=str(e))
+                ontology_relations = []
+            
+            logger.info("ontology_relations_loaded", count=len(ontology_relations), run_id=run_id)
+            
+            # Discovery loop
+            discovery_loop = IterativeDiscoveryLoop(
+                retriever=retriever,
+                extractor=entity_extractor,
+                question_generator=question_gen,
+                ontology_classes=ontology_classes,
+                relation_extractor=relation_extractor,  # NEW: Wire Phase 5
+                ontology_relations=ontology_relations,  # NEW: Wire Phase 5
+            )
+            
+            # Run discovery loop with continuous wandb logging
+            logger.info("kg_build_starting_discovery", run_id=run_id)
+            
+            # Log initial state to wandb
+            if wandb_run is not None:
+                wandb_run.log({
+                    "status": "discovery_started",
+                    "ontology_classes": len(ontology_classes),
+                    "max_iterations": variant.params.max_iterations,
+                })
+            
+            discover_result = discovery_loop.run_discovery(
+                max_iterations=variant.params.max_iterations,
+                coverage_target=0.85,
+                top_k_docs=10,
+                ontology_classes=ontology_classes,
+                extract_relations=True,  # NEW: One-pass entity + relation extraction
+            )
+            
+            # Get entities and relations from discovery result (dataclass, not dict)
+            entities = discover_result.entities
+            relations = getattr(discover_result, 'relations', [])  # NEW: Get extracted relations
+            
+            # Log discovery results to wandb continuously
+            if wandb_run is not None:
+                wandb_run.log({
+                    "discovery_complete": 1,
+                    "entities_discovered": len(entities),
+                    "discovery_iterations": discover_result.total_iterations,
+                    "discovery_coverage": discover_result.final_coverage,
+                    "discovery_time_sec": discover_result.total_time_sec,
+                })
+            
+            logger.info(
+                "kg_build_discovery_complete",
+                run_id=run_id,
+                entities=len(entities),
+                success=discover_result.success,
+                coverage=discover_result.final_coverage,
+            )
+            
+            # Build KG with KGBuilder
+            logger.info("kg_build_assembling", run_id=run_id)
+            
+            # Convert ExtractedEntity to Node format
+            nodes = [
+                Node(
+                    id=e.id,
+                    label=e.label,
+                    node_type=e.entity_type,
+                    properties={
+                        "confidence": e.confidence,
+                        "description": getattr(e, "description", ""),
+                        "run_id": run_id
+                    }
+                )
+                for e in entities
+            ]
+            
+            # Build graph with BOTH entities and relations (NEW - Phase 5)
+            builder = KGBuilder(
+                primary_store=neo4j_store,
+                config=KGBuilderConfig(
+                    sync_stores=False,
+                    batch_size=1000,
+                )
+            )
+            
+            # Log relation count if we extracted relations
+            if relations:
+                logger.info("kg_build_with_relations", relation_count=len(relations), run_id=run_id)
+            
+            # Build with relations (NOW includes Phase 5 output!)
+            build_result = builder.build(entities=nodes, relations=relations if relations else None)
+            
+            build_time = time.time() - build_start
+            
+            # Log KG build results to wandb
+            if wandb_run is not None:
+                wandb_run.log({
+                    "kg_build_complete": 1,
+                    "nodes_created": build_result.nodes_created,
+                    "edges_created": build_result.edges_created,
+                    "build_time_seconds": round(build_time, 2),
+                })
+            
+            logger.info(
+                "kg_build_complete",
+                run_id=run_id,
+                nodes_created=build_result.nodes_created,
+                edges_created=build_result.edges_created,
+                build_time=build_time
+            )
+            
+            return {
+                "nodes": build_result.nodes_created,
+                "edges": build_result.edges_created,
+                "build_time_seconds": round(build_time, 2),
+                "model": variant.params.model,
+                "max_iterations": variant.params.max_iterations,
+            }
+
+        except Exception as e:
+            logger.error("kg_build_failed", run_id=run_id, error=str(e))
+            raise
 
     @staticmethod
     def _simulate_evaluation(variant: ConfigVariant) -> dict[str, Any]:

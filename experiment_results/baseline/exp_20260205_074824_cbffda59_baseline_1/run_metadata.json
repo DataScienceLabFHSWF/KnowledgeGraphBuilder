@@ -1,0 +1,27 @@
+{
+  "run_id": "exp_20260205_074824_cbffda59_baseline_1",
+  "variant_name": "baseline",
+  "run_number": 1,
+  "status": "failed",
+  "start_time": "2026-02-05T07:48:24.757385",
+  "end_time": "2026-02-05T07:48:26.957659",
+  "duration_seconds": 2.2,
+  "kg_metrics": {},
+  "eval_metrics": {},
+  "error": "FusionRAGRetriever.__init__() got an unexpected keyword argument 'vector_store'",
+  "metadata": {
+    "run_id": "exp_20260205_074824_cbffda59_baseline_1",
+    "variant_name": "baseline",
+    "started_at": "2026-02-05T07:48:24.757385",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "error_at": "2026-02-05T07:48:26.955385",
+    "error_type": "TypeError"
+  }
+}
