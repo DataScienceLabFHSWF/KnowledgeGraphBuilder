@@ -372,6 +372,16 @@ class ConfigRunner:
                 sparse_weight=0.3
             )
             
+            # Build sparse index from Qdrant for hybrid retrieval
+            logger.info("building_sparse_index_for_retrieval", run_id=run_id)
+            retriever._build_sparse_index_from_qdrant()
+            if retriever._index_built:
+                logger.info(
+                    "sparse_index_ready",
+                    run_id=run_id,
+                    document_count=len(retriever._documents)
+                )
+            
             # Question generation
             question_gen = QuestionGenerationAgent(
                 ontology_service=ontology_service
