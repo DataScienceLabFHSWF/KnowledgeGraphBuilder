@@ -269,3 +269,5 @@ Thumbs.db
 local-docs/
 #wandb
 wandb/
+#presentations
+presentations/

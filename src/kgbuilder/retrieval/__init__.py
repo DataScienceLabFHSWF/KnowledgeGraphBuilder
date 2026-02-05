@@ -108,6 +108,81 @@ class FusionRAGRetriever:
 
         logger.info("documents_indexed_for_fusion", count=len(documents))
 
+    def _build_sparse_index_from_qdrant(self) -> None:
+        """Build sparse index lazily from Qdrant collection.
+        
+        Scrolls through all documents in Qdrant and builds the in-memory
+        sparse index for BM25-like keyword matching on first retrieval.
+        """
+        try:
+            # Use Qdrant REST API to scroll all points
+            url = f"{self.qdrant.url}/collections/{self.qdrant.collection_name}/points/scroll"
+            page_size = 100
+            offset = None
+            
+            documents_indexed = 0
+            while True:
+                # Scroll with pagination
+                scroll_request = {
+                    "limit": page_size,
+                    "with_payload": True,
+                }
+                if offset is not None:
+                    scroll_request["offset"] = offset
+                
+                response = self.qdrant.http_client.post(
+                    f"/collections/{self.qdrant.collection_name}/points/scroll",
+                    json=scroll_request,
+                )
+                
+                if response.status_code != 200:
+                    logger.warning(
+                        "sparse_index_qdrant_scroll_failed",
+                        status=response.status_code
+                    )
+                    break
+                
+                data = response.json()
+                points = data.get("result", {}).get("points", [])
+                
+                if not points:
+                    break
+                
+                # Extract document content from payloads
+                for point in points:
+                    doc_id = point["payload"].get("id", f"point_{point['id']}")
+                    content = point["payload"].get("content", "")
+                    
+                    if content:
+                        self._documents[doc_id] = content
+                        self._metadata[doc_id] = {
+                            k: v for k, v in point["payload"].items() 
+                            if k not in ["id", "content"]
+                        }
+                        documents_indexed += 1
+                
+                # Check if there are more pages
+                next_page = data.get("result", {}).get("next_page_offset")
+                if next_page is None:
+                    break
+                offset = next_page
+            
+            if documents_indexed > 0:
+                self._index_built = True
+                logger.info(
+                    "sparse_index_built_from_qdrant",
+                    count=documents_indexed
+                )
+            else:
+                logger.warning("sparse_index_qdrant_no_documents_found")
+                
+        except Exception as e:
+            logger.warning(
+                "sparse_index_build_failed",
+                error=str(e),
+                error_type=type(e).__name__
+            )
+
     def retrieve(
         self,
         query: str,
@@ -125,6 +200,10 @@ class FusionRAGRetriever:
             List of retrieval results ranked by fusion score
         """
         top_k = top_k or self.top_k
+
+        # Lazy initialization: Build sparse index from Qdrant on first retrieval
+        if not self._index_built:
+            self._build_sparse_index_from_qdrant()
 
         # 1. Dense retrieval
         dense_results = self._dense_retrieve(query, query_embedding, top_k * 2)
