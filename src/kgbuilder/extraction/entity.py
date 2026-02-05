@@ -281,6 +281,46 @@ Extract all entities you can identify with confidence >= 0.5."""
 
         return "\n".join(lines)
 
+    def _find_entity_position(self, entity_label: str, source_text: str) -> tuple[int, int]:
+        """Find entity position in source text by searching.
+        
+        More reliable than trusting LLM-provided character offsets.
+        Searches for exact match first, then case-insensitive, then substring.
+        
+        Args:
+            entity_label: Text to search for
+            source_text: Source text to search in
+            
+        Returns:
+            Tuple (start, end) of entity position, or (-1, -1) if not found
+        """
+        if not entity_label or not source_text:
+            return -1, -1
+        
+        # Try exact match
+        pos = source_text.find(entity_label)
+        if pos >= 0:
+            return pos, pos + len(entity_label)
+        
+        # Try case-insensitive match
+        text_lower = source_text.lower()
+        label_lower = entity_label.lower()
+        pos = text_lower.find(label_lower)
+        if pos >= 0:
+            return pos, pos + len(entity_label)
+        
+        # Try matching just the first word (handles partial matches)
+        first_word = entity_label.split()[0] if entity_label.split() else ""
+        if len(first_word) > 3:  # Only for reasonably long words
+            pos = text_lower.find(first_word.lower())
+            if pos >= 0:
+                # Extend to end of nearby words for better context
+                end = pos + len(first_word)
+                return pos, end
+        
+        # Not found
+        return -1, -1
+
     def _convert_to_extracted_entities(
         self,
         output: EntityExtractionOutput,
@@ -290,6 +330,8 @@ Extract all entities you can identify with confidence >= 0.5."""
 
         Maps EntityExtractionOutput (LLM schema) to ExtractedEntity (domain model)
         and creates Evidence objects for provenance tracking.
+
+        Robustly finds entity positions by searching text when LLM offsets are invalid.
 
         Args:
             output: Structured extraction output from LLM
@@ -301,32 +343,36 @@ Extract all entities you can identify with confidence >= 0.5."""
         entities = []
 
         for item in output.entities:
-            # Handle LLM arithmetic expressions in character positions
-            # LLM sometimes outputs "266 - 12 + 8" instead of "262"
-            start_char = item.start_char
-            end_char = item.end_char
+            # Try to find entity text position in source (more reliable than LLM offsets)
+            start, end = self._find_entity_position(item.label, source_text)
             
-            if isinstance(start_char, str):
-                try:
-                    start_char = int(eval(start_char))
-                except Exception:
-                    start_char = 0
-            
-            if isinstance(end_char, str):
-                try:
-                    end_char = int(eval(end_char))
-                except Exception:
-                    end_char = start_char + len(item.label)
-            
-            # Validate character positions
-            start = max(0, min(start_char, len(source_text)))
-            end = min(len(source_text), end_char)
-            
-            if start >= end:
-                logger.warning(
-                    f"Invalid char range for entity {item.label}: [{start}, {end}]"
-                )
-                start, end = 0, 0
+            # Fall back to LLM-provided positions if search fails
+            if start < 0:
+                start_char = item.start_char
+                end_char = item.end_char
+                
+                if isinstance(start_char, str):
+                    try:
+                        start_char = int(eval(start_char))
+                    except Exception:
+                        start_char = 0
+                
+                if isinstance(end_char, str):
+                    try:
+                        end_char = int(eval(end_char))
+                    except Exception:
+                        end_char = start_char + len(item.label)
+                
+                # Validate character positions
+                start = max(0, min(start_char, len(source_text)))
+                end = min(len(source_text), end_char)
+                
+                if start >= end:
+                    logger.debug(
+                        f"Invalid char range for entity {item.label}: [{start}, {end}], "
+                        f"using label length"
+                    )
+                    start, end = 0, len(item.label)
 
             # Extract text span for evidence
             text_span = source_text[start:end].strip() if start < end else None
