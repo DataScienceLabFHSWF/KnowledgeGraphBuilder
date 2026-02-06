@@ -1,0 +1,18 @@
+[
+  {
+    "question_id": "QA_001",
+    "question": "Welche Behörde ist für die Genehmigung nach § 7 AtG zuständig?",
+    "expected_answer": "Die nach Landesrecht zuständige Behörde (Genehmigungsbehörde).",
+    "entities": ["Genehmigungsbehörde", "§ 7 AtG"],
+    "difficulty": 1,
+    "type": "entity_lookup"
+  },
+  {
+    "question_id": "QA_002",
+    "question": "Wie viele Kilogramm Kernbrennstoff fallen unter die Definition von 'Kleinmengen'?",
+    "expected_answer": "Die genaue Menge ist in der AtEV (Atomrechtliche Entsorgungsverordnung) geregelt, meist unter 15 Gramm bei bestimmten Isotopen.",
+    "entities": ["Kernbrennstoff", "AtEV"],
+    "difficulty": 3,
+    "type": "count"
+  }
+]

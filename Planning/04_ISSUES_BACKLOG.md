@@ -23,7 +23,7 @@
 | 9 | QA Evaluation | ✅ Done | ~1,300 | QA datasets, query executor, metrics (F1/accuracy/coverage) |
 | 10 | Experiment Framework | ✅ Done | ~3,300 | Manager, analyzer, plotter, reporter, checkpointing |
 | 11 | High-Performance Optimizations | ✅ Done | ~1,200 | Caching, Tiered Extraction, Parallelism |
-| 12 | Semantic Enhancement & Analytics | 📋 Planned | ~1,500 | OWL-RL inference, SKOS enrichment, embedding-based discovery, graph analytics |
+| 12 | Semantic Enhancement & Analytics | � In Progress | ~1,500 | OWL-RL inference, SKOS enrichment, embedding-based discovery, graph analytics |
 
 ### Current State
 

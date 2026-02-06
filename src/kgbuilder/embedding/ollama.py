@@ -440,6 +440,7 @@ class OllamaProvider:
                 raw_output = self.generate(
                     augmented_prompt,
                     temperature=temperature,
+                    format="json",
                     **kwargs,
                 )
 

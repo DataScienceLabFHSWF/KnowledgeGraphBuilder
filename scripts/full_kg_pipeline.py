@@ -240,6 +240,13 @@ class FullKGPipeline:
         self.versioning_service = KGVersioningService(
             storage_dir=self.config.version_dir
         )
+        
+        # Inference Engine
+        from kgbuilder.analytics.inference import Neo4jInferenceEngine
+        self.inference_engine = Neo4jInferenceEngine(
+            storage=self.graph_store,
+            ontology_service=self.ontology_service
+        )
 
         logger.info("storage_services_initialized")
 
@@ -375,6 +382,23 @@ class FullKGPipeline:
             if self.wandb_run:
                 self.wandb_run.log({"status": "kg_assembly_started"})
             self._build_kg()
+            
+            # 5.5 Semantic Inference
+            logger.info("pipeline_step", step="semantic_inference")
+            try:
+                inference_stats = self.inference_engine.run_full_inference()
+                if self.wandb_run:
+                    self.wandb_run.log({
+                        "inference_complete": 1,
+                        "inferred_symmetric": inference_stats.get("symmetric", 0),
+                        "inferred_inverse": inference_stats.get("inverse", 0),
+                        "inferred_subclass": inference_stats.get("subclass", 0),
+                        "inferred_transitive": inference_stats.get("transitive", 0)
+                    })
+            except Exception as e:
+                logger.error("inference_failed", error=str(e))
+                self.result.warnings.append(f"Semantic inference failed: {str(e)}")
+
             if self.wandb_run:
                 self.wandb_run.log({
                     "kg_build_complete": 1,
