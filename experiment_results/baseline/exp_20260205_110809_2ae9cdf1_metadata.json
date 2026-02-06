@@ -1,0 +1,110 @@
+{
+  "experiment_id": "exp_20260205_110809_2ae9cdf1",
+  "experiment_name": "KG Quality Baseline",
+  "started_at": "2026-02-05T11:08:09.964569",
+  "completed_at": "2026-02-05T17:54:02.888983",
+  "total_duration_seconds": 24352.924414,
+  "completed_runs": 3,
+  "failed_runs": 0,
+  "config": {
+    "name": "KG Quality Baseline",
+    "description": "Compare different extraction configurations for KG quality",
+    "output_dir": "./experiment_results/baseline",
+    "num_runs": 1,
+    "parallel_jobs": 2,
+    "seed": 42,
+    "variants": [
+      {
+        "name": "baseline",
+        "description": "Default parameters",
+        "params": {
+          "model": "qwen3:8b",
+          "max_iterations": 2,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3
+        },
+        "metadata": {
+          "tuning": "default"
+        }
+      },
+      {
+        "name": "strict",
+        "description": "High confidence and similarity thresholds",
+        "params": {
+          "model": "qwen3:8b",
+          "max_iterations": 2,
+          "similarity_threshold": 0.9,
+          "confidence_threshold": 0.75,
+          "classes_limit": null,
+          "questions_per_class": 3
+        },
+        "metadata": {
+          "tuning": "conservative"
+        }
+      },
+      {
+        "name": "permissive",
+        "description": "Low thresholds, more entities extracted",
+        "params": {
+          "model": "qwen3:8b",
+          "max_iterations": 2,
+          "similarity_threshold": 0.7,
+          "confidence_threshold": 0.5,
+          "classes_limit": null,
+          "questions_per_class": 3
+        },
+        "metadata": {
+          "tuning": "aggressive"
+        }
+      }
+    ],
+    "evaluation": {
+      "qa_dataset_path": "data/qa_benchmark.json",
+      "metrics": [
+        "accuracy",
+        "f1_score",
+        "coverage",
+        "completeness"
+      ],
+      "similarity_threshold": 0.8,
+      "max_results": 10
+    },
+    "metadata": {
+      "experimenter": "KG Team",
+      "purpose": "Baseline quality metrics"
+    }
+  },
+  "run_ids": [
+    "exp_20260205_110809_2ae9cdf1_baseline_1",
+    "exp_20260205_110809_2ae9cdf1_strict_1",
+    "exp_20260205_110809_2ae9cdf1_permissive_1"
+  ],
+  "aggregate_metrics": {
+    "baseline": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    },
+    "strict": {
+      "accuracy": 0.725,
+      "f1_score": 0.675,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 39.0
+    },
+    "permissive": {
+      "accuracy": 0.7,
+      "f1_score": 0.65,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 37.0
+    }
+  }
+}

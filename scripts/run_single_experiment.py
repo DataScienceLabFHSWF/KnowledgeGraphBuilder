@@ -5,9 +5,6 @@ This script wraps your chosen parameters into a ConfigVariant and executes one r
 """
 from __future__ import annotations
 
-
-
-
 import sys
 from pathlib import Path
 import json

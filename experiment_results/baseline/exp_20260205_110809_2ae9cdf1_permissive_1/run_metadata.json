@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260205_110809_2ae9cdf1_permissive_1",
+  "variant_name": "permissive",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-02-05T15:54:59.987221",
+  "end_time": "2026-02-05T17:54:00.610367",
+  "duration_seconds": 7140.62,
+  "kg_metrics": {
+    "nodes": 0,
+    "edges": 0,
+    "build_time_seconds": 7138.67,
+    "model": "qwen3:8b",
+    "max_iterations": 2
+  },
+  "eval_metrics": {
+    "accuracy": 0.7000000000000001,
+    "f1_score": 0.65,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 37
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260205_110809_2ae9cdf1_permissive_1",
+    "variant_name": "permissive",
+    "started_at": "2026-02-05T15:54:59.987221",
+    "params": {
+      "model": "qwen3:8b",
+      "max_iterations": 2,
+      "similarity_threshold": 0.7,
+      "confidence_threshold": 0.5,
+      "classes_limit": null,
+      "questions_per_class": 3
+    },
+    "completed_at": "2026-02-05T17:53:59.916752"
+  }
+}

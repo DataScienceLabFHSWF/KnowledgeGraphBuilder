@@ -91,7 +91,7 @@ class Neo4jGraphStore:
             Node ID
         """
         query = """
-        MERGE (n:{node_type} {{id: $id}})
+        MERGE (n:{node_type} {id: $id})
         SET n.label = $label,
             n.node_type = $node_type,
             n.properties = $properties,
