@@ -115,20 +115,30 @@ class FusekiOntologyService:
             List of (property_name, property_type_string, description) tuples
         """
         try:
+            # More robust SPARQL: 
+            # 1. Matches class by label OR by URI local name
+            # 2. Makes property label optional (fallbacks to URI fragment in python code)
             sparql = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            SELECT DISTINCT ?propLabel ?range ?comment
+            SELECT DISTINCT ?prop ?propLabel ?range ?comment
             WHERE {{
-                ?class a owl:Class ;
-                       rdfs:label ?classLabel .
+                ?class a owl:Class .
+                OPTIONAL {{ ?class rdfs:label ?classLabel . }}
+                
                 ?prop a owl:DatatypeProperty ;
-                       rdfs:domain ?class ;
-                       rdfs:label ?propLabel .
+                       rdfs:domain ?class .
+                
+                OPTIONAL {{ ?prop rdfs:label ?propLabel . }}
                 OPTIONAL {{ ?prop rdfs:range ?range . }}
                 OPTIONAL {{ ?prop rdfs:comment ?comment . }}
-                FILTER(REGEX(STR(?classLabel), "{class_label}", "i"))
+                
+                FILTER(
+                    (BOUND(?classLabel) && REGEX(STR(?classLabel), "{class_label}", "i")) ||
+                    REGEX(STR(?class), "{class_label}$", "i") ||
+                    REGEX(STR(?class), "#{class_label}$", "i")
+                )
             }}
             ORDER BY ?propLabel
             """
@@ -137,7 +147,16 @@ class FusekiOntologyService:
             properties = []
             
             for binding in result.get("results", {}).get("bindings", []):
-                prop_label = binding.get("propLabel", {}).get("value", "")
+                prop_uri = binding.get("prop", {}).get("value", "")
+                prop_label = binding.get("propLabel", {}).get("value")
+                
+                # Fallback for property label
+                if not prop_label and prop_uri:
+                    prop_label = prop_uri.split("#")[-1].split("/")[-1]
+                
+                if not prop_label:
+                    continue
+                    
                 range_uri = binding.get("range", {}).get("value", "xsd:string")
                 comment = binding.get("comment", {}).get("value", "")
                 
@@ -150,11 +169,15 @@ class FusekiOntologyService:
                     "xsd:double": "float",
                     "xsd:integer": "integer",
                     "xsd:boolean": "boolean",
+                    "http://www.w3.org/2001/XMLSchema#string": "string",
+                    "http://www.w3.org/2001/XMLSchema#integer": "integer",
+                    "http://www.w3.org/2001/XMLSchema#float": "float",
+                    "http://www.w3.org/2001/XMLSchema#boolean": "boolean",
+                    "http://www.w3.org/2001/XMLSchema#nonNegativeInteger": "integer",
                 }
                 data_type = type_map.get(range_uri, "string")
                 
-                if prop_label:
-                    properties.append((prop_label, data_type, comment))
+                properties.append((prop_label, data_type, comment))
             
             logger.info("class_properties_loaded", class_label=class_label, count=len(properties))
             return properties

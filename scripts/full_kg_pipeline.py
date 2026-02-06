@@ -29,7 +29,11 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+
+# Load environment variables
+load_dotenv()
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -102,7 +106,7 @@ class PipelineConfig(BaseModel):
 
     # Discovery
     questions_path: Path | None = Field(
-        default=None,
+        default_factory=lambda: Path(os.environ.get("QUESTIONS_PATH", "data/evaluation/competency_questions.json")) if os.environ.get("QUESTIONS_PATH") or Path("data/evaluation/competency_questions.json").exists() else None,
         description="Path to competency questions JSON file"
     )
     max_iterations: int = 3
@@ -125,7 +129,20 @@ class PipelineConfig(BaseModel):
     qdrant_url: str = Field(
         default_factory=lambda: os.environ.get("QDRANT_URL", "http://localhost:6333")
     )
-    vector_collection: str = "discovery"
+    vector_collection: str = Field(
+        default_factory=lambda: os.environ.get("VECTOR_COLLECTION", "kgbuilder")
+    )
+
+    # wandb logging
+    wandb_enabled: bool = Field(
+        default_factory=lambda: os.environ.get("WANDB_ENABLED", "true").lower() == "true"
+    )
+    wandb_project: str = Field(
+        default_factory=lambda: os.environ.get("WANDB_PROJECT", "KnowledgeGraphBuilder")
+    )
+    wandb_entity: str | None = Field(
+        default_factory=lambda: os.environ.get("WANDB_ENTITY")
+    )
 
     # Pipeline
     smoke_test: bool = False
@@ -150,6 +167,7 @@ class PipelineResult:
     """Results from complete pipeline execution."""
 
     timestamp: str
+    execution_time_seconds: float = 0.0
     ontology_classes: int = 0
     ontology_relations: int = 0
     documents_loaded: int = 0
@@ -163,6 +181,7 @@ class PipelineResult:
     validation_results: dict[str, Any] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    wandb_run_url: str | None = None
     execution_time_seconds: float = 0.0
 
 
@@ -182,6 +201,7 @@ class FullKGPipeline:
             self.config.vector_collection = "discovery_test"
             
         self.result = PipelineResult(timestamp=datetime.now().isoformat())
+        self.wandb_run = None
 
         # Initialize services
         logger.info("initializing_services")
@@ -191,6 +211,8 @@ class FullKGPipeline:
     def _init_storage_services(self) -> None:
         """Initialize storage backends."""
         logger.info("connecting_to_storage")
+        if self.wandb_run:
+            self.wandb_run.log({"status": "initializing_services"})
 
         # Ontology service
         self.ontology_service = FusekiOntologyService(
@@ -286,6 +308,22 @@ class FullKGPipeline:
         """Execute complete pipeline."""
         start_time = datetime.now()
 
+        # Initialize wandb if enabled
+        if self.config.wandb_enabled:
+            try:
+                import wandb
+                self.wandb_run = wandb.init(
+                    project=self.config.wandb_project,
+                    entity=self.config.wandb_entity,
+                    config=self.config.model_dump(),
+                    tags=["baseline" if self.config.max_iterations == 1 else "discovery", "production"],
+                    name=f"baseline_33docs_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                )
+                self.result.wandb_run_url = self.wandb_run.url
+                logger.info("wandb_initialized", url=self.wandb_run.url)
+            except Exception as e:
+                logger.warning("wandb_init_failed", error=str(e))
+
         try:
             # Enrich-only mode: load checkpoint and run enrichment
             if self.config.enrich_only and self.config.checkpoint_path:
@@ -297,6 +335,12 @@ class FullKGPipeline:
             # 1. Load ontology
             logger.info("pipeline_step", step="load_ontology")
             self._load_ontology()
+            if self.wandb_run:
+                self.wandb_run.log({
+                    "status": "ontology_loaded",
+                    "ontology_classes": self.result.ontology_classes,
+                    "ontology_relations": self.result.ontology_relations
+                })
 
             # 2. Load documents
             logger.info("pipeline_step", step="load_documents")
@@ -305,20 +349,38 @@ class FullKGPipeline:
             # 3. Discovery (if not skipped)
             if not self.config.skip_discovery:
                 logger.info("pipeline_step", step="discovery_loop")
+                if self.wandb_run:
+                    self.wandb_run.log({"status": "discovery_started"})
                 self._run_discovery()
+                if self.wandb_run:
+                    self.wandb_run.log({
+                        "discovery_complete": 1,
+                        "entities_discovered": self.result.discovered_entities,
+                        "relations_discovered": self.result.discovered_relations
+                    })
             else:
                 logger.warning("skipping_discovery", reason="config_skip_discovery=true")
 
             # 4. Enrichment (if not skipped)
             if not self.config.skip_enrichment:
                 logger.info("pipeline_step", step="enrichment")
+                if self.wandb_run:
+                    self.wandb_run.log({"status": "enrichment_started"})
                 self._run_enrichment()
             else:
                 logger.warning("skipping_enrichment", reason="config_skip_enrichment=true")
 
             # 5. KG assembly
             logger.info("pipeline_step", step="kg_assembly")
+            if self.wandb_run:
+                self.wandb_run.log({"status": "kg_assembly_started"})
             self._build_kg()
+            if self.wandb_run:
+                self.wandb_run.log({
+                    "kg_build_complete": 1,
+                    "nodes_created": self.result.kg_nodes,
+                    "edges_created": self.result.kg_edges
+                })
 
             # 6. Validation (if not skipped)
             if not self.config.skip_validation:
@@ -334,6 +396,10 @@ class FullKGPipeline:
             # 8. Snapshot for versioning
             self._create_version_snapshot()
 
+            if self.wandb_run:
+                self.wandb_run.log(asdict(self.result))
+                self.wandb_run.finish()
+
             logger.info("pipeline_completed", **asdict(self.result))
 
         except Exception as e:
@@ -344,6 +410,15 @@ class FullKGPipeline:
             self.result.execution_time_seconds = (
                 datetime.now() - start_time
             ).total_seconds()
+            
+            if self.wandb_run:
+                try:
+                    self.wandb_run.log({"total_execution_time": self.result.execution_time_seconds})
+                    if self.result.errors:
+                        self.wandb_run.alert(title="Pipeline Error", text="\n".join(self.result.errors))
+                    self.wandb_run.finish()
+                except Exception:
+                    pass
 
         return self.result
 
@@ -1001,6 +1076,26 @@ def main() -> int:
         type=Path,
         help="Path to extraction checkpoint for re-enrichment (with --enrich-only)",
     )
+    parser.add_argument(
+        "--wandb-enabled",
+        action="store_true",
+        help="Enable wandb logging",
+    )
+    parser.add_argument(
+        "--wandb-project",
+        type=str,
+        help="Wandb project name (defaults to WANDB_PROJECT env var)",
+    )
+    parser.add_argument(
+        "--wandb-entity",
+        type=str,
+        help="Wandb entity (user or org) (defaults to WANDB_ENTITY env var)",
+    )
+    parser.add_argument(
+        "--vector-collection",
+        type=str,
+        help="Vector database collection name (defaults to VECTOR_COLLECTION env var)",
+    )
 
     args = parser.parse_args()
 
@@ -1010,12 +1105,13 @@ def main() -> int:
             config_dict = json.load(f)
         config = PipelineConfig(**config_dict)
     else:
-        config = PipelineConfig(
+        # Create config with only non-None values from args to allow Field defaults (from ENVs) to work
+        config_kwargs = dict(
             ontology_url=args.ontology_url,
             ontology_path=args.ontology_path,
             document_dir=args.documents,
             output_dir=args.output,
-            questions_path=args.questions,
+            version_dir=args.version_dir,
             smoke_test=args.smoke_test,
             max_iterations=args.max_iterations,
             skip_validation=args.skip_validation,
@@ -1026,6 +1122,20 @@ def main() -> int:
             top_k_docs=args.top_k,
             generate_follow_ups=args.follow_ups.lower() == "true",
         )
+        
+        # Only add these if explicitly provided to allow PipelineConfig defaults/factories
+        if args.questions:
+            config_kwargs["questions_path"] = args.questions
+        if args.wandb_enabled:
+            config_kwargs["wandb_enabled"] = True
+        if args.wandb_project:
+            config_kwargs["wandb_project"] = args.wandb_project
+        if args.wandb_entity:
+            config_kwargs["wandb_entity"] = args.wandb_entity
+        if args.vector_collection:
+            config_kwargs["vector_collection"] = args.vector_collection
+            
+        config = PipelineConfig(**config_kwargs)
 
     # Run pipeline
     pipeline = FullKGPipeline(config)
