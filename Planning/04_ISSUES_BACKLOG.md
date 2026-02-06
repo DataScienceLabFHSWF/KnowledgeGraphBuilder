@@ -22,6 +22,7 @@
 | 8 | Validation Pipeline | ✅ Done | ~2,050 | SHACL, rules engine, consistency checker, reporter |
 | 9 | QA Evaluation | ✅ Done | ~1,300 | QA datasets, query executor, metrics (F1/accuracy/coverage) |
 | 10 | Experiment Framework | ✅ Done | ~3,300 | Manager, analyzer, plotter, reporter, checkpointing |
+| 11 | Semantic Enhancement & Analytics | 📋 Planned | ~1,500 | OWL-RL inference, SKOS enrichment, embedding-based discovery, graph analytics |
 
 ### Current State
 
@@ -242,6 +243,53 @@ Known inconsistencies to fix:
 - [ ] wandb integration for experiment metrics
 - [ ] Dashboard for pipeline health monitoring
 
+### 4.9 Phase 11+: Semantic Enhancement & Post-Construction Analytics
+
+**Rationale**: After baseline validation, enhance constructed KG with semantic closure and analytics capabilities using industry-standard tools.
+
+**Effort**: 8-12h over 2-3 iterations
+
+#### 4.9.1 Inference Layer (KGL + OWL-RL)
+
+- [ ] Integrate KGL's OWL-RL inference to compute transitive closure (e.g., `ancestorOf`, `subClassOf`, `broader`)
+- [ ] SKOS hierarchical expansion (`skos:narrower`, `skos:broader` relationships)
+- [ ] Automatic axiomatic triple generation for defined properties
+- [ ] Conflict detection via `owl:differentFrom` and `owl:sameAs` consolidation
+- [ ] Benchmark: measure KG growth (typical: 20-40% triple inflation from transitive closure)
+
+#### 4.9.2 Synonym & Entity Linking (Embeddings)
+
+- [ ] Word2Vec training on entity descriptions (gensim)
+- [ ] Compute similarity matrix for all entities
+- [ ] Identify missed merges: entities with `sim > 0.85` but not linked
+- [ ] Levenshtein distance for variant detection (e.g., "Uranium", "uranium", "U-235")
+- [ ] Generate suggestions for human-in-the-loop curation
+
+#### 4.9.3 Community Detection & Clustering
+
+- [ ] iGraph `leiden` algorithm for community structure
+- [ ] Identify dense entity clusters (potential missing relations)
+- [ ] NetworkX centrality measures (degree, betweenness, closeness)
+- [ ] Visualization of cluster hierarchies via PyVis
+- [ ] Reports on most important entities per community
+
+#### 4.9.4 KG Measurement & Diagnostics
+
+- [ ] Triple count, node count, edge count growth over iterations
+- [ ] Predicate frequency distribution (power-law analysis)
+- [ ] Degree distribution (hubs, orphans)
+- [ ] Schema coverage: % of entities that are typed vs. untyped
+- [ ] Consistency metrics: % of relations that satisfy domain/range constraints  
+- [ ] Data quality dashboard (invalid predicates, missing types, orphan entities)
+
+#### 4.9.5 Efficient Serialization & Versioning
+
+- [ ] Parquet export for KG snapshots (10x smaller than JSON-LD)
+- [ ] Incremental snapshots: only store deltas from previous iteration
+- [ ] Time-travel capability: restore KG to any previous iteration
+- [ ] S3/cloud storage integration for snapshot archival
+- [ ] Compression strategies: RDF triple compression (brotli/zstd)
+
 ---
 
 ## 5. Known Technical Debt
@@ -278,3 +326,9 @@ Known inconsistencies to fix:
 - [ ] Graph UI (§4.6)
 - [ ] CI/CD (§4.7)
 - [ ] Documentation & SDK (§4.3)
+### Milestone D: Semantic Enhancement & Analytics (Phase 11+, 6-8 weeks)
+- [ ] Semantic inference layer (OWL-RL, SKOS)
+- [ ] Synonym discovery & entity linking via embeddings
+- [ ] Community detection and graph analytics
+- [ ] Measurement & diagnostics dashboard
+- [ ] Efficient KG versioning and snapshots
