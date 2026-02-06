@@ -142,6 +142,7 @@ class PipelineConfig(BaseModel):
     )
     export_formats: list[str] = ["json-ld", "cypher", "rdf"]
     output_dir: Path = Field(default=Path("output/kg_results"))
+    version_dir: Path = Field(default=Path("output/versions"))
 
 
 @dataclass
@@ -210,6 +211,12 @@ class FullKGPipeline:
             uri=self.config.neo4j_uri,
             auth=(self.config.neo4j_user, self.config.neo4j_password),
             database=self.config.neo4j_database,
+        )
+        
+        # Versioning
+        from kgbuilder.storage.versioning import KGVersioningService
+        self.versioning_service = KGVersioningService(
+            storage_dir=self.config.version_dir
         )
 
         logger.info("storage_services_initialized")
@@ -323,6 +330,9 @@ class FullKGPipeline:
             # 7. Export
             logger.info("pipeline_step", step="export")
             self._export_kg()
+
+            # 8. Snapshot for versioning
+            self._create_version_snapshot()
 
             logger.info("pipeline_completed", **asdict(self.result))
 
@@ -868,6 +878,32 @@ class FullKGPipeline:
             logger.error("export_failed", error=str(e))
             self.result.errors.append(f"Export failed: {str(e)}")
 
+    def _create_version_snapshot(self) -> None:
+        """Create a versioned snapshot of the Knowledge Graph."""
+        try:
+            logger.info("creating_version_snapshot")
+            description = f"Pipeline run at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            
+            # Additional metadata for the version
+            custom_metadata = {
+                "max_iterations": self.config.max_iterations,
+                "top_k_docs": self.config.top_k_docs,
+                "generate_follow_ups": self.config.generate_follow_ups,
+                "smoke_test": self.config.smoke_test
+            }
+            
+            vid = self.versioning_service.create_snapshot(
+                store=self.graph_store,
+                description=description,
+                custom_metadata=custom_metadata,
+                tags=["pipeline_run", f"iter_{self.config.max_iterations}"]
+            )
+            logger.info("version_snapshot_created", version_id=vid)
+            
+        except Exception as e:
+            logger.error("version_snapshot_failed", error=str(e))
+            self.result.warnings.append(f"Failed to create version snapshot: {str(e)}")
+
 
 def main() -> int:
     """Main entry point."""
@@ -904,6 +940,12 @@ def main() -> int:
         type=Path,
         default=Path("output/kg_results"),
         help="Output directory",
+    )
+    parser.add_argument(
+        "--version-dir",
+        type=Path,
+        default=Path("output/versions"),
+        help="Directory for KG versions and snapshots",
     )
     parser.add_argument(
         "--questions",
