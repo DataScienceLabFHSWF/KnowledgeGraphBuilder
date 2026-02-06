@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -30,7 +31,9 @@ from kgbuilder.extraction.enrichment import SemanticEnrichmentPipeline
 logger = structlog.get_logger(__name__)
 
 
-def load_embedding_provider(model: str = "nomic-embed-text", base_url: str = "http://localhost:11434"):
+def load_embedding_provider(model: str = "nomic-embed-text", base_url: str | None = None):
+    if base_url is None:
+        base_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
     """Load embedding provider from Ollama.
     
     Args:
@@ -45,7 +48,9 @@ def load_embedding_provider(model: str = "nomic-embed-text", base_url: str = "ht
     return OllamaEmbeddingProvider(model=model, base_url=base_url)
 
 
-def load_llm_provider(model: str = "qwen3:8b", base_url: str = "http://localhost:11434"):
+def load_llm_provider(model: str = "qwen3:8b", base_url: str | None = None):
+    if base_url is None:
+        base_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
     """Load LLM provider from Ollama.
     
     Args:

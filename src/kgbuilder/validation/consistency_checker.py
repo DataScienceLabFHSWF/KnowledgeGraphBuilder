@@ -138,7 +138,7 @@ class ConsistencyChecker:
             logger.debug("finding_entity_conflicts", entity_id=entity_id)
 
             # Get the entity
-            nodes = store.get_all_nodes()
+            nodes = list(store.get_all_nodes())
             entity = None
             for node in nodes:
                 if node.id == entity_id:
@@ -197,7 +197,7 @@ class ConsistencyChecker:
         try:
             logger.debug("detecting_duplicates", threshold=threshold)
 
-            nodes = store.get_all_nodes()
+            nodes = list(store.get_all_nodes())
 
             # Compute pairwise similarities
             processed_pairs: set[tuple[str, str]] = set()
@@ -270,7 +270,7 @@ class ConsistencyChecker:
                 ("Organization", "Location"),
             ]
 
-            nodes = store.get_all_nodes()
+            nodes = list(store.get_all_nodes())
 
             # This is a simplified check - in production would use ontology
             # For now, just check node count

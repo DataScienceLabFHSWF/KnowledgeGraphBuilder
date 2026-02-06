@@ -1,0 +1,74 @@
+[
+    {
+        "question_id": "CQ_001",
+        "text": "Was ist der Unterschied zwischen „Freigabe“ und „Freisetzung“ bzw. „Herausgabe“ und „Herausbringen“ im Strahlenschutzrecht?",
+        "entity_class": "LegalProvision",
+        "priority": 1.0,
+        "reason": "Expert recommendation",
+        "aspect": "properties"
+    },
+    {
+        "question_id": "CQ_002",
+        "text": "Wie weicht die Definition von Kernbrennstoffen im deutschen Atomrecht vom Begriff „Kernmaterial“ nach den EURATOM-Richtlinien voneinander ab?",
+        "entity_class": "NuclearMaterial",
+        "priority": 1.0,
+        "reason": "Expert recommendation",
+        "aspect": "properties"
+    },
+    {
+        "question_id": "CQ_003",
+        "text": "Was wird bei einer Genehmigung einer Anlage nach § 9 AtG genehmigt, was bei einer Genehmigung nach § 7 AtG?",
+        "entity_class": "Permit",
+        "priority": 0.9,
+        "reason": "Expert recommendation",
+        "aspect": "relations"
+    },
+    {
+        "question_id": "CQ_004",
+        "text": "Welche Möglichkeiten bestehen für die Haftung bei Kernmaterialtransporten?",
+        "entity_class": "Transport",
+        "priority": 0.8,
+        "reason": "Expert recommendation",
+        "aspect": "relations"
+    },
+    {
+        "question_id": "CQ_005",
+        "text": "Ist/kann mit einer Genehmigung nach § 7 AtG eine Genehmigung nach § 12 StrlSchG abgedeckt sein?",
+        "entity_class": "Permit",
+        "priority": 0.8,
+        "reason": "Expert recommendation",
+        "aspect": "relations"
+    },
+    {
+        "question_id": "CQ_006",
+        "text": "Können Genehmigungen nach § 7 AtG befristet werden?",
+        "entity_class": "Permit",
+        "priority": 0.7,
+        "reason": "Expert recommendation",
+        "aspect": "properties"
+    },
+    {
+        "question_id": "CQ_007",
+        "text": "Was versteht man unter Deckungsvorsorge im Sinne des AtG?",
+        "entity_class": "FinancialSecurity",
+        "priority": 0.7,
+        "reason": "Expert recommendation",
+        "aspect": "existence"
+    },
+    {
+        "question_id": "CQ_008",
+        "text": "Welches sind die Schutzziele der Sicherung kerntechnischer Anlagen?",
+        "entity_class": "SecurityObjective",
+        "priority": 0.9,
+        "reason": "Expert recommendation",
+        "aspect": "existence"
+    },
+    {
+        "question_id": "CQ_009",
+        "text": "Wie sind die Begriffe „Störfall“ und „Unfall“ definiert?",
+        "entity_class": "Incident",
+        "priority": 0.9,
+        "reason": "Expert recommendation",
+        "aspect": "properties"
+    }
+]

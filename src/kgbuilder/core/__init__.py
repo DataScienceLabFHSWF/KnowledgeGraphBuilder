@@ -1,5 +1,6 @@
 """Core package exports."""
 
+from kgbuilder.core.env import get_base_url
 from kgbuilder.core.exceptions import (
     DocumentLoadError,
     ExtractionError,
@@ -28,6 +29,8 @@ from kgbuilder.core.protocols import (
 )
 
 __all__ = [
+    # Env
+    "get_base_url",
     # Exceptions
     "KGBuilderError",
     "DocumentLoadError",

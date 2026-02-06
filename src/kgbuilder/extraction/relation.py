@@ -122,9 +122,12 @@ class LLMRelationExtractor:
         ontology_dict = {r.uri: r for r in ontology_relations}
         
         # 2. Get LLM chain
+        model = getattr(self._llm, "model", "qwen3:8b")
+        base_url = getattr(self._llm, "base_url", None)
+        
         chain = ExtractionChains.create_relation_extraction_chain(
-            model="qwen3",
-            base_url="http://localhost:11434",
+            model=model,
+            base_url=base_url,
             temperature=0.5
         )
         
@@ -172,8 +175,10 @@ class LLMRelationExtractor:
                         confidence=rel_item.confidence,
                         evidence=[
                             Evidence(
-                                source_text=text,
-                                position=(0, len(text))
+                                source_type="local_doc",
+                                source_id="text",
+                                text_span=text[:500], # Don't store huge text in every relation evidence
+                                confidence=rel_item.confidence
                             )
                         ]
                     )

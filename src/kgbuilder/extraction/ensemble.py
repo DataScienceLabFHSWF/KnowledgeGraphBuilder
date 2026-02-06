@@ -16,10 +16,98 @@ import logging
 from collections import defaultdict
 from typing import Any
 
-from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.entity import OntologyClassDef
 
 logger = logging.getLogger(__name__)
+
+
+class TieredExtractor:
+    """Tiered entity extractor that tries fast heuristics before slow LLMs.
+
+    Strategy:
+    1. Run rule-based extractor (deterministic, <1ms)
+    2. If results found, return them (time saving)
+    3. If no results found, run LLM extractor (fallback)
+    """
+
+    def __init__(
+        self,
+        rule_extractor: Any,
+        llm_extractor: Any,
+        min_entities_heuristic: int = 1,
+    ) -> None:
+        """Initialize tiered extractor.
+
+        Args:
+            rule_extractor: Fast heuristic extractor (e.g. RuleBasedExtractor)
+            llm_extractor: Slow but thorough extractor (e.g. LLMEntityExtractor)
+            min_entities_heuristic: If rules find at least this many, skip LLM
+        """
+        self.rule_extractor = rule_extractor
+        self.llm_extractor = llm_extractor
+        self.min_entities = min_entities_heuristic
+        logger.info(
+            f"✓ Initialized TieredExtractor (Rules -> {llm_extractor.__class__.__name__})"
+        )
+
+    def extract(
+        self,
+        text: str,
+        ontology_classes: list[Any] | None = None,
+        existing_entities: list[ExtractedEntity] | None = None,
+    ) -> list[ExtractedEntity]:
+        """Extract entities using tiered approach."""
+        # 1. Try rules first (fast)
+        rule_results = self.rule_extractor.extract(text, ontology_classes, existing_entities)
+
+        # 2. If rules find enough, stop here (time savings)
+        if rule_results and len(rule_results) >= self.min_entities:
+            logger.info("heuristic_extraction_sufficient", count=len(rule_results))
+            return rule_results
+
+        # 3. Fallback to LLM (slow but thorough)
+        logger.debug("heuristic_insufficient_falling_back_to_llm")
+        llm_results = self.llm_extractor.extract(text, ontology_classes, existing_entities)
+
+        return llm_results if llm_results else rule_results
+
+
+class TieredRelationExtractor:
+    """Tiered relation extractor (Rules -> LLM)."""
+
+    def __init__(
+        self,
+        rule_extractor: Any,
+        llm_extractor: Any,
+        min_relations_heuristic: int = 1,
+    ) -> None:
+        """Initialize tiered relation extractor."""
+        self.rule_extractor = rule_extractor
+        self.llm_extractor = llm_extractor
+        self.min_relations = min_relations_heuristic
+        logger.info(
+            f"✓ Initialized TieredRelationExtractor (Rules -> {llm_extractor.__class__.__name__})"
+        )
+
+    def extract(
+        self,
+        text: str,
+        entities: list[ExtractedEntity],
+        ontology_relations: list[Any],
+    ) -> list[ExtractedRelation]:
+        """Extract relations using tiered approach."""
+        # 1. Try rules first
+        rule_results = self.rule_extractor.extract(text, entities, ontology_relations)
+
+        # 2. If skip threshold reached (optional, for now we usually want LLM too)
+        # But per user request for "deterministic" first:
+        if rule_results and len(rule_results) >= self.min_relations:
+            logger.info("heuristic_relations_sufficient", count=len(rule_results))
+            return rule_results
+
+        # 3. Fallback to LLM
+        return self.llm_extractor.extract(text, entities, ontology_relations)
 
 
 class EnsembleExtractor:

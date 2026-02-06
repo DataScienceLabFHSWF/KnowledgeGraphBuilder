@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -39,10 +40,11 @@ def main() -> None:
     from kgbuilder.retrieval import EnhancedFusionRAGRetriever
 
     try:
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
         # Initialize components (localhost overrides for local testing)
         llm = OllamaProvider(
             model="qwen3",
-            base_url="http://localhost:11434",
+            base_url=ollama_url,
         )
         logger.info("llm_initialized", model=llm.model)
 
@@ -58,7 +60,7 @@ def main() -> None:
             vector_store=qdrant,
             llm_provider=llm,
             embedding_model="qwen3-embedding",
-            ollama_base_url="http://localhost:11434",
+            ollama_base_url=ollama_url,
             top_k=5,
         )
 
@@ -72,7 +74,7 @@ def main() -> None:
             vector_store=qdrant,
             llm_provider=llm,
             embedding_model="qwen3-embedding",
-            ollama_base_url="http://localhost:11434",
+            ollama_base_url=ollama_url,
             top_k=5,
             dense_weight=0.6,
             sparse_weight=0.4,

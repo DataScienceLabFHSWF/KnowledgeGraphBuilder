@@ -18,6 +18,8 @@ from typing import Any
 import numpy as np
 import ollama
 from rank_bm25 import BM25Okapi
+
+from kgbuilder.core import get_base_url
 from sentence_transformers import CrossEncoder
 
 logger = logging.getLogger(__name__)
@@ -174,7 +176,7 @@ class EnhancedFusionRAGRetriever:
         vector_store: Any,  # QdrantStore
         llm_provider: Any,  # OllamaProvider
         embedding_model: str = "qwen3-embedding",
-        ollama_base_url: str = "http://localhost:11434",
+        ollama_base_url: str | None = None,
         top_k: int = 10,
         dense_weight: float = 0.6,
         sparse_weight: float = 0.4,
@@ -195,7 +197,7 @@ class EnhancedFusionRAGRetriever:
         self.vector_store = vector_store
         self.llm = llm_provider
         self.embedding_model = embedding_model
-        self.ollama_base_url = ollama_base_url
+        self.ollama_base_url = get_base_url(ollama_base_url)
         self.top_k = top_k
         self.dense_weight = dense_weight
         self.sparse_weight = sparse_weight

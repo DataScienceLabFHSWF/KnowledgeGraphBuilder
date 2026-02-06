@@ -27,19 +27,27 @@ class FusekiOntologyService:
     used instead of mock services to ensure pipelines use real ontology data.
     """
 
-    def __init__(self, fuseki_url: str, dataset_name: str):
+    def __init__(self, fuseki_url: str, dataset_name: str, username: str | None = None, password: str | None = None):
         """Initialize with Fuseki connection.
         
         Args:
             fuseki_url: Base Fuseki URL (e.g., http://localhost:3030)
             dataset_name: Dataset/graph name (e.g., kgbuilder)
+            username: Optional username for HTTP Basic Auth
+            password: Optional password for HTTP Basic Auth
         """
-        self.store = FusekiStore(url=fuseki_url, dataset_name=dataset_name)
+        self.store = FusekiStore(
+            url=fuseki_url, 
+            dataset_name=dataset_name,
+            username=username,
+            password=password
+        )
         self._classes_cache = None
         logger.info(
             "fuseki_ontology_initialized",
             url=fuseki_url,
-            dataset=dataset_name
+            dataset=dataset_name,
+            authenticated=bool(username)
         )
 
     def get_all_classes(self) -> list[str]:
@@ -208,6 +216,37 @@ class FusekiOntologyService:
         except Exception as e:
             logger.warning("relations_load_failed", class_uri=class_uri, error=str(e))
             raise RuntimeError(f"Failed to load relations for {class_uri}: {e}") from e
+
+    def get_all_relations(self) -> list[str]:
+        """Get all ObjectProperties defined in the ontology.
+        
+        Returns:
+            List of relation labels/names
+        """
+        try:
+            sparql = """
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT DISTINCT ?prop ?label
+            WHERE {
+                ?prop a owl:ObjectProperty .
+                OPTIONAL { ?prop rdfs:label ?label . }
+            }
+            LIMIT 200
+            """
+            result = self.store.query_sparql(sparql)
+            relations = []
+            for binding in result.get("results", {}).get("bindings", []):
+                prop_uri = binding.get("prop", {}).get("value", "")
+                label = binding.get("label", {}).get("value")
+                if not label and prop_uri:
+                    label = prop_uri.split("#")[-1].split("/")[-1]
+                if label:
+                    relations.append(label)
+            return relations
+        except Exception as e:
+            logger.warning("all_relations_load_failed", error=str(e))
+            return []
 
     def get_class_hierarchy(self, class_name: str) -> dict[str, Any]:
         """Get hierarchy information for a class.

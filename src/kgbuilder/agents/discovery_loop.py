@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import structlog
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -157,6 +158,7 @@ class IterativeDiscoveryLoop:
         top_k_docs: int = 10,
         ontology_classes: list[Any] | None = None,
         extract_relations: bool = True,  # NEW: Phase 5 flag
+        generate_follow_ups: bool = True, # NEW: Toggle synthetic questions
     ) -> DiscoveryResult:
         """Run iterative discovery loop.
 
@@ -167,6 +169,7 @@ class IterativeDiscoveryLoop:
             top_k_docs: Number of documents to retrieve per question
             ontology_classes: List of ontology class definitions for extraction guidance
             extract_relations: Whether to extract relations (Phase 5) during discovery (NEW)
+            generate_follow_ups: Whether to generate synthetic follow-up questions (NEW)
 
         Returns:
             DiscoveryResult with all findings and metadata
@@ -210,13 +213,32 @@ class IterativeDiscoveryLoop:
                     current_coverage=f"{coverage:.2f}",
                 )
 
-                # Process questions in this iteration
+                # Process questions in this iteration in parallel
                 questions_processed = 0
                 pre_iteration_count = len(self._findings)
 
-                for question in current_questions:
-                    self._process_question(question, top_k_docs, classes_to_use)
-                    questions_processed += 1
+                # Use ThreadPoolExecutor for concurrent extraction (speedup)
+                max_workers = 3 # Conservative parallel processing for Ollama
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = []
+                    for question in current_questions:
+                        futures.append(
+                            executor.submit(
+                                self._process_question,
+                                question,
+                                top_k_docs,
+                                classes_to_use,
+                                extract_relations=extract_relations
+                            )
+                        )
+                    
+                    # Wait for all to complete
+                    for future in futures:
+                        try:
+                            future.result()
+                            questions_processed += 1
+                        except Exception as e:
+                            self._logger.error("question_processing_failed", error=str(e))
 
                 # Calculate coverage after this iteration
                 entities_in_iteration = len(self._findings) - pre_iteration_count
@@ -244,13 +266,16 @@ class IterativeDiscoveryLoop:
                     time_sec=f"{iter_result.processing_time_sec:.2f}",
                 )
 
-                # Generate follow-up questions
-                discoveries = [e for e in self._findings.values()]
-                follow_ups = self._question_gen.generate_follow_up_questions(
-                    discoveries=discoveries,
-                    current_questions=current_questions,
-                    max_new_questions=5,
-                )
+                # Generate follow-up questions (if enabled)
+                if generate_follow_ups:
+                    discoveries = [e for e in self._findings.values()]
+                    follow_ups = self._question_gen.generate_follow_up_questions(
+                        discoveries=discoveries,
+                        current_questions=current_questions,
+                        max_new_questions=5,
+                    )
+                else:
+                    follow_ups = []
 
                 # Check stopping criteria
                 if coverage >= coverage_target:
@@ -322,11 +347,12 @@ class IterativeDiscoveryLoop:
         question: ResearchQuestion,
         top_k_docs: int,
         ontology_classes: list[Any] | None = None,
+        extract_relations: bool = True,
     ) -> None:
         """Process a single research question.
 
         Steps:
-        1. Retrieve relevant documents
+        1. Retrieve documents
         2. Extract entities from documents
         3. Update accumulated findings
         4. Track provenance
@@ -335,6 +361,7 @@ class IterativeDiscoveryLoop:
             question: Research question to process
             top_k_docs: Number of documents to retrieve
             ontology_classes: Optional list of ontology classes for extraction guidance
+            extract_relations: Whether to extract relations (Phase 5) during discovery (NEW)
         """
         self._logger.info(
             "processing_question",
@@ -415,6 +442,7 @@ class IterativeDiscoveryLoop:
                         "extraction_failed_for_document",
                         question_id=question.question_id,
                         doc_id=result.doc_id,
+                        error=str(e),
                     )
                     continue
 

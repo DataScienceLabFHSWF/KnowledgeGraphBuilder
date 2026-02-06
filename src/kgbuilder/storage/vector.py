@@ -109,6 +109,18 @@ class QdrantStore:
         """Verify Qdrant connection is working."""
         self.client.get_collections()
 
+    def get_points_count(self) -> int:
+        """Get number of points in the collection.
+        
+        Returns:
+            Number of points, or 0 if collection doesn't exist
+        """
+        try:
+            info = self.client.get_collection(self.collection_name)
+            return info.points_count or 0
+        except Exception:
+            return 0
+
     def store(
         self,
         ids: list[str],

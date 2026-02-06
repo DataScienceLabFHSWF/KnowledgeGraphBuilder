@@ -6,19 +6,30 @@ Supports:
 - Structured JSON output with Pydantic validation
 - Multiple model support (QWEN3, qwen3-next, etc.)
 - Embedding generation via embedding models
+- Resilient retry with exponential backoff + jitter
+- Connection pooling and circuit breaker
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
+import pickle
+import random
+import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import requests
+import structlog
 from pydantic import BaseModel, ValidationError
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class OllamaProvider:
@@ -31,34 +42,184 @@ class OllamaProvider:
     Provides both unstructured and structured (JSON) output generation.
     """
 
+    _DEFAULT_BASE_URL = "http://localhost:18134"
+
     def __init__(
         self,
-        model: str = "qwen3",
-        base_url: str = "http://localhost:11434",
+        model: str | None = None,
+        base_url: str | None = None,
         temperature: float = 0.7,
         top_p: float = 0.9,
-        timeout: int = 300,
+        timeout: int = 600,
     ) -> None:
-        """Initialize Ollama provider.
+        """Initialize Ollama provider with resilient connection pooling and retry logic.
 
         Args:
-            model: Model name (e.g., 'qwen3', 'qwen3-next', 'llama2')
+            model: Model name (default: OLLAMA_LLM_MODEL or qwen3:8b)
             base_url: Ollama API base URL
             temperature: Sampling temperature (0-2)
             top_p: Top-p nucleus sampling
-            timeout: Request timeout in seconds (300s for docker Ollama performance)
+            timeout: Request timeout in seconds (600s default for Docker Ollama)
 
         Raises:
             ConnectionError: If Ollama service is not running
         """
-        self.model = model
-        self.base_url = base_url
+        self.model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
+        self.base_url = base_url or os.environ.get("OLLAMA_URL", self._DEFAULT_BASE_URL)
         self.temperature = temperature
         self.top_p = top_p
         self.timeout = timeout
+        
+        # Circuit breaker state for fault tolerance
+        self.consecutive_timeouts = 0
+        self.circuit_breaker_threshold = 5  # Open circuit after 5 consecutive timeouts
+        self.circuit_breaker_open = False
+        self.last_circuit_reset = time.time()
+        self.circuit_reset_interval = 60  # Reset circuit every 60s
+
+        # Test connection and log detected models
+        self._check_connection()
+
+        # Cached model metadata (lazy-loaded from Ollama API)
+        self._dimension: int | None = None
+        
+        # PERSISTENT CACHE (New Optimization)
+        self.cache_dir = Path(".cache/ollama")
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._cache_hits = 0
+        self._cache_misses = 0
+
+    def _get_cache_key(self, prompt: str, **kwargs: Any) -> str:
+        """Generate unique key for prompt and params."""
+        params_str = json.dumps(kwargs, sort_keys=True)
+        content = f"{self.model}:{prompt}:{params_str}"
+        return hashlib.sha256(content.encode()).hexdigest()
+
+    def _load_cache(self, key: str) -> str | None:
+        cache_file = self.cache_dir / f"{key}.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r") as f:
+                    data = json.load(f)
+                    self._cache_hits += 1
+                    return data["response"]
+            except Exception:
+                return None
+        return None
+
+    def _save_cache(self, key: str, response: str) -> None:
+        cache_file = self.cache_dir / f"{key}.json"
+        try:
+            with open(cache_file, "w") as f:
+                json.dump({"response": response, "timestamp": time.time()}, f)
+            self._cache_misses += 1
+        except Exception:
+            pass
+
+    def _check_connection(self) -> None:
+        """Verify connection to Ollama and log available models."""
+        try:
+            import requests
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = [m["name"] for m in response.json().get("models", [])]
+                logger.info(
+                    "ollama_connection_verified",
+                    base_url=self.base_url,
+                    available_models=models,
+                    configured_model=self.model
+                )
+                if self.model not in models and ":" not in self.model:
+                    # Try to find a match if version tag is missing
+                    matches = [m for m in models if m.startswith(f"{self.model}:")]
+                    if matches:
+                        old_model = self.model
+                        self.model = matches[0]
+                        logger.warning(
+                            "model_version_resolved",
+                            requested=old_model,
+                            resolved=self.model,
+                            hint="Explicitly set version tag in config to avoid this warning"
+                        )
+            else:
+                logger.warning(
+                    "ollama_connection_status_error",
+                    status=response.status_code,
+                    base_url=self.base_url
+                )
+        except Exception as e:
+            logger.error(
+                "ollama_connection_failed",
+                error=str(e),
+                base_url=self.base_url,
+                hint="Check if Ollama is running and accessible"
+            )
+        self._max_tokens: int | None = None
+
+        # Connection pooling with retry configuration
+        self.session = self._create_session()
 
         # Verify connection
         self._verify_connection()
+
+    def _create_session(self) -> requests.Session:
+        """Create requests Session with connection pooling and retry strategy.
+        
+        Returns:
+            Configured requests.Session with resilience
+        """
+        session = requests.Session()
+        
+        # Retry strategy: exponential backoff for transient failures
+        retry_strategy = Retry(
+            total=3,  # Total number of retries
+            backoff_factor=0.5,  # Exponential backoff: 0.5s, 1s, 2s
+            status_forcelist=[408, 502, 503, 504],  # Retry on these HTTP codes
+            allowed_methods=["GET", "POST"],  # Allow retries on these methods
+        )
+        
+        # Mount adapters for HTTP and HTTPS
+        adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=10)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        return session
+
+    def _check_circuit_breaker(self) -> None:
+        """Check and potentially reset circuit breaker.
+        
+        Raises:
+            RuntimeError: If circuit breaker is open (too many recent timeouts)
+        """
+        # Attempt to reset circuit breaker after interval
+        if self.circuit_breaker_open:
+            if time.time() - self.last_circuit_reset > self.circuit_reset_interval:
+                logger.info("Circuit breaker reset interval reached, attempting recovery")
+                self.circuit_breaker_open = False
+                self.consecutive_timeouts = 0
+                self.last_circuit_reset = time.time()
+            else:
+                raise RuntimeError(
+                    f"Circuit breaker OPEN: Too many timeouts ({self.consecutive_timeouts}). "
+                    f"Ollama service may be unavailable. Will retry in {self.circuit_reset_interval}s."
+                )
+
+    def _record_timeout(self) -> None:
+        """Record timeout and potentially open circuit breaker."""
+        self.consecutive_timeouts += 1
+        if self.consecutive_timeouts >= self.circuit_breaker_threshold:
+            self.circuit_breaker_open = True
+            self.last_circuit_reset = time.time()
+            logger.error(
+                f"Circuit breaker OPENED: {self.consecutive_timeouts} consecutive timeouts"
+            )
+
+    def _record_success(self) -> None:
+        """Record successful call and reset timeout counter."""
+        self.consecutive_timeouts = 0
+        if self.circuit_breaker_open:
+            logger.info("Circuit breaker recovered, resuming normal operation")
+            self.circuit_breaker_open = False
 
     def _verify_connection(self) -> None:
         """Verify Ollama service is running and model is available.
@@ -68,7 +229,7 @@ class OllamaProvider:
             ValueError: If model not available
         """
         try:
-            response = requests.get(
+            response = self.session.get(
                 f"{self.base_url}/api/tags",
                 timeout=5,
             )
@@ -77,12 +238,28 @@ class OllamaProvider:
             model_names = [m["name"] for m in models]
 
             if not model_names:
-                logger.warning("No models found in Ollama")
-            elif not any(self.model in name for name in model_names):
-                logger.warning(
-                    f"Model {self.model} not found in Ollama. Available: {model_names}"
+                logger.warning("No models found in Ollama", base_url=self.base_url)
+            else:
+                logger.info(
+                    "ollama_connection_verified",
+                    base_url=self.base_url,
+                    model_count=len(model_names),
+                    available_models=model_names
                 )
-            logger.info(f"✓ Connected to Ollama ({len(model_names)} models)")
+
+            if model_names and not any(self.model in name for name in model_names):
+                logger.warning(
+                    f"Target model {self.model} not found in available models",
+                    target_model=self.model,
+                    available_models=model_names
+                )
+            
+            self._record_success()
+        except requests.exceptions.Timeout:
+            raise ConnectionError(
+                f"Ollama connection timeout at {self.base_url}. "
+                f"Service may be slow or unavailable. Try increasing timeout."
+            )
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError(
                 f"Cannot connect to Ollama at {self.base_url}. "
@@ -96,8 +273,10 @@ class OllamaProvider:
         """Get model identifier."""
         return self.model
 
+
+
     def generate(self, prompt: str, **kwargs: Any) -> str:
-        """Generate unstructured text output.
+        """Generate unstructured text output with exponential backoff retry.
 
         Args:
             prompt: Input prompt
@@ -107,8 +286,18 @@ class OllamaProvider:
             Generated text
 
         Raises:
-            RuntimeError: If API call fails
+            RuntimeError: If API call fails after retries or circuit breaker is open
         """
+        # Check cache first
+        cache_key = self._get_cache_key(prompt, **kwargs)
+        cached = self._load_cache(cache_key)
+        if cached:
+            logger.debug("ollama_cache_hit", model=self.model, key=cache_key[:8])
+            return cached
+
+        # Check circuit breaker before attempting
+        self._check_circuit_breaker()
+        
         # Simple token count: whitespace split
         prompt_tokens = len(prompt.split())
         params = {
@@ -117,26 +306,77 @@ class OllamaProvider:
             "temperature": kwargs.get("temperature", self.temperature),
             "top_p": kwargs.get("top_p", self.top_p),
             "stream": False,
+            "format": kwargs.get("format", None),  # Support native JSON format if specified
         }
 
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/generate",
-                json=params,
-                timeout=self.timeout,
-            )
-            response.raise_for_status()
-            result = response.json()
-            completion = result.get("response", "")
-            completion_tokens = len(completion.split())
-            # Accumulate totals
-            OllamaProvider.total_prompt_tokens += prompt_tokens
-            OllamaProvider.total_completion_tokens += completion_tokens
-            logger.debug(f"OllamaProvider: prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens}, total_prompt={OllamaProvider.total_prompt_tokens}, total_completion={OllamaProvider.total_completion_tokens}")
-            return completion
-        except Exception as e:
-            logger.error(f"Generation failed: {e}")
-            raise RuntimeError(f"LLM generation error: {e}") from e
+        max_retries = 3
+        base_delay = 1.0  # Start with 1 second
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.session.post(
+                    f"{self.base_url}/api/generate",
+                    json=params,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                result = response.json()
+                completion = result.get("response", "")
+                completion_tokens = len(completion.split())
+                
+                # Save to cache
+                self._save_cache(cache_key, completion)
+
+                # Accumulate totals
+                OllamaProvider.total_prompt_tokens += prompt_tokens
+                OllamaProvider.total_completion_tokens += completion_tokens
+                logger.debug(
+                    f"OllamaProvider: prompt_tokens={prompt_tokens}, "
+                    f"completion_tokens={completion_tokens}, "
+                    f"total_prompt={OllamaProvider.total_prompt_tokens}, "
+                    f"total_completion={OllamaProvider.total_completion_tokens}"
+                )
+                
+                # Record success and reset consecutive timeout counter
+                self._record_success()
+                return completion
+                
+            except requests.exceptions.Timeout as e:
+                self._record_timeout()
+                if attempt < max_retries - 1:
+                    # Exponential backoff with jitter
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        f"Ollama timeout (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {delay:.2f}s... (consecutive timeouts: {self.consecutive_timeouts})"
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(
+                        f"Generation failed: Timeout after {max_retries} attempts. "
+                        f"Ollama may be overloaded or unresponsive."
+                    )
+                    raise RuntimeError(f"LLM generation timeout after {max_retries} retries: {e}") from e
+                    
+            except requests.exceptions.ConnectionError as e:
+                self._record_timeout()
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        f"Connection error (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {delay:.2f}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Generation failed: Connection error after {max_retries} attempts")
+                    raise RuntimeError(f"LLM connection failed: {e}") from e
+                    
+            except Exception as e:
+                logger.error(f"Generation failed: {type(e).__name__}: {e}")
+                raise RuntimeError(f"LLM generation error: {e}") from e
+        
+        # Shouldn't reach here due to exceptions, but just in case
+        raise RuntimeError("Generation failed: Unknown error after all retries")
     @classmethod
     def log_total_token_usage(cls) -> None:
         """Log total token usage for all OllamaProvider calls."""
@@ -375,38 +615,177 @@ class OllamaProvider:
         
         return None
 
-    def embed_query(self, query: str, embedding_model: str = "qwen3-embedding") -> Any:
-        """Generate embedding for a query using Ollama embedding model.
+    def embed_text(self, text: str) -> Any:
+        """Generate embedding for text (EmbeddingProvider protocol).
+
+        Delegates to embed_query with the default embedding model.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Numpy array of embeddings
+        """
+        return self.embed_query(text)
+
+    def embed_batch(self, texts: list[str], batch_size: int = 32) -> Any:
+        """Generate embeddings for multiple texts (EmbeddingProvider protocol).
+
+        Args:
+            texts: List of texts to embed
+            batch_size: Batch size (currently processes sequentially)
+
+        Returns:
+            List of numpy arrays
+        """
+        return [self.embed_text(t) for t in texts]
+
+    def _fetch_model_info(self, model_name: str | None = None) -> dict[str, Any]:
+        """Fetch model metadata from Ollama /api/show endpoint.
+
+        Args:
+            model_name: Model to query (defaults to self.model)
+
+        Returns:
+            Model info dict from Ollama API
+        """
+        name = model_name or self.model
+        try:
+            response = self.session.post(
+                f"{self.base_url}/api/show",
+                json={"name": name},
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.warning(f"Failed to fetch model info for {name}: {e}")
+            return {}
+
+    @property
+    def dimension(self) -> int:
+        """Embedding vector dimension, queried from Ollama model metadata."""
+        if self._dimension is None:
+            info = self._fetch_model_info()
+            model_info = info.get("model_info", {})
+            # Ollama exposes embedding_length in model_info
+            for key, value in model_info.items():
+                if "embedding_length" in key and isinstance(value, int):
+                    self._dimension = value
+                    break
+            if self._dimension is None:
+                # Fallback: generate a single embedding and measure
+                try:
+                    test_emb = self.embed_text("test")
+                    self._dimension = len(test_emb)
+                except Exception:
+                    logger.warning("Could not determine embedding dimension, using 0")
+                    self._dimension = 0
+            logger.debug(f"Embedding dimension for {self.model}: {self._dimension}")
+        return self._dimension
+
+    @property
+    def max_tokens(self) -> int:
+        """Maximum context length, queried from Ollama model metadata."""
+        if self._max_tokens is None:
+            info = self._fetch_model_info()
+            model_info = info.get("model_info", {})
+            # Ollama exposes context_length in model_info
+            for key, value in model_info.items():
+                if "context_length" in key and isinstance(value, int):
+                    self._max_tokens = value
+                    break
+            if self._max_tokens is None:
+                # Check modelfile parameters
+                params = info.get("parameters", "")
+                if "num_ctx" in params:
+                    try:
+                        for line in params.split("\n"):
+                            if "num_ctx" in line:
+                                self._max_tokens = int(line.split()[-1])
+                                break
+                    except (ValueError, IndexError):
+                        pass
+            if self._max_tokens is None:
+                logger.warning("Could not determine max_tokens from model info, defaulting to 0")
+                self._max_tokens = 0
+            logger.debug(f"Max tokens for {self.model}: {self._max_tokens}")
+        return self._max_tokens
+
+    def embed_query(self, query: str, embedding_model: str | None = None) -> Any:
+        """Generate embedding for a query using Ollama embedding model with resilient retry.
 
         Args:
             query: Text to embed
-            embedding_model: Embedding model name (default: qwen3-embedding)
+            embedding_model: Embedding model name (default: OLLAMA_EMBED_MODEL env var or qwen3-embedding)
 
         Returns:
             Numpy array of embeddings
 
         Raises:
-            RuntimeError: If embedding API call fails
+            RuntimeError: If embedding API call fails after retries
         """
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/embed",
-                json={
-                    "model": embedding_model,
-                    "input": query,
-                },
-                timeout=self.timeout,
-            )
-            response.raise_for_status()
-            result = response.json()
-            embeddings = result.get("embeddings", [])
+        if embedding_model is None:
+            embedding_model = os.environ.get("OLLAMA_EMBED_MODEL", "qwen3-embedding")
             
-            if not embeddings or not embeddings[0]:
-                raise RuntimeError("No embeddings returned from Ollama")
-            
-            # Return first embedding (embeddings is list of lists)
-            return np.array(embeddings[0], dtype=np.float32)
-        except Exception as e:
-            logger.error(f"Embedding failed: {e}")
-            raise RuntimeError(f"Embedding error: {e}") from e
+        # Check circuit breaker before attempting
+        self._check_circuit_breaker()
+        
+        max_retries = 3
+        base_delay = 1.0
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.session.post(
+                    f"{self.base_url}/api/embed",
+                    json={
+                        "model": embedding_model,
+                        "input": query,
+                    },
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                result = response.json()
+                embeddings = result.get("embeddings", [])
+                
+                if not embeddings or not embeddings[0]:
+                    raise RuntimeError("No embeddings returned from Ollama")
+                
+                # Record success
+                self._record_success()
+                
+                # Return first embedding (embeddings is list of lists)
+                return np.array(embeddings[0], dtype=np.float32)
+                
+            except requests.exceptions.Timeout as e:
+                self._record_timeout()
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        f"Embedding timeout (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {delay:.2f}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Embedding failed: Timeout after {max_retries} attempts")
+                    raise RuntimeError(f"Embedding timeout after {max_retries} retries: {e}") from e
+                    
+            except requests.exceptions.ConnectionError as e:
+                self._record_timeout()
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        f"Embedding connection error (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {delay:.2f}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Embedding failed: Connection error after {max_retries} attempts")
+                    raise RuntimeError(f"Embedding connection failed: {e}") from e
+                    
+            except Exception as e:
+                logger.error(f"Embedding failed: {type(e).__name__}: {e}")
+                raise RuntimeError(f"Embedding error: {e}") from e
+        
+        raise RuntimeError("Embedding failed: unknown error after all retries")
 

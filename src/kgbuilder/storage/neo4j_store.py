@@ -52,22 +52,27 @@ class Neo4jGraphStore:
     Thread-safe through Neo4j driver connection pooling.
     """
 
-    def __init__(self, uri: str, auth: tuple[str, str]) -> None:
+    def __init__(self, uri: str, auth: tuple[str, str], database: str = "neo4j") -> None:
         """Initialize Neo4j graph store.
 
         Args:
             uri: Neo4j bolt URI (e.g., "bolt://localhost:7687")
             auth: (username, password) tuple
+            database: Database name to use (default: "neo4j")
 
         Raises:
             ServiceUnavailable: If cannot connect to Neo4j
         """
         try:
             self._driver = GraphDatabase.driver(uri, auth=auth)
-            # Test connection
-            with self._driver.session() as session:
-                session.run("RETURN 1")
-            logger.info("neo4j_connected", uri=uri)
+            self.database = database
+            # Test connection - system database doesn't support RETURN 1
+            with self._driver.session(database=self.database) as session:
+                if self.database == "system":
+                    session.run("SHOW DATABASES")
+                else:
+                    session.run("RETURN 1")
+            logger.info("neo4j_connected", uri=uri, database=database)
             self._uri = uri
         except ServiceUnavailable as e:
             logger.error("neo4j_connection_failed", uri=uri, error=str(e))
@@ -99,7 +104,7 @@ class Neo4jGraphStore:
         RETURN n.id AS id
         """
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(
                 query.replace("{node_type}", node.node_type),
                 id=node.id,
@@ -124,7 +129,7 @@ class Neo4jGraphStore:
                n.properties AS properties
         """
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, id=node_id)
             record = result.single()
 
@@ -155,7 +160,7 @@ class Neo4jGraphStore:
         RETURN count(n) AS count
         """
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, id=node_id, properties=properties)
             return result.single()["count"] > 0
 
@@ -174,7 +179,7 @@ class Neo4jGraphStore:
         RETURN count(n) AS count
         """
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, id=node_id)
             return result.single()["count"] > 0
 
@@ -194,7 +199,7 @@ class Neo4jGraphStore:
         """
 
         nodes = []
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query)
             for record in result:
                 props = json.loads(record["properties"]) if record["properties"] else {}
@@ -231,7 +236,7 @@ class Neo4jGraphStore:
         RETURN count(*) AS count
         """
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(
                 query_check, source_id=edge.source_id, target_id=edge.target_id
             )
@@ -271,7 +276,7 @@ class Neo4jGraphStore:
         RETURN count(r) AS count
         """
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, id=edge_id)
             return result.single()["count"] > 0
 
@@ -310,7 +315,7 @@ class Neo4jGraphStore:
             """
 
         edges = []
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, id=node_id)
             for record in result:
                 props = json.loads(record["properties"]) if record["properties"] else {}
@@ -380,7 +385,7 @@ class Neo4jGraphStore:
         records = []
         columns = []
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query_str, params or {})
             columns = result.keys()
             for record in result:
@@ -419,7 +424,7 @@ class Neo4jGraphStore:
         nodes = []
         edges = []
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, node_ids=node_ids)
             record = result.single()
 
@@ -470,7 +475,7 @@ class Neo4jGraphStore:
         node_count = 0
         nodes_by_type = {}
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query)
             record = result.single()
             if record:
@@ -480,7 +485,7 @@ class Neo4jGraphStore:
 
         # Get edge count
         query_edges = "MATCH ()-[r]->() RETURN count(r) AS count"
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query_edges)
             edge_count = result.single()["count"]
 
@@ -497,7 +502,7 @@ class Neo4jGraphStore:
             True if healthy
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self.database) as session:
                 session.run("RETURN 1")
             return True
         except Exception:
@@ -505,6 +510,53 @@ class Neo4jGraphStore:
 
     def clear(self) -> None:
         """Delete all nodes and edges."""
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             session.run("MATCH (n) DETACH DELETE n")
         logger.warning("neo4j_graph_cleared")
+
+    def get_all_nodes(self) -> Iterator[Node]:
+        """Iterate over all nodes in the graph.
+
+        Yields:
+            All nodes as Node objects
+        """
+        query = """
+        MATCH (n)
+        RETURN n.id AS id, n.label AS label, labels(n)[0] AS node_type,
+               n.properties AS properties
+        """
+
+        with self._driver.session(database=self.database) as session:
+            result = session.run(query)
+            for record in result:
+                props = json.loads(record["properties"]) if record["properties"] else {}
+                yield Node(
+                    id=record["id"],
+                    label=record["label"],
+                    node_type=record["node_type"],
+                    properties=props,
+                )
+
+    def get_all_edges(self) -> Iterator[Edge]:
+        """Iterate over all edges in the graph.
+
+        Yields:
+            All edges as Edge objects
+        """
+        query = """
+        MATCH (s)-[r]->(t)
+        RETURN r.id AS id, s.id AS source_id, t.id AS target_id,
+               type(r) AS edge_type, r.properties AS properties
+        """
+
+        with self._driver.session(database=self.database) as session:
+            result = session.run(query)
+            for record in result:
+                props = json.loads(record["properties"]) if record["properties"] else {}
+                yield Edge(
+                    id=record["id"],
+                    source_id=record["source_id"],
+                    target_id=record["target_id"],
+                    edge_type=record["edge_type"],
+                    properties=props,
+                )

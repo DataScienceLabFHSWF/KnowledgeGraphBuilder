@@ -1,0 +1,14 @@
+{
+    "ontology_url": "http://localhost:3030",
+    "ontology_dataset": "kgbuilder",
+    "document_dir": "data/smoke_test/docs",
+    "document_extensions": [".pdf"],
+    "llm_model": "qwen3:8b",
+    "llm_base_url": "http://localhost:18134",
+    "max_iterations": 1,
+    "coverage_target": 0.5,
+    "neo4j_uri": "bolt://localhost:7687",
+    "neo4j_user": "neo4j",
+    "neo4j_password": "changeme",
+    "output_dir": "output/smoke_test"
+}

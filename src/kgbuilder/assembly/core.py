@@ -13,6 +13,7 @@ Key features:
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -98,8 +99,8 @@ class SimpleKGAssembler:
         self,
         graph_store: Neo4jStore,
         vector_store: QdrantStore | None = None,
-        llm_model: str = "qwen3",
-        llm_base_url: str = "http://localhost:11434",
+        llm_model: str | None = None,
+        llm_base_url: str | None = None,
         dedup_threshold: float = 0.85,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
@@ -118,6 +119,10 @@ class SimpleKGAssembler:
         self._graph = graph_store
         self._vector_store = vector_store
         self.dedup_threshold = dedup_threshold
+
+        # Resolve model and URL
+        llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "qwen3:8b")
+        llm_base_url = llm_base_url or os.environ.get("OLLAMA_URL", "http://localhost:18134")
 
         # Initialize LLM
         self._llm = ChatOllama(

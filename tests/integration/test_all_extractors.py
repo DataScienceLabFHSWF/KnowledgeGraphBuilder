@@ -98,9 +98,10 @@ def main():
     logger.info("=" * 80)
     
     try:
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
         llm_provider = OllamaProvider(
             model="qwen3",
-            base_url="http://localhost:11434",
+            base_url=ollama_url,
             timeout=120.0,
         )
         llm_extractor = LLMEntityExtractor(

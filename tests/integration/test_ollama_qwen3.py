@@ -16,7 +16,7 @@ import requests
 import os
 
 # Allow override of Ollama base URL via environment variable, default to port 18134
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:18134")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:18134")
 MODEL = "qwen3:8b"
 PROMPT = "What is the capital of France?"
 

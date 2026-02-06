@@ -1,0 +1,28 @@
+@prefix : <http://example.org/decomm#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+:Facility rdf:type owl:Class ;
+    rdfs:label "Facility" .
+
+:Component rdf:type owl:Class ;
+    rdfs:label "Component" .
+
+:Activity rdf:type owl:Class ;
+    rdfs:label "Activity" .
+
+:locatedIn rdf:type owl:ObjectProperty ;
+    rdfs:domain :Component ;
+    rdfs:range :Facility ;
+    rdfs:label "locatedIn" .
+
+:partOf rdf:type owl:ObjectProperty ;
+    rdfs:domain :Component ;
+    rdfs:range :Component ;
+    rdfs:label "partOf" .
+
+:targetOf rdf:type owl:ObjectProperty ;
+    rdfs:domain :Component ;
+    rdfs:range :Activity ;
+    rdfs:label "targetOf" .

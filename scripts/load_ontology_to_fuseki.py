@@ -35,12 +35,14 @@ def load_ontology() -> None:
     fuseki_url = os.getenv("FUSEKI_URL", "http://localhost:3030")
     fuseki_user = os.getenv("FUSEKI_USER", "admin")
     fuseki_password = os.getenv("FUSEKI_PASSWORD", "")
+    dataset_name = os.getenv("FUSEKI_DATASET", "kgbuilder_test")
 
     ontology_path = Path(__file__).parent.parent / "data" / "ontology" / "plan-ontology-v1.0.owl"
 
     logger.info(
         "loading_ontology",
         fuseki_url=fuseki_url,
+        dataset_name=dataset_name,
         ontology_path=str(ontology_path),
         ontology_size_kb=ontology_path.stat().st_size / 1024,
     )
@@ -60,7 +62,7 @@ def load_ontology() -> None:
     try:
         fuseki = FusekiStore(
             url=fuseki_url,
-            dataset_name="kgbuilder",
+            dataset_name=dataset_name,
             username=fuseki_user,
             password=fuseki_password,
         )

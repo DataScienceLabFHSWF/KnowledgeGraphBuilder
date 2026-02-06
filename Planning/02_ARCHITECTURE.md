@@ -35,13 +35,13 @@ The system constructs a Knowledge Graph through **iterative, ontology-guided dis
                  │                 ▼                       │
                  │  ┌──────────────────────────────┐      │
                  │  │    Extract Entities           │      │
-                 │  │    (LLM + ontology schema)    │      │
+                 │  │    (Tiered: Heuristic -> LLM) │      │
                  │  └──────────────┬───────────────┘      │
                  │                 │                       │
                  │                 ▼                       │
                  │  ┌──────────────────────────────┐      │
                  │  │    Extract Relations          │      │
-                 │  │    (LLM + domain/range)       │      │
+                 │  │    (Tiered: Heuristic -> LLM) │      │
                  │  └──────────────┬───────────────┘      │
                  │                 │                       │
                  │                 ▼                       │

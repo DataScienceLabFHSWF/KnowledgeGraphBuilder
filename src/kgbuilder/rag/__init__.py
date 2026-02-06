@@ -15,6 +15,8 @@ from typing import Any
 import numpy as np
 import ollama
 
+from kgbuilder.core import get_base_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +44,7 @@ class StandardRAGPipeline:
         llm_provider: Any,  # OllamaProvider
         top_k: int = 5,
         embedding_model: str = "qwen3-embedding",
-        ollama_base_url: str = "http://localhost:11434",
+        ollama_base_url: str | None = None,
     ) -> None:
         """Initialize standard RAG pipeline.
 
@@ -57,10 +59,10 @@ class StandardRAGPipeline:
         self.llm = llm_provider
         self.top_k = top_k
         self.embedding_model = embedding_model
-        self.ollama_base_url = ollama_base_url
+        self.ollama_base_url = get_base_url(ollama_base_url)
 
         # Initialize Ollama client
-        self.ollama_client = ollama.Client(host=ollama_base_url)
+        self.ollama_client = ollama.Client(host=self.ollama_base_url)
 
         logger.info(
             "standard_rag_pipeline_initialized",

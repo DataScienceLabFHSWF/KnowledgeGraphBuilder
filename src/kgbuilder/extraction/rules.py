@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from kgbuilder.core.models import ExtractedEntity, Evidence
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
 from kgbuilder.extraction.entity import OntologyClassDef
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,109 @@ class RulePattern:
     regex: str
     confidence: float = 1.0
     examples: list[str] = field(default_factory=list)
+
+
+@dataclass
+class RelationPattern:
+    """Pattern for rule-based relation extraction."""
+
+    edge_type: str
+    regex_between: str  # Regex matching text between entities
+    source_type: str | None = None
+    target_type: str | None = None
+    confidence: float = 0.9
+
+
+class RuleBasedRelationExtractor:
+    """Fast, deterministic relation extractor using proximity and keywords."""
+
+    def __init__(self) -> None:
+        """Initialize with default relation patterns."""
+        self.patterns: list[RelationPattern] = []
+        self._init_default_patterns()
+
+    def _init_default_patterns(self) -> None:
+        """Add basic patterns for nuclear domain."""
+        # "Facility location" patterns
+        self.patterns.append(
+            RelationPattern(
+                edge_type="locatedIn",
+                regex_between=r"(?i)\s+(?:in|bei|am\s+Standort)\s+",
+                source_type="Facility",
+                target_type="Location",
+            )
+        )
+        # "Action target" patterns
+        self.patterns.append(
+            RelationPattern(
+                edge_type="targetComponent",
+                regex_between=r"(?i)\s+(?:an|von|des|der)\s+",
+                source_type="Activity",
+                target_type="Component",
+            )
+        )
+
+    def extract(
+        self,
+        text: str,
+        entities: list[ExtractedEntity],
+        ontology_relations: list[Any] | None = None,
+    ) -> list[ExtractedRelation]:
+        """Extract relations using proximity and keyword patterns."""
+        relations = []
+        if len(entities) < 2:
+            return []
+
+        # Find entity positions in text (if available in evidence)
+        entity_positions = []
+        for ent in entities:
+            if ent.evidence and "_" in ent.evidence[0].source_id:
+                try:
+                    parts = ent.evidence[0].source_id.split("_")
+                    start = int(parts[1])
+                    end = int(parts[2])
+                    entity_positions.append((ent, start, end))
+                except (IndexError, ValueError):
+                    continue
+
+        # Check pairs of entities
+        for i, (ent1, s1, e1) in enumerate(entity_positions):
+            for j, (ent2, s2, e2) in enumerate(entity_positions):
+                if i == j:
+                    continue
+
+                # Get text between entities
+                if s2 > e1:
+                    between_text = text[e1:s2]
+                    # Check matching patterns
+                    for pattern in self.patterns:
+                        # Type constraints
+                        if pattern.source_type and ent1.entity_type != pattern.source_type:
+                            continue
+                        if pattern.target_type and ent2.entity_type != pattern.target_type:
+                            continue
+
+                        if re.search(pattern.regex_between, between_text):
+                            rel_id = f"rel_rule_{len(relations):04d}"
+                            relations.append(
+                                ExtractedRelation(
+                                    id=rel_id,
+                                    source_id=ent1.id,
+                                    target_id=ent2.id,
+                                    predicate=pattern.edge_type,
+                                    confidence=pattern.confidence,
+                                    evidence=[
+                                        Evidence(
+                                            source_type="local_rule",
+                                            source_id=f"rule_match_{s1}_{e2}",
+                                            text_span=text[s1:e2],
+                                            confidence=pattern.confidence,
+                                        )
+                                    ],
+                                )
+                            )
+
+        return relations
 
 
 class RuleBasedExtractor:

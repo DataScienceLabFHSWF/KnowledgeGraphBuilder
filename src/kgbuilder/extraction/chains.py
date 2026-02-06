@@ -10,6 +10,7 @@ Implements unified LCEL (LangChain Expression Language) chains for:
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from langchain_ollama import ChatOllama
@@ -17,6 +18,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
 
+from kgbuilder.core import get_base_url
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
 from kgbuilder.extraction.schemas import EntityExtractionOutput, RelationExtractionOutput
 from kgbuilder.extraction.entity import OntologyClassDef
@@ -34,8 +36,8 @@ class ExtractionChains:
 
     @staticmethod
     def create_entity_extraction_chain(
-        model: str = "qwen3",
-        base_url: str = "http://localhost:11434",
+        model: str | None = None,
+        base_url: str | None = None,
         temperature: float = 0.5,
     ) -> Runnable:
         """Create entity extraction chain using LCEL.
@@ -43,17 +45,21 @@ class ExtractionChains:
         Chain flow:
         1. Format ontology classes for prompt
         2. Send to LLM with structured output schema
+
         3. Parse and validate output
         4. Return ExtractedEntity objects
         
         Args:
-            model: Ollama model name
+            model: Ollama model name (default: OLLAMA_MODEL env var or qwen3:8b)
             base_url: Ollama API base URL
             temperature: LLM temperature (lower = more deterministic)
             
         Returns:
             LCEL Runnable chain for entity extraction
         """
+        model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
+        base_url = get_base_url(base_url)
+
         # Initialize LLM with structured output
         llm = ChatOllama(
             model=model,
@@ -146,8 +152,8 @@ Return ONLY valid JSON matching this format:
 
     @staticmethod
     def create_relation_extraction_chain(
-        model: str = "qwen3",
-        base_url: str = "http://localhost:11434",
+        model: str | None = None,
+        base_url: str | None = None,
         temperature: float = 0.5,
     ) -> Runnable:
         """Create relation extraction chain using LCEL.
@@ -159,13 +165,16 @@ Return ONLY valid JSON matching this format:
         4. Return ExtractedRelation objects with constraint checking
         
         Args:
-            model: Ollama model name
+            model: Ollama model name (default: OLLAMA_MODEL env var or qwen3:8b)
             base_url: Ollama API base URL
             temperature: LLM temperature
             
         Returns:
             LCEL Runnable chain for relation extraction
         """
+        model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
+        base_url = get_base_url(base_url)
+
         # Initialize LLM
         llm = ChatOllama(
             model=model,

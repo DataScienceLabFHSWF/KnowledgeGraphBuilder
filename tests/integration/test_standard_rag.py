@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -38,10 +39,11 @@ def main() -> None:
     from kgbuilder.rag import StandardRAGPipeline
 
     try:
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
         # Initialize LLM provider
         llm = OllamaProvider(
             model="qwen3",
-            base_url="http://localhost:11434",  # Local test override
+            base_url=ollama_url,  # Local test override
         )
         logger.info("llm_initialized", model=llm.model)
 
@@ -57,7 +59,7 @@ def main() -> None:
             vector_store=qdrant,
             llm_provider=llm,
             embedding_model="qwen3-embedding",
-            ollama_base_url="http://localhost:11434",
+            ollama_base_url=ollama_url,
             top_k=5,
         )
         logger.info("standard_rag_pipeline_ready")
