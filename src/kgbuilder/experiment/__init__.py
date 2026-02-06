@@ -7,6 +7,7 @@ Key Components:
 - ExperimentConfig: Configuration definition with variants
 - ConfigRunner: Single configuration execution
 - ExperimentManager: Orchestrates multiple runs
+- CheckpointManager: Saves/loads extraction results for reproducibility
 - Analyzer: Metrics analysis and convergence tracking
 - Reporter: Multi-format report generation
 """
@@ -15,6 +16,10 @@ from kgbuilder.experiment.analyzer import (
     ComparativeAnalysis,
     ConvergenceAnalysis,
     ExperimentAnalyzer,
+)
+from kgbuilder.experiment.checkpoint import (
+    CheckpointManager,
+    CheckpointMetadata,
 )
 from kgbuilder.experiment.config import (
     ConfigVariant,
@@ -47,6 +52,8 @@ __all__ = [
     "ExperimentResults",
     "ConfigRunner",
     "ExperimentManager",
+    "CheckpointManager",
+    "CheckpointMetadata",
     "ConvergenceAnalysis",
     "ComparativeAnalysis",
     "ExperimentAnalyzer",
@@ -55,3 +62,4 @@ __all__ = [
     "ExperimentReport",
     "ExperimentReporter",
 ]
+

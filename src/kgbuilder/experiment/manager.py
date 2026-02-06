@@ -23,6 +23,7 @@ from typing import Any
 
 import structlog
 
+from kgbuilder.experiment.checkpoint import CheckpointManager
 from kgbuilder.experiment.config import ConfigVariant, ExperimentConfig
 
 logger = structlog.get_logger(__name__)
@@ -501,6 +502,26 @@ class ConfigRunner:
                 entities=len(entities),
                 success=discover_result.success,
                 coverage=discover_result.final_coverage,
+            )
+            
+            # CHECKPOINT: Save extraction results before building KG
+            # This enables semantic enrichment and skips re-extraction if needed
+            logger.info("checkpointing_extraction_results", run_id=run_id)
+            checkpoint_manager = CheckpointManager(
+                checkpoint_dir=output_dir / "checkpoints"
+            )
+            checkpoint_path = checkpoint_manager.save_extraction(
+                run_id=run_id,
+                variant_name=variant.name,
+                entities=entities,
+                relations=relations,
+                extraction_seconds=time.time() - build_start,
+                questions_processed=discover_result.total_iterations,
+            )
+            logger.info(
+                "extraction_checkpointed",
+                run_id=run_id,
+                checkpoint_path=str(checkpoint_path),
             )
             
             # Build KG with KGBuilder
