@@ -64,6 +64,8 @@ from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.assembly.kg_builder import KGBuilder
 from kgbuilder.validation.rules_engine import RulesEngine
 from kgbuilder.analytics.pipeline import AnalyticsPipeline
+from kgbuilder.versioning import KGVersioningService
+from kgbuilder.logging_config import setup_logging, LLMCallTracker, PipelineHealthMonitor
 from kgbuilder.validation.consistency_checker import ConsistencyChecker
 from kgbuilder.experiment.checkpoint import CheckpointManager
 
@@ -186,6 +188,7 @@ class PipelineResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     wandb_run_url: str | None = None
+    version_id: str | None = None  # KG version ID from versioning service
     execution_time_seconds: float = 0.0
 
 
@@ -327,6 +330,12 @@ class FullKGPipeline:
             ontology_service=self.ontology_service,
             enable_inference=True,
             enable_skos=True,
+        )
+
+        # Versioning service (KG snapshots and rollback)
+        self.versioning_service = KGVersioningService(
+            version_dir=self.config.version_dir,
+            graph_store=self.graph_store,
         )
 
         logger.info("llm_services_initialized")
@@ -1113,23 +1122,33 @@ class FullKGPipeline:
         """Create a versioned snapshot of the Knowledge Graph."""
         try:
             logger.info("creating_version_snapshot")
-            description = f"Pipeline run at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
-            # Additional metadata for the version
-            custom_metadata = {
-                "max_iterations": self.config.max_iterations,
-                "top_k_docs": self.config.top_k_docs,
-                "generate_follow_ups": self.config.generate_follow_ups,
-                "smoke_test": self.config.smoke_test
-            }
-            
-            vid = self.versioning_service.create_snapshot(
-                store=self.graph_store,
-                description=description,
-                custom_metadata=custom_metadata,
-                tags=["pipeline_run", f"iter_{self.config.max_iterations}"]
+            # Generate version name and description
+            timestamp = datetime.now()
+            version_name = f"Pipeline run {timestamp.strftime('%Y%m%d_%H%M%S')}"
+            description = (
+                f"KG built from {self.result.documents_loaded} documents, "
+                f"{self.result.discovered_entities} entities, "
+                f"{self.result.discovered_relations} relations. "
+                f"Max iterations: {self.config.max_iterations}"
             )
-            logger.info("version_snapshot_created", version_id=vid)
+            
+            # Create snapshot with versioning service
+            metadata = self.versioning_service.create_snapshot(
+                name=version_name,
+                description=description,
+                trigger="pipeline_run",
+                pipeline_id=f"run_{timestamp.strftime('%Y%m%d_%H%M%S')}",
+                export_formats=["json-ld"],  # Export formats
+            )
+            
+            logger.info(
+                "version_snapshot_created",
+                version_id=metadata.version_id,
+                entities=metadata.entity_count,
+                relations=metadata.relation_count,
+            )
+            self.result.version_id = metadata.version_id
             
         except Exception as e:
             logger.error("version_snapshot_failed", error=str(e))
@@ -1140,6 +1159,9 @@ def main() -> int:
     """Main entry point."""
     from dotenv import load_dotenv
     load_dotenv()
+    
+    # Initialize structured logging
+    setup_logging(log_dir=Path("/tmp"), log_level="INFO", enable_json=True)
 
     parser = argparse.ArgumentParser(
         description="Full KG construction pipeline"
