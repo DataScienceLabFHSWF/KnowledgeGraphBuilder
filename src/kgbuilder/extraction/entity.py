@@ -248,10 +248,29 @@ IMPORTANT:
 - Domain focus: prioritize domain-relevant entities
 - Quality over quantity: accuracy matters more than coverage
 
+RESPONSE FORMAT:
+Return ONLY valid JSON matching the EntityExtractionOutput schema.
+Critical: Respond with raw JSON, no markdown, no explanations.
+
+EXAMPLE OUTPUT STRUCTURE (adapt to your domain):
+{{
+  "entities": [
+    {{
+      "id": "ent_001",
+      "label": "Example Name",
+      "entity_type": "TypeFromAbove",
+      "confidence": 0.95,
+      "start_char": 42,
+      "end_char": 56,
+      "context": "...surrounding context with 50 chars before/after..."
+    }}
+  ]
+}}
+
 TEXT TO ANALYZE:
 {text}
 
-Extract all entities you can identify with confidence >= 0.5."""
+Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."""
 
         logger.debug(f"Generated prompt ({len(prompt)} chars)")
         return prompt
