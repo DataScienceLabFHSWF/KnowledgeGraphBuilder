@@ -24,13 +24,21 @@ class ProposalStatus(str, Enum):
 
 @dataclass
 class ExtractedEntitySummary:
-    """Lightweight entity reference from KGB extraction checkpoint."""
+    """Lightweight entity reference derived from KGB extraction checkpoint.
+
+    See INTERFACE_CONTRACT.md §4 for the raw checkpoint schema.
+    The CheckpointReader is responsible for transforming the raw checkpoint
+    into these summaries (computing frequency from evidence count, etc.).
+    """
+    id: str                     # KGB entity ID: "ent_<hex12>"
     label: str
     entity_type: str
-    confidence: float
-    frequency: int  # How many chunks/documents mention this
-    source_documents: list[str] = field(default_factory=list)
-    evidence_snippets: list[str] = field(default_factory=list)
+    description: str = ""       # Present in checkpoint
+    aliases: list[str] = field(default_factory=list)  # Present in checkpoint
+    confidence: float = 0.0
+    frequency: int = 0          # Computed: len(evidence) or deduplicated source count
+    source_ids: list[str] = field(default_factory=list)  # Derived: evidence[*].source_id
+    evidence_spans: list[str] = field(default_factory=list)  # Derived: evidence[*].text_span
 
 
 @dataclass
@@ -175,12 +183,20 @@ from ontology_hitl.core.models import (
 
 @runtime_checkable
 class OntologyProvider(Protocol):
-    """Interface to ontology store (Fuseki)."""
+    """Interface to ontology store (Fuseki).
+
+    See INTERFACE_CONTRACT.md §3 for Fuseki schema.
+    KGB's FusekiOntologyService provides get_all_classes, get_class_hierarchy,
+    get_class_properties, get_class_relations, get_all_relations, get_special_properties.
+
+    NOTE: add_class/remove_class are NOT in KGB — ontology-hitl must implement
+    these via SPARQL UPDATE to {fuseki_url}/{dataset}/update.
+    """
 
     def get_all_classes(self) -> list[str]: ...
-    def get_class_hierarchy(self) -> dict[str, list[str]]: ...
-    def add_class(self, owl_turtle: str) -> None: ...
-    def remove_class(self, class_uri: str) -> None: ...
+    def get_class_hierarchy(self) -> list[tuple[str, str]]: ...  # KGB returns (child, parent) tuples
+    def add_class(self, owl_turtle: str) -> None: ...   # NOT in KGB — implement via SPARQL UPDATE
+    def remove_class(self, class_uri: str) -> None: ... # NOT in KGB — implement via SPARQL UPDATE
     def sparql_query(self, query: str) -> list[dict]: ...
 
 

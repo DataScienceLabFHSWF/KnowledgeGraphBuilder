@@ -280,6 +280,50 @@ This is now a separate repository. See [Planning/C3_*.md](.) for blueprints.
 - [ ] Data quality dashboard
 - [ ] Parquet export & incremental snapshots
 
+### 4.10 Law Graph — Legal Document Knowledge Graph
+
+**Status**: 💡 Proposed  
+**Effort**: 6-10h (mostly ontology & data prep; pipeline code should work as-is)
+
+Build a **Legal Knowledge Graph** from regulatory documents (e.g. Atomschutzgesetz,
+Strahlenschutzverordnung, nuclear regulatory guidelines). The existing KGBuilder
+pipeline is ontology-agnostic — a legal ontology + legal document corpus should
+produce a law graph without code changes.
+
+#### Approach
+
+1. **Legal Ontology**: Define or adopt an ontology for legal concepts
+   (Law → Chapter → Section → Paragraph, LegalReference, Obligation, Definition, etc.)
+2. **Document Ingestion**: Ingest law PDFs/HTML via existing loaders
+3. **Extraction**: Reuse `entity.py` / `relation.py` with the legal ontology —
+   extraction prompts are already ontology-templated
+4. **Graph Structure**: Nodes = Laws, Paragraphs, Definitions, Obligations;
+   Edges = `hasParagraph`, `references`, `amends`, `defines`, `obligates`
+5. **Embedding**: Embed paragraph-level chunks into Qdrant (separate collection
+   or tagged by `graph_type`)
+
+#### Integration with FusionRAG (GraphQAAgent)
+
+- Add a **law retrieval step** in the FusionRAG pipeline: when a question
+  mentions a law or paragraph reference, retrieve the actual paragraph text
+  from the law graph/collection as additional context
+- Could use a lightweight classifier or regex to detect legal references in
+  queries (e.g. "§ 7 AtG", "Paragraph 12 StrlSchV")
+- Enriches domain QA with precise regulatory grounding
+
+#### Implementation Notes
+
+- **No code rewriting required** — the pipeline already templates extraction
+  prompts from the ontology; swap ontology + documents → different graph
+- May need a CLI flag or config option to select the target ontology/collection
+  (e.g. `--profile legal` vs `--profile nuclear-decommissioning`)
+- Consider separate Neo4j database or node labels to keep law graph distinct
+- [ ] Curate or find a suitable legal ontology (ELI, Akoma Ntoso, or custom)
+- [ ] Collect target legal documents (AtG, StrlSchV, regulatory guidelines)
+- [ ] Run pipeline with legal ontology, validate extracted graph
+- [ ] Add `graph_type` / profile mechanism to config
+- [ ] Integrate law retrieval step into GraphQAAgent FusionRAG
+
 ---
 
 ## 5. Known Technical Debt

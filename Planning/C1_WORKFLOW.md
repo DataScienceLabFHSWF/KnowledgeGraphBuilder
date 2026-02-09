@@ -130,35 +130,49 @@ End-to-end workflow for one ontology extension iteration cycle.
 
 ## Checkpoint Format (KGB → ontology-hitl)
 
-The extraction checkpoint JSON produced by KGB should contain:
+The extraction checkpoint JSON produced by KGB (`CheckpointManager.save_extraction_checkpoint()`).
+See [INTERFACE_CONTRACT.md](INTERFACE_CONTRACT.md) §4 for the full schema.
 
 ```json
 {
-  "pipeline_run_id": "baseline_33docs_20260209_0929",
-  "timestamp": "2026-02-09T09:29:28",
-  "ontology_version": "plan-ontology-v1.0",
+  "metadata": {
+    "run_id": "baseline_33docs_20260209_0929",
+    "variant_name": "baseline",
+    "checkpoint_time": "2026-02-09T09:29:28",
+    "entities_count": 450,
+    "relations_count": 120,
+    "extraction_seconds": 342.5,
+    "questions_processed": 12
+  },
   "entities": [
     {
       "id": "ent_a1b2c3d4e5f6",
       "label": "Kernkraftwerk Greifswald",
       "entity_type": "Facility",
+      "description": "A nuclear power plant in Mecklenburg-Vorpommern...",
+      "aliases": ["KGR", "Greifswald NPP"],
+      "properties": {},
       "confidence": 0.87,
       "evidence": [
         {
-          "chunk_id": "chunk_042",
-          "document": "doc_15.pdf",
-          "text_snippet": "Das Kernkraftwerk Greifswald..."
+          "source_type": "local_doc",
+          "source_id": "chunk_042",
+          "text_span": "Das Kernkraftwerk Greifswald...",
+          "confidence": 1.0
         }
       ]
     }
   ],
-  "relations": [...],
-  "metrics": {
-    "total_entities": 450,
-    "unique_entity_types": 35,
-    "avg_confidence": 0.72
-  }
+  "relations": [...]
 }
+```
+
+**Key field mappings for ontology-hitl `CheckpointReader`**:
+- Run ID: `checkpoint["metadata"]["run_id"]`
+- Timestamp: `checkpoint["metadata"]["checkpoint_time"]`
+- Entity evidence chunk ref: `evidence[i]["source_id"]` (not `chunk_id`)
+- Entity evidence text: `evidence[i]["text_span"]` (not `text_snippet`)
+- `ontology_version` is NOT in the checkpoint — derive from pipeline config or filename
 ```
 
 ---

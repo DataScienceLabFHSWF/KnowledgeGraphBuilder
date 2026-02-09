@@ -23,34 +23,46 @@ from typing import Any
 
 @dataclass
 class KGEntity:
-    """Entity node read from Neo4j."""
-    id: str
+    """Entity node read from Neo4j.
+
+    See INTERFACE_CONTRACT.md §1 for Neo4j schema.
+    Note: evidence and source_doc_ids are NOT stored in Neo4j —
+    cross-reference by entity.id against checkpoint JSON if needed.
+    """
+    id: str                     # Deterministic: ent_<sha256(label::type)[:12]>
     label: str
-    entity_type: str            # Ontology class URI
+    entity_type: str            # Ontology class name (e.g. "Facility")
+    description: str = ""       # LLM-generated description
     properties: dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.0
-    source_doc_ids: list[str] = field(default_factory=list)
 
 
 @dataclass
 class KGRelation:
-    """Relation edge read from Neo4j."""
-    id: str
-    source_id: str
-    target_id: str
-    relation_type: str          # Ontology property URI
-    properties: dict[str, Any] = field(default_factory=dict)
+    """Relation edge read from Neo4j.
+
+    See INTERFACE_CONTRACT.md §1 for Neo4j schema.
+    Note: Neo4j relationships have NO stored id — identify by
+    (source_id, relation_type, target_id) tuple.
+    Evidence text is NOT stored in Neo4j — only in checkpoint JSON.
+    """
+    source_id: str              # Source entity ID
+    target_id: str              # Target entity ID
+    relation_type: str          # Dynamic type from predicate (e.g. "requiresPermit")
     confidence: float = 0.0
-    evidence_text: str = ""
 
 
 @dataclass
 class DocumentChunk:
-    """Chunk read from Qdrant (payload)."""
-    chunk_id: str
-    document_id: str
-    text: str
-    metadata: dict[str, Any] = field(default_factory=dict)
+    """Chunk read from Qdrant payload.
+
+    See INTERFACE_CONTRACT.md §2 for Qdrant schema.
+    Field names match KGB payload keys exactly.
+    """
+    id: str                     # payload["id"] — chunk identifier
+    doc_id: str                 # payload["doc_id"] — source document
+    content: str                # payload["content"] — chunk text
+    strategy: str = ""          # payload["strategy"] — chunking strategy
     embedding: list[float] | None = None  # populated on retrieval
 
 
@@ -121,11 +133,13 @@ class RetrievalSource(Enum):
 
 @dataclass
 class Provenance:
-    """Tracks where evidence came from."""
-    document_id: str | None = None
-    chunk_id: str | None = None
+    """Tracks where evidence came from.
+
+    Uses KGB field names: source_id (not chunk_id), doc_id (not document_id).
+    """
+    doc_id: str | None = None       # Qdrant payload "doc_id"
+    source_id: str | None = None    # Qdrant payload "id" (chunk ID)
     entity_ids: list[str] = field(default_factory=list)
-    relation_ids: list[str] = field(default_factory=list)
     retrieval_strategy: str = ""
     retrieval_score: float = 0.0
 
@@ -200,13 +214,17 @@ class StrategyComparison:
 
 @dataclass
 class CompetencyQuestion:
-    """CQ imported from KGB ontology design."""
-    question_id: str            # e.g. "CQ-01"
-    text: str                   # Natural language question
-    entity_class: str           # Primary ontology class
-    priority: str               # "must" | "should" | "could"
-    aspect: str                 # "existence" | "relationship" | "attribute" | ...
-    sparql_template: str = ""   # Optional SPARQL to verify answerability
+    """CQ in canonical KGB format (see INTERFACE_CONTRACT.md §5).
+
+    Matches QAQuestion from kgbuilder.evaluation.qa_dataset.
+    """
+    id: str                             # e.g. "CQ_001"
+    question: str                       # Natural language question
+    expected_answers: list[str] = field(default_factory=list)
+    query_type: str = "entity"          # "entity" | "relation" | "count" | "boolean" | "complex"
+    difficulty: int = 1                 # 1–5
+    tags: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 ```
 
 ---
@@ -227,12 +245,12 @@ class Neo4jConfig(BaseModel):
 
 class QdrantConfig(BaseModel):
     url: str = "http://localhost:6333"
-    collection_name: str = "document_chunks"
+    collection_name: str = "kgbuilder"      # Must match KGB (see INTERFACE_CONTRACT.md §2)
 
 
 class FusekiConfig(BaseModel):
     url: str = "http://localhost:3030"
-    dataset: str = "ontology"
+    dataset: str = "kgbuilder"              # Must match KGB (see INTERFACE_CONTRACT.md §3)
 
 
 class OllamaConfig(BaseModel):
