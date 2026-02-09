@@ -63,6 +63,7 @@ from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.assembly.kg_builder import KGBuilder
 from kgbuilder.validation.rules_engine import RulesEngine
+from kgbuilder.analytics.pipeline import AnalyticsPipeline
 from kgbuilder.validation.consistency_checker import ConsistencyChecker
 from kgbuilder.experiment.checkpoint import CheckpointManager
 
@@ -150,6 +151,7 @@ class PipelineConfig(BaseModel):
     skip_discovery: bool = False
     skip_confidence_tuning: bool = False
     skip_enrichment: bool = False
+    skip_analytics: bool = False
     skip_validation: bool = False
     enrich_only: bool = Field(
         default=False,
@@ -319,6 +321,14 @@ class FullKGPipeline:
         # Checkpoint manager
         self.checkpoint_manager = CheckpointManager(self.config.output_dir / "checkpoints")
 
+        # Analytics pipeline (Phase 12: Semantic Enhancement & Analytics)
+        self.analytics_pipeline = AnalyticsPipeline(
+            graph_store=self.graph_store,
+            ontology_service=self.ontology_service,
+            enable_inference=True,
+            enable_skos=True,
+        )
+
         logger.info("llm_services_initialized")
 
     def run(self) -> PipelineResult:
@@ -407,25 +417,15 @@ class FullKGPipeline:
                 self.wandb_run.log({"status": "kg_assembly_started"})
             self._build_kg()
             
-            # 5.5 Semantic Inference
-            logger.info("pipeline_step", step="semantic_inference")
-            try:
-                inference_stats = self.inference_engine.run_full_inference()
-                if self.wandb_run:
-                    self.wandb_run.log({
-                        "inference_complete": 1,
-                        "inferred_symmetric": inference_stats.get("symmetric", 0),
-                        "inferred_inverse": inference_stats.get("inverse", 0),
-                        "inferred_subclass": inference_stats.get("subclass", 0),
-                        "inferred_transitive": inference_stats.get("transitive", 0)
-                    })
-            except Exception as e:
-                logger.error("inference_failed", error=str(e))
-                self.result.warnings.append(f"Semantic inference failed: {str(e)}")
-
+            # 5.5 Semantic Analytics (Phase 12: Inference + Metrics)
+            logger.info("pipeline_step", step="analytics")
+            if self.wandb_run:
+                self.wandb_run.log({"status": "analytics_started"})
+            self._run_analytics()
             if self.wandb_run:
                 self.wandb_run.log({
                     "kg_build_complete": 1,
+                    "analytics_complete": 1,
                     "nodes_created": self.result.kg_nodes,
                     "edges_created": self.result.kg_edges
                 })
@@ -951,6 +951,59 @@ class FullKGPipeline:
             self.result.errors.append(f"Checkpoint enrichment failed: {str(e)}")
             raise
 
+    def _run_analytics(self) -> None:
+        """Run semantic analytics pipeline (Phase 12).
+        
+        Includes:
+        - OWL-RL inference (symmetry, inversion, transitivity, class hierarchy)
+        - SKOS enrichment (when ontology queries available)
+        - Graph metrics (diagnostics and measurement)
+        """
+        if self.config.skip_analytics:
+            logger.warning("skipping_analytics", reason="config_skip_analytics=true")
+            return
+        
+        try:
+            logger.info("analytics_start")
+            analytics_result = self.analytics_pipeline.run()
+            
+            # Log results
+            if analytics_result.inference_enabled:
+                logger.info(
+                    "inference_completed",
+                    stats=analytics_result.inference_stats,
+                    duration=analytics_result.total_duration_seconds,
+                )
+            
+            # Report metrics improvements
+            if analytics_result.metrics_before and analytics_result.metrics_after:
+                logger.info(
+                    "analytics_metrics",
+                    nodes_before=analytics_result.metrics_before.total_nodes,
+                    nodes_after=analytics_result.metrics_after.total_nodes,
+                    edges_before=analytics_result.metrics_before.total_edges,
+                    edges_after=analytics_result.metrics_after.total_edges,
+                    typed_pct_before=analytics_result.metrics_before.typed_percentage,
+                    typed_pct_after=analytics_result.metrics_after.typed_percentage,
+                )
+            
+            # Log to wandb
+            if self.wandb_run:
+                self.wandb_run.log({
+                    "analytics_complete": 1,
+                    "inference_stats": analytics_result.inference_stats,
+                    "analytics_duration": analytics_result.total_duration_seconds,
+                })
+            
+            if analytics_result.status != "success":
+                logger.warning("analytics_completed_with_issues", status=analytics_result.status)
+                if analytics_result.error_message:
+                    self.result.warnings.append(f"Analytics phase: {analytics_result.error_message}")
+            
+        except Exception as e:
+            logger.error("analytics_failed", error=str(e))
+            self.result.warnings.append(f"Analytics phase failed: {str(e)}")
+
     def _validate_kg(self) -> None:
         """Run comprehensive KG validation."""
         try:
@@ -1175,6 +1228,11 @@ def main() -> int:
         help="Skip confidence tuning phase (Phase 5.1-5.6)",
     )
     parser.add_argument(
+        "--skip-analytics",
+        action="store_true",
+        help="Skip analytics phase (Phase 12: inference, SKOS, metrics)",
+    )
+    parser.add_argument(
         "--enrich-only",
         action="store_true",
         help="Load checkpoint and run enrichment only (skip discovery)",
@@ -1225,6 +1283,7 @@ def main() -> int:
             skip_validation=args.skip_validation,
             skip_discovery=args.skip_discovery,
             skip_confidence_tuning=args.skip_confidence_tuning,
+            skip_analytics=args.skip_analytics,
             skip_enrichment=args.skip_enrichment,
             enrich_only=args.enrich_only,
             checkpoint_path=args.checkpoint,
