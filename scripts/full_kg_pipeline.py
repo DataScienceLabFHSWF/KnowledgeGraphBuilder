@@ -39,7 +39,7 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kgbuilder.core.models import Document, ExtractedEntity, ExtractedRelation, Chunk
-from kgbuilder.document.loaders import PDFLoader, DOCXLoader
+from kgbuilder.document.loaders import PDFLoader, DOCXLoader, LawXMLLoader
 from kgbuilder.document.chunking.strategies import FixedSizeChunker
 from kgbuilder.embedding.ollama import OllamaProvider
 from kgbuilder.extraction.entity import (
@@ -554,6 +554,7 @@ class FullKGPipeline:
             loaders = {
                 ".pdf": PDFLoader(),
                 ".docx": DOCXLoader(),
+                ".xml": LawXMLLoader(),
             }
 
             doc_paths = []
@@ -568,8 +569,12 @@ class FullKGPipeline:
                 loader = loaders.get(path.suffix)
                 if loader:
                     try:
-                        doc = loader.load(path)
-                        documents.append(doc)
+                        loaded = loader.load(path)
+                        # Handle both single Document and list[Document] returns
+                        if isinstance(loaded, list):
+                            documents.extend(loaded)
+                        else:
+                            documents.append(loaded)
                     except Exception as e:
                         logger.warning(
                             "document_load_failed", path=str(path), error=str(e)

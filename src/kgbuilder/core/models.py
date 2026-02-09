@@ -18,6 +18,7 @@ class FileType(Enum):
     TXT = "txt"
     MARKDOWN = "markdown"
     HTML = "html"
+    XML = "xml"
 
 
 @dataclass

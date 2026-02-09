@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:owl="http://www.w3.org/2002/07/owl#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#title_short">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="http://data.europa.eu/eli/ontology#Expression"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    <rdfs:comment xml:lang="en">Established short title of the expression (if any)</rdfs:comment>
+    <rdfs:label xml:lang="en">short title</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#cites">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+    <rdfs:comment xml:lang="en">Citation in the text of the legislation. This may be at the legal resource or legal expression level, as required by the implementation context. This includes verbatim citation and citations in referrals.</rdfs:comment>
+    <rdfs:label xml:lang="en">cites</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#title">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="http://data.europa.eu/eli/ontology#Expression"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    <rdfs:comment xml:lang="en">The title, or name, of an expression. 
+
+Note that, if needed, a title can also be stated on a legal resource using the Dublin Core "title" property.</rdfs:comment>
+    <rdfs:label xml:lang="en">title</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#LegalExpression">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://data.europa.eu/eli/ontology#Expression"/>
+    <rdfs:comment xml:lang="en">The intellectual realisation of a legal resource in the form of a "sequence of signs" (typically alpha-numeric characters in a legal context).
+For example, any version of the legal resource whose content is specified and different from others for any reason: language, versions, etc.;
+
+Note that ELI ontology accommodates different point of view on what should be considered a new legal resource, or a new legal expression of the same resource. Typically, a consolidated version can be viewed, in the context of ELI, either as separate legal resource (linked to original version and previous consolidated version using corresponding ELI relations), or as a different legal expression of the same legal resource.</rdfs:comment>
+    <rdfs:label xml:lang="en">Legal Expression</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/legal-action.owl#Natural_Person">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A natural person is a human being perceptible through the senses and subject to physical laws, as opposed to an artificial person, i.e., an organization that the law treats for some purposes as if it were a person distinct from its members or owner.</rdfs:comment>
+    <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/action.owl#Person"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/action.owl#Person"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#Agent">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.cidoc-crm.org/cidoc-crm/E39_Actor"/>
+    <rdfs:comment xml:lang="en">Individual people or groups of people, like an institution with a legal recognition, who have the potential to perform intentional actions for which they can be held responsible.</rdfs:comment>
+    <rdfs:label xml:lang="en">Agent</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#date_document">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+    <rdfs:domain rdf:resource="http://data.europa.eu/eli/ontology#Work"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <rdfs:comment xml:lang="en">Date of adoption or signature (of the form yyyy-mm-dd)</rdfs:comment>
+    <rdfs:label xml:lang="en">date of the document</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#has_part">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://data.europa.eu/eli/ontology#is_part_of"/>
+    <rdfs:domain rdf:resource="http://data.europa.eu/eli/ontology#Work"/>
+    <rdfs:range rdf:resource="http://data.europa.eu/eli/ontology#Work"/>
+    <rdfs:comment xml:lang="en">inverse of "is_part_of"</rdfs:comment>
+    <rdfs:label xml:lang="en">has part</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Regulation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Legal_Document"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A regulation bears one or more norms, all of which are uttered by some legislative body. It cannot bear expressions which are not uttered by a legislative body.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/legal-role.owl#Legal_Role">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/role.owl#Role"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A legal role is a role played in a legal context. Legal role players can be both Agents and other 'things'</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Right">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Norm"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A right is the legal or moral entitlement to do or refrain from doing something or to obtain or refrain from obtaining an action, thing or recogition in civil society.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#is_part_of">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://data.europa.eu/eli/ontology#Work"/>
+    <rdfs:range rdf:resource="http://data.europa.eu/eli/ontology#Work"/>
+    <rdfs:comment xml:lang="en">Indicates a work in which this one is physically included. Covers the case of text included in an Official Journal, or an article included in a text. For the notion of conceptual/temporal inclusion, use eli:is_member_of.</rdfs:comment>
+    <rdfs:label xml:lang="en">is part of</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#LegalResourceSubdivision">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://data.europa.eu/eli/ontology#LegalResource"/>
+    <rdfs:subClassOf rdf:resource="http://data.europa.eu/eli/ontology#WorkSubdivision"/>
+    <rdfs:comment xml:lang="en">A component of a legal act, at an arbitrary level of precision, like a chapter, an article, an alinea, a paragraph or an list item. A subdivision can be linked with its parent and children subdivision using the properties eli:has_part / eli:is_part_of.</rdfs:comment>
+    <rdfs:label xml:lang="en">Legal Resource Subdivision</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Permission">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Norm"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Permission allows propositions, to which therefore the predication Allowed applies. The thing(s) allowed is/are a subset of the thing(s) qualified by the permission. If S then P(A) means that S is qualified and S and A is allowed.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Legal_Source">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A legal source is a source for legal statements, both norms and legal expressions. In a sense it is literally a 'source' of law</rdfs:comment>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/expression.owl#Medium"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/legal-action.owl#Public_Body">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/legal-action.owl#Legal_Person"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A public body or body created by an act of law to serve a public interest</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Prohibition">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Permission"/>
+    <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Obligation"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Prohibition obliges/allows thing(s), to which therefore the predication Obliged applies, and disallows thing(s), to which therefore the predication Disallowed applies. The union of the thing(s) allowed and the thing(s) disallowed is qualified by the prohibition. The things allowed and disallowed by the prohibition are disjoint (and completely partition the space of things qualified). If S then O(A) means that S is qualified, S and A is obliged/allowed, and S and not A is disallowed. If S then F(A) means that S is qualified, S and A is disallowed, and S and not A is obliged/allowed. The difference between Obligation and Prohibition is in which part of the partition of the qualified space is explicitly described by the normative statement. Alternative label: directive</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Statute">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Legal_Document"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A statute bears one or more norms, all of which are uttered by some legal person. It cannot bear expressions which are uttered by a different kind of agent.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Legal_Document">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A legal document is a document bearing norms or normative statements. By virtue of this definition the norm-as-propositional-attitude is reified as norm-as proposition. In other words, the norm being expressed through the legal source is an expression of the propositional attitude.</rdfs:comment>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Subclasses of legal source can be distinguished through the authority of the agent creating the expression (i.e. the agent holding the norm).</rdfs:comment>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Legal_Source"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/expression.owl#Document"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Norm">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A norm is a kind of Qualification. A qualification which normatively qualifies some thing (i.e. some normatively qualified): i.e. a qualification which allows or disallows some thing.</rdfs:comment>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/expression.owl#Qualification"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#amended_by">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://data.europa.eu/eli/ontology#amends"/>
+    <rdfs:comment xml:lang="en">Inverse of "amends". Indicates a work that introduced legal changes in this resource. For modifications that don’t have a legal impact, use eli:corrected_by.</rdfs:comment>
+    <rdfs:label xml:lang="en">amended by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/legal-action.owl#Decision">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">NOTE: Cannot express that the 'promised' act corresponds to the act qualified by the statement in writing</rdfs:comment>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Decision: A (written) decision of a public body to perform a public act using a public power assigned by law.</rdfs:comment>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/legal-action.owl#Legal_Speech_Act"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#repealed_by">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://data.europa.eu/eli/ontology#repeals"/>
+    <rdfs:comment xml:lang="en">Inverse of "repeals". Indicates that this legal resource or legal expression is being completely canceled, abrogated or replaced by another legal resource. If a resource is partially repealed by another, this link can be used at the corresponding subdivision level being completely repealed.</rdfs:comment>
+    <rdfs:label xml:lang="en">repealed by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#Work">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://iflastandards.info/ns/fr/frbr/frbroo/F1_Work"/>
+    <rdfs:comment xml:lang="en">Any distinct intellectual creation (i.e., the intellectual content), in the context of ELI.
+
+The substance of Work is ideas.</rdfs:comment>
+    <rdfs:label xml:lang="en">Work</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/norm.owl#Obligation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Permission"/>
+    <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Prohibition"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">See prohibition</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/legal-action.owl#Legal_Person">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/action.owl#Organisation"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A legal entity is a natural person or a legal construct through which the law allows a group of natural persons to act as if it were a single composite individual for certain purposes. The most common purposes are lawsuits, property ownership, and contracts. Sometimes referred to as corporate personhood or legal personality, this concept allows for easy conduct of business by having ownership, lawsuits, and agreements under the name of the legal entity instead of the several names of the people making up the entity.
+
+A legal entity is not necessarily distinct from the natural persons of which it is composed. Most legal entities are simply amalgamations of the persons that make it up for convenience's sake. A legal entity that does have a separate existence from its members is called a company or corporation. This distinction gives the corporation its unique perpetual succession privilege and is usually also the source of the limited liability of corporate members. Some other legal entities also enjoy limited liability of members, but not on account of separate existence (Source: Wikipedia.org)</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.estrellaproject.org/lkif-core/legal-action.owl#Public_Act">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A public act is an act by some Person or Organisation which creates (at least) a communicated attitude (and thereby an expression)</rdfs:comment>
+    <rdfs:subClassOf rdf:resource="http://www.estrellaproject.org/lkif-core/action.owl#Action"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#cited_by">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://data.europa.eu/eli/ontology#cites"/>
+    <rdfs:domain rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+    <rdfs:comment xml:lang="en">Inverse of "cites".
+Note that the intended meaning of this link is to indicate that "something is cited by a legislation" and not that "this legislation is cited by something".</rdfs:comment>
+    <rdfs:label xml:lang="en">cited by</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#LegalResource">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://data.europa.eu/eli/ontology#Work"/>
+    <rdfs:comment xml:lang="en">A work in a legislative corpus. This applies to acts that have been legally enacted (whether or not they are still in force).
+For example, the abstract concept of the legal resource; e.g. "act 3 of 2005" (adapted from Akoma Ntoso)
+
+A legal resource can represent a legal act or any component of a legal act, like an article.  Legal resources can be linked together using properties defined in the model.
+
+Note that ELI ontology accommodates different point of view on what should be considered a new legal resource, or a new legal expression of the same resource. Typically, a consolidated version can be viewed, in the context of ELI, either as separate legal resource (linked to original version and previous consolidated version using corresponding ELI relations), or as a different legal expression of the same legal resource.</rdfs:comment>
+    <rdfs:label xml:lang="en">Legal Resource</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.europa.eu/eli/ontology#amends">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:comment xml:lang="en">Indicates that this work introduces legal changes in another resource. For modifications that don’t have a legal impact, use eli:corrects.</rdfs:comment>
+    <rdfs:label xml:lang="en">amends</rdfs:label>
+  </rdf:Description>
+</rdf:RDF>

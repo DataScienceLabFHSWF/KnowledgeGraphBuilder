@@ -1,11 +1,13 @@
 {
   "ontology_dataset": "lawgraph",
-  "ontology_path": "data/ontology/law/law-ontology-v1.0.owl",
+  "ontology_path": "data/ontology/legal/legal-foundations-merged.owl",
   "document_dir": "data/law_html",
   "document_extensions": [".xml"],
   "vector_collection": "lawgraph",
   "output_dir": "output/law_results",
   "max_iterations": 1,
   "skip_analytics": true,
+  "skip_confidence_tuning": true,
+  "wandb_enabled": false,
   "export_formats": ["json-ld", "cypher"]
 }
