@@ -145,8 +145,8 @@ class IterativeDiscoveryLoop:
         self._ontology_classes = ontology_classes
         self._relation_extractor = relation_extractor  # NEW
         self._ontology_relations = ontology_relations  # NEW
-        self._findings: dict[str, ExtractedEntity] = {}
-        self._provenance: dict[str, set[str]] = {}  # entity_id -> source docs
+        self._findings: dict[tuple[str, str], ExtractedEntity] = {}
+        self._provenance: dict[tuple[str, str], set[str]] = {}  # (label, type) -> source docs
         self._relations: list[Any] = []  # NEW: Store extracted relations
         self._logger = structlog.get_logger(__name__)
 
@@ -188,8 +188,8 @@ class IterativeDiscoveryLoop:
         )
 
         # Initialize
-        self._findings = {}
-        self._provenance = {}
+        self._findings: dict[tuple[str, str], ExtractedEntity] = {}
+        self._provenance: dict[tuple[str, str], set[str]] = {}
         iterations: list[IterationResult] = []
 
         try:
@@ -392,17 +392,35 @@ class IterativeDiscoveryLoop:
                     )
 
                     # 3. Update findings and provenance
+                    # Dedup key: normalized (label, entity_type) — NOT entity.id
+                    # This ensures the same concept from different chunks merges
                     for entity in entities:
-                        if entity.id not in self._findings:
-                            self._findings[entity.id] = entity
-                            self._provenance[entity.id] = set()
+                        dedup_key = (
+                            entity.label.lower().strip(),
+                            entity.entity_type.lower().strip(),
+                        )
+                        if dedup_key not in self._findings:
+                            self._findings[dedup_key] = entity
+                            self._provenance[dedup_key] = set()
 
-                        # Update provenance
-                        self._provenance[entity.id].add(result.doc_id)
+                        # Update provenance (track all source documents)
+                        self._provenance[dedup_key].add(result.doc_id)
 
-                        # Update confidence if higher
-                        if entity.confidence > self._findings[entity.id].confidence:
-                            self._findings[entity.id] = entity
+                        # Update confidence if higher, merge evidence
+                        existing = self._findings[dedup_key]
+                        if entity.confidence > existing.confidence:
+                            # Keep higher-confidence version but preserve evidence
+                            merged_evidence = list(
+                                {e.source_id: e for e in existing.evidence + entity.evidence}.values()
+                            )
+                            entity.evidence = merged_evidence
+                            self._findings[dedup_key] = entity
+                        elif entity.evidence:
+                            # Even if lower confidence, append new evidence
+                            existing_ids = {e.source_id for e in existing.evidence}
+                            for ev in entity.evidence:
+                                if ev.source_id not in existing_ids:
+                                    existing.evidence.append(ev)
 
                     # 4. Extract relations from the text (NEW - Phase 5)
                     if extract_relations and self._relation_extractor and self._ontology_relations and entities:
@@ -478,16 +496,42 @@ class IterativeDiscoveryLoop:
         coverage = len(entity_types & set(all_classes)) / len(all_classes)
         return min(coverage, 1.0)
 
-    def get_provenance(self, entity_id: str) -> set[str]:
+    def get_provenance(
+        self,
+        entity_id: str | None = None,
+        label: str | None = None,
+        entity_type: str | None = None,
+    ) -> set[str]:
         """Get source documents for an entity.
 
+        Look up by entity_id (searches all findings for matching id),
+        by (label, entity_type) tuple directly, or pass a tuple key.
+
         Args:
-            entity_id: Entity ID to look up
+            entity_id: Entity ID to look up (searches values)
+            label: Entity label for direct key lookup
+            entity_type: Entity type for direct key lookup
 
         Returns:
             Set of source document IDs
         """
-        return self._provenance.get(entity_id, set())
+        # Direct key lookup
+        if label and entity_type:
+            key = (label.lower().strip(), entity_type.lower().strip())
+            return self._provenance.get(key, set())
+
+        # Accept tuple passed as entity_id (backwards-compat with tests that do
+        # get_provenance(list(loop._findings.keys())[0]))
+        if isinstance(entity_id, tuple):
+            return self._provenance.get(entity_id, set())
+
+        # Fallback: search by entity_id string
+        if entity_id:
+            for key, entity in self._findings.items():
+                if entity.id == entity_id:
+                    return self._provenance.get(key, set())
+
+        return set()
 
     def get_findings_by_type(self, entity_type: str) -> list[ExtractedEntity]:
         """Get all findings of a specific type.

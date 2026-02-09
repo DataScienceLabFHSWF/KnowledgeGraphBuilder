@@ -86,6 +86,26 @@ class Evidence:
     confidence: float = 1.0
 
 
+def generate_entity_id(label: str, entity_type: str) -> str:
+    """Generate a deterministic, content-based entity ID.
+
+    Uses a hash of the normalized label and entity type so that the same
+    entity discovered in different chunks always gets the same ID.
+    This prevents ID collisions from sequential LLM-generated IDs.
+
+    Args:
+        label: Entity label text.
+        entity_type: Ontology class name or URI.
+
+    Returns:
+        Deterministic ID in format ``ent_<12-char-hex>``.
+    """
+    import hashlib
+
+    key = f"{label.lower().strip()}::{entity_type.lower().strip()}"
+    return f"ent_{hashlib.sha256(key.encode()).hexdigest()[:12]}"
+
+
 @dataclass
 class ExtractedEntity:
     """An extracted entity from text."""

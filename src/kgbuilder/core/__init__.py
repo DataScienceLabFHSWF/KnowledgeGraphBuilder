@@ -20,6 +20,7 @@ from kgbuilder.core.models import (
     ExtractedEntity,
     ExtractedRelation,
     FileType,
+    generate_entity_id,
 )
 from kgbuilder.core.protocols import (
     ChunkingStrategy,
