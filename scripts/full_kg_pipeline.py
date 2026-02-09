@@ -396,6 +396,18 @@ class FullKGPipeline:
                     })
             else:
                 logger.warning("skipping_discovery", reason="config_skip_discovery=true")
+                
+                # 3.1. Direct extraction (when discovery is skipped)
+                logger.info("pipeline_step", step="direct_extraction")
+                if self.wandb_run:
+                    self.wandb_run.log({"status": "direct_extraction_started"})
+                self._run_direct_extraction()
+                if self.wandb_run:
+                    self.wandb_run.log({
+                        "direct_extraction_complete": 1,
+                        "entities_extracted": len(getattr(self, 'discovered_entities', [])),
+                        "relations_extracted": len(getattr(self, 'discovered_relations', []))
+                    })
 
             # 3.5. Confidence Tuning (Phase 5.1-5.6, if not skipped)
             if not self.config.skip_confidence_tuning and hasattr(self, 'discovered_entities'):
@@ -725,6 +737,53 @@ class FullKGPipeline:
         except Exception as e:
             logger.error("discovery_failed", error=str(e))
             self.result.errors.append(f"Discovery failed: {str(e)}")
+            raise
+
+    def _run_direct_extraction(self) -> None:
+        """Extract entities and relations directly from all documents (no iterative discovery)."""
+        try:
+            logger.info("direct_extraction_start", document_count=len(self.result.documents))
+            
+            # Extract entities and relations from all documents at once
+            all_entities: list[ExtractedEntity] = []
+            all_relations: list[ExtractedRelation] = []
+            
+            for doc in self.result.documents:
+                try:
+                    # Extract entities
+                    doc_entities = self.entity_extractor.extract(doc)
+                    all_entities.extend(doc_entities)
+                    
+                    # Extract relations  
+                    doc_relations = self.relation_extractor.extract(doc, all_entities)
+                    all_relations.extend(doc_relations)
+                    
+                    logger.debug("document_processed", 
+                               doc_id=doc.id, 
+                               entities=len(doc_entities), 
+                               relations=len(doc_relations))
+                               
+                except Exception as e:
+                    logger.warning("document_extraction_failed", 
+                                 doc_id=doc.id, 
+                                 error=str(e))
+                    continue
+            
+            # Store results
+            self.discovered_entities = all_entities
+            self.discovered_relations = all_relations
+            
+            # Update result metrics
+            self.result.discovered_entities = len(all_entities)
+            self.result.discovered_relations = len(all_relations)
+            
+            logger.info("direct_extraction_complete", 
+                       entities=len(all_entities), 
+                       relations=len(all_relations))
+
+        except Exception as e:
+            logger.error("direct_extraction_failed", error=str(e))
+            self.result.errors.append(f"Direct extraction failed: {str(e)}")
             raise
 
     def _run_confidence_tuning(self) -> None:

@@ -21,7 +21,9 @@ from kgbuilder.core.models import (
     ChunkMetadata,
     Document,
     DocumentMetadata,
+    ExtractedEntity,
     ExtractedRelation,
+    Evidence,
     FileType,
 )
 from kgbuilder.document.loaders.law_xml import CrossReference, LawDocument, Norm
@@ -83,6 +85,84 @@ class LawDocumentAdapter:
         relations.extend(self._build_teil_von_relations(law))
         relations.extend(self._build_referenziert_relations(law.all_cross_references(), law.abbreviation))
         return relations
+
+    def to_structural_entities(
+        self, law: LawDocument
+    ) -> list[ExtractedEntity]:
+        """Create entities from law XML structure (no LLM needed).
+
+        Creates:
+        - One Gesetzbuch entity per law
+        - One Paragraf entity per § / Art.
+        - One Abschnitt entity per structural section
+
+        Args:
+            law: Parsed LawDocument.
+
+        Returns:
+            List of ExtractedEntity objects with graph_type=law.
+        """
+        entities: list[ExtractedEntity] = []
+
+        # 1. Gesetzbuch entity (the law itself)
+        entities.append(ExtractedEntity(
+            id=law.abbreviation,
+            label=law.full_title,
+            entity_type="Gesetzbuch",
+            description=f"{law.abbreviation} — {law.full_title}",
+            aliases=[law.abbreviation],
+            properties={
+                "abbreviation": law.abbreviation,
+                "graph_type": "law",
+                "source_file": str(law.file_path),
+                "norm_count": len(law.paragraphs()),
+            },
+            confidence=1.0,
+        ))
+
+        # 2. Paragraf entities (one per §/Art.)
+        for norm in law.paragraphs():
+            ent_id = f"{law.abbreviation}_{norm.enbez}".replace(" ", "_").replace("§", "S")
+            entities.append(ExtractedEntity(
+                id=ent_id,
+                label=f"{law.abbreviation} {norm.enbez}",
+                entity_type="Paragraf",
+                description=norm.title or norm.enbez,
+                aliases=[norm.enbez, f"{law.abbreviation} {norm.enbez}"],
+                properties={
+                    "enbez": norm.enbez,
+                    "title": norm.title,
+                    "law_abbreviation": law.abbreviation,
+                    "text_length": len(norm.text),
+                    "graph_type": "law",
+                },
+                confidence=1.0,
+                evidence=[Evidence(
+                    source_type="xml_structure",
+                    source_id=str(law.file_path),
+                    text_span=norm.text[:200] if norm.text else None,
+                )],
+            ))
+
+        # 3. Abschnitt entities (structural sections)
+        for struct in law.structure_nodes():
+            if struct.gliederung:
+                sect_id = f"{law.abbreviation}_{struct.gliederung.kennung}".replace(" ", "_")
+                entities.append(ExtractedEntity(
+                    id=sect_id,
+                    label=struct.gliederung.kennung,
+                    entity_type="Abschnitt",
+                    description=struct.gliederung.titel,
+                    properties={
+                        "kennung": struct.gliederung.kennung,
+                        "titel": struct.gliederung.titel,
+                        "law_abbreviation": law.abbreviation,
+                        "graph_type": "law",
+                    },
+                    confidence=1.0,
+                ))
+
+        return entities
 
     # ------------------------------------------------------------------
     # Internal conversion helpers
@@ -180,14 +260,19 @@ class LawDocumentAdapter:
         """Create TEIL_VON relations (Paragraf → Gesetzbuch)."""
         relations: list[ExtractedRelation] = []
         for norm in law.paragraphs():
+            src_id = f"{law.abbreviation}_{norm.enbez}".replace(" ", "_").replace("§", "S")
             relations.append(ExtractedRelation(
-                source_id=f"{law.abbreviation}_{norm.enbez}",
-                source_label=norm.enbez,
-                source_type="Paragraf",
+                id=f"rel_teilVon_{src_id}_{law.abbreviation}",
+                source_entity_id=src_id,
+                target_entity_id=law.abbreviation,
                 predicate="teilVon",
-                target_id=law.abbreviation,
-                target_label=law.full_title,
-                target_type="Gesetzbuch",
+                properties={
+                    "source_label": norm.enbez,
+                    "source_type": "Paragraf",
+                    "target_label": law.full_title,
+                    "target_type": "Gesetzbuch",
+                    "graph_type": "law",
+                },
                 confidence=1.0,
                 evidence=[],
             ))
@@ -200,17 +285,23 @@ class LawDocumentAdapter:
         relations: list[ExtractedRelation] = []
         for ref in refs:
             target_law = ref.target_law or source_law
-            target_id = f"{target_law}_{ref.target_paragraph}"
+            src_id = f"{source_law}_{ref.source_paragraph}".replace(" ", "_").replace("§", "S")
+            tgt_id = f"{target_law}_{ref.target_paragraph}".replace(" ", "_").replace("§", "S")
 
             relations.append(ExtractedRelation(
-                source_id=f"{source_law}_{ref.source_paragraph}",
-                source_label=ref.source_paragraph,
-                source_type="Paragraf",
+                id=f"rel_ref_{src_id}_{tgt_id}",
+                source_entity_id=src_id,
+                target_entity_id=tgt_id,
                 predicate="referenziert",
-                target_id=target_id,
-                target_label=ref.target_paragraph,
-                target_type="Paragraf",
-                confidence=0.9,  # High but not 1.0 since regex-based
+                properties={
+                    "source_label": ref.source_paragraph,
+                    "source_type": "Paragraf",
+                    "target_label": ref.target_paragraph,
+                    "target_type": "Paragraf",
+                    "target_law": target_law,
+                    "graph_type": "law",
+                },
+                confidence=0.9,
                 evidence=[],
             ))
         return relations

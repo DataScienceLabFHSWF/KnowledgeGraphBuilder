@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/fneubuerger/KnowledgeGraphBuilder/scripts/full_kg_pipeline.py", line 31, in <module>
+    import structlog
+ModuleNotFoundError: No module named 'structlog'

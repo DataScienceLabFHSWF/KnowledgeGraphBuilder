@@ -6,6 +6,7 @@
   "vector_collection": "lawgraph",
   "output_dir": "output/law_results",
   "max_iterations": 1,
+  "skip_discovery": true,
   "skip_analytics": true,
   "skip_confidence_tuning": true,
   "wandb_enabled": false,

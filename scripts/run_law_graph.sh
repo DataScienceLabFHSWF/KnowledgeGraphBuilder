@@ -35,20 +35,21 @@ echo ""
 
 # Run the pipeline
 echo "Starting law graph pipeline..."
-echo "Command: python scripts/full_kg_pipeline.py --config data/profiles/legal.json"
+echo "Command: python scripts/build_law_graph.py $EXTRA_ARGS"
 echo "Log: $LOG_FILE"
 echo ""
 
 if [ "$1" = "--background" ] || [ "$1" = "-b" ]; then
+    shift  # remove --background/-b from args so remaining args pass through
     echo "Running in background with nohup..."
-    nohup python scripts/full_kg_pipeline.py --config data/profiles/legal.json > "$LOG_FILE" 2>&1 &
+    nohup python scripts/build_law_graph.py "$@" > "$LOG_FILE" 2>&1 &
     PID=$!
     echo "Pipeline started in background with PID: $PID"
     echo "Monitor with: tail -f $LOG_FILE"
     echo "Kill with: kill $PID"
 else
     echo "Running interactively (press Ctrl+C to stop)..."
-    python scripts/full_kg_pipeline.py --config data/profiles/legal.json
+    python scripts/build_law_graph.py "$@"
 fi
 
 echo ""

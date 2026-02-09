@@ -62,6 +62,12 @@ python scripts/full_kg_pipeline.py --smoke-test
 
 # Or run in background
 ./scripts/run_law_graph.sh --background
+
+# Specific laws only
+./scripts/run_law_graph.sh --laws AtG StrlSchG
+
+# Dry run (no database writes)
+./scripts/run_law_graph.sh --dry-run --skip-embed
 ```
 
 **Manual way:**
@@ -70,23 +76,22 @@ python scripts/full_kg_pipeline.py --smoke-test
 source .venv/bin/activate
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 
-# Run the law graph pipeline in background with logging
-nohup python scripts/full_kg_pipeline.py --config data/profiles/legal.json \
-  > law_graph_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+# Run the dedicated law graph pipeline
+python scripts/build_law_graph.py --laws AtG StrlSchG
 
-# Monitor progress
-tail -f law_graph_*.log
-
-# Or run interactively for debugging
-python scripts/full_kg_pipeline.py --config data/profiles/legal.json --max-iterations 1
+# Or run in background with logging
+nohup python scripts/build_law_graph.py > law_graph.log 2>&1 &
 ```
 
 **What it does:**
-- Loads German law XML files from `data/law_html/` (BJNR*.xml format)
-- Parses laws into structured documents (paragraph-level chunking)
-- Extracts entities and relations using legal ontology (LKIF-Core + ELI)
-- Builds knowledge graph with structural relations (§ → Gesetzbuch, cross-references)
-- Validates and exports to Neo4j, RDF, and JSON-LD formats
+- **Parses** German law XML files from `data/law_html/` (BJNR*.xml format)
+- **Extracts** entities directly from XML structure (Gesetzbuch, Paragraf, Abschnitt)
+- **Creates** relations from XML structure (teilVon, referenziert) — no LLM needed
+- **Embeds** paragraph text into Qdrant for retrieval/QA
+- **Stores** entities + relations in Neo4j
+- **Exports** results to JSON files
+
+**Key difference:** This is a **structure-first pipeline** that exploits the highly structured XML format. No competency questions or iterative discovery needed — the XML structure IS the knowledge graph!
 
 ### CLI Options
 
