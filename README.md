@@ -53,6 +53,28 @@ nohup python scripts/full_kg_pipeline.py --max-iterations 1 \
 python scripts/full_kg_pipeline.py --smoke-test
 ```
 
+### 3. Build the Law Graph (new)
+
+```bash
+# Download German law XML data
+python scripts/full_law_pipeline.py
+
+# Merge reference ontologies into a single file
+python scripts/merge_legal_ontologies.py --mode cherry-pick
+
+# Build custom law ontology aligned to LKIF-Core + ELI
+python scripts/build_law_ontology.py
+
+# Phase A: structural import (no LLM, fast)
+python scripts/build_law_graph.py --phase structural --laws AtG StrlSchG StrlSchV
+
+# Phase B: ontology-guided semantic extraction (LLM)
+python scripts/build_law_graph.py --phase semantic
+
+# Or run the standard pipeline with a legal profile:
+python scripts/full_kg_pipeline.py --profile data/profiles/legal.json
+```
+
 ### CLI Options
 
 ```
@@ -77,14 +99,17 @@ Key flags:
 
 ## Architecture
 
+The pipeline is **ontology-agnostic**: it reads whatever ontology is loaded in Fuseki and generates extraction prompts from it. Different knowledge domains (decommissioning, law, etc.) share the same pipeline — only the ontology, document loaders, and rule-based extractors change.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     KG CONSTRUCTION PIPELINE                         │
+│                     (shared across all domains)                      │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  1. DOCUMENT INGESTION          2. RETRIEVAL & EXTRACTION            │
 │  ┌──────────────────────┐       ┌─────────────────────────┐         │
-│  │ PDF/DOCX/PPTX load   │       │ BM25 + Dense fusion     │         │
+│  │ PDF/DOCX/PPTX/XML    │       │ BM25 + Dense fusion     │         │
 │  │ Semantic chunking     │──────►│ LLM entity extraction   │         │
 │  │ Embedding (Ollama)    │       │ LLM relation extraction │         │
 │  │ Qdrant indexing       │       │ Ontology-guided prompts │         │
@@ -119,11 +144,31 @@ Key flags:
 
 For detailed design, see [Planning/02_ARCHITECTURE.md](Planning/02_ARCHITECTURE.md) and [Planning/03_INTERFACES.md](Planning/03_INTERFACES.md).
 
+### How Domains Plug In
+
+The pipeline is modular — adding a new knowledge domain requires:
+
+| Component | What to provide | Shared? |
+|-----------|----------------|--------|
+| **Ontology** (OWL) | Domain-specific classes + relations | No — each domain has its own |
+| **Document Loader** | Reads source format → KGB `Document` objects | Reusable (PDF, DOCX shared; XML loader for law) |
+| **Rule-Based Extractor** | Domain regex patterns + gazetteers | No — domain-specific patterns |
+| **LLM Extractor** | Ontology-guided (auto-generated prompts) | Yes — same code, different ontology |
+| **Storage** | Fuseki dataset + Qdrant collection + Neo4j labels | Namespace-separated, same infra |
+
+Currently supported domains:
+
+| Domain | Ontology | Status |
+|--------|----------|--------|
+| **Nuclear Decommissioning** | `plan-ontology-v1.0.owl` | ✅ Production |
+| **German Federal Law** | `law-ontology-v1.0.owl` (planned) | 🚧 Stubs + ontologies downloaded |
+
 ---
 
 ## Current Status
 
-**Pipeline**: Fully operational on 33 German nuclear decommissioning PDFs (~126 MB).
+**Pipeline**: Fully operational on 33 German nuclear decommissioning PDFs (~126 MB).  
+**Law Graph**: Stubs created, legal ontologies (LKIF-Core, ELI) downloaded, implementation plan ready.
 
 ### Phases
 
@@ -141,6 +186,7 @@ For detailed design, see [Planning/02_ARCHITECTURE.md](Planning/02_ARCHITECTURE.
 | 10 | Experiment Framework | ✅ Complete | Manager, analyzer, plotter, reporter, checkpointing |
 | 11 | High-Performance Opts | ✅ Complete | Response caching, tiered extraction, parallel processing |
 | 12 | Semantic Enhancement | ✅ Complete | OWL-RL inference, SKOS enrichment, graph analytics |
+| 13 | Law Graph Pipeline | 🚧 In Progress | XML reader, legal extractors, law ontology, structural import |
 
 ### Codebase Stats
 
@@ -158,15 +204,23 @@ For detailed design, see [Planning/02_ARCHITECTURE.md](Planning/02_ARCHITECTURE.
 ```
 src/kgbuilder/
 ├── core/                  # Protocols, models, exceptions, config
-├── document/              # Document loading (PDF/DOCX/PPTX) & chunking
+├── document/              # Document loading & chunking
 │   ├── loaders/           #   Format-specific loaders
+│   │   ├── pdf.py         #     PDF documents
+│   │   ├── office.py      #     DOCX/PPTX documents
+│   │   ├── law_xml.py     #     German law XML (gesetze-im-internet.de)
+│   │   └── law_adapter.py #     Law XML → KGB Document converter
 │   └── chunking/          #   Chunking strategies (fixed, semantic)
 ├── embedding/             # Embedding generation (Ollama)
 ├── extraction/            # Entity & relation extraction
-│   ├── entity.py          #   LLM entity extractor
-│   ├── relation.py        #   LLM relation extractor
+│   ├── entity.py          #   LLM entity extractor (generic)
+│   ├── relation.py        #   LLM relation extractor (generic)
+│   ├── rules.py           #   Rule-based extractors (decommissioning)
+│   ├── legal_rules.py     #   Rule-based extractors (German law)
+│   ├── legal_llm.py       #   LLM extractor (German law, ontology-guided)
+│   ├── legal_ensemble.py  #   Ensemble merger (rule + LLM for law)
+│   ├── ensemble.py        #   Tiered/ensemble extraction framework
 │   ├── synthesizer.py     #   Findings deduplication & merge
-│   ├── rules.py           #   Rule-based extractors
 │   └── benchmarking.py    #   Structured generation benchmarks
 ├── confidence/            # Confidence tuning (6 components)
 │   ├── analyzer.py        #   Statistical analysis & anomaly detection
@@ -232,13 +286,20 @@ store.batch_create_nodes(entities)
 
 | Script | Purpose |
 |--------|---------|
-| `full_kg_pipeline.py` | End-to-end pipeline (primary entry point) |
+| **Core Pipeline** | |
+| `full_kg_pipeline.py` | End-to-end KG pipeline (primary entry point, all domains) |
 | `run_single_experiment.py` | Single experiment with metrics |
 | `run_kg_pipeline_on_documents.py` | Discovery pipeline on document set |
 | `manage_versions.py` | KG version management CLI |
 | `validate_kg_complete.py` | Standalone KG validation |
 | `load_ontology_to_fuseki.py` | Load ontology into Fuseki |
 | `download_ontology.py` | Download/update ontology files |
+| **Law Graph** | |
+| `build_law_graph.py` | Law KG builder — Phase A (structural) + Phase B (semantic) |
+| `build_law_ontology.py` | Generate `law-ontology-v1.0.owl` aligned to LKIF-Core + ELI |
+| `merge_legal_ontologies.py` | Merge/cherry-pick LKIF-Core + ELI into single OWL file |
+| `full_law_pipeline.py` | Download all German law data (HTML + XML from gesetze-im-internet.de) |
+| `crawl_law_index.py` | Crawl Teilliste pages → `law_index.json` (6,869 laws) |
 
 ---
 
@@ -259,10 +320,17 @@ docker-compose up -d
 
 ### Data
 
-- **Ontology**: `data/ontology/plan-ontology-v1.0.owl` (28 KB)
+**Decommissioning Domain**:
+- **Ontology**: `data/ontology/domain/plan-ontology-v1.0.owl` (28 KB)
 - **Documents**: `data/Decommissioning_Files/` — 33 German nuclear decommissioning PDFs (126 MB)
 
-See [data/README.md](data/README.md) for details.
+**Law Domain**:
+- **Reference Ontologies**: `data/ontology/legal/` — LKIF-Core (11 OWL modules, ~200 KB) + ELI (~160 KB)
+- **Custom Ontology**: `data/ontology/law/law-ontology-v1.0.owl` (to be generated)
+- **Law XML**: `data/law_html/{LawAbbr}/BJNR*.xml` — downloaded at runtime, gitignored
+- **Profile**: `data/profiles/legal.json` — config overlay for `full_kg_pipeline.py`
+
+See [data/README.md](data/README.md) and [data/ontology/README.md](data/ontology/README.md) for details.
 
 ---
 
@@ -273,18 +341,25 @@ KnowledgeGraphBuilder/
 ├── src/kgbuilder/          # Implementation (see Module Overview)
 ├── tests/                  # Unit & integration tests
 ├── scripts/                # Pipeline scripts & utilities
-├── data/                   # Ontologies & source documents
-├── Planning/               # Architecture, interfaces, backlog (published)
+├── data/
+│   ├── ontology/
+│   │   ├── domain/         # Our domain ontologies (decommissioning)
+│   │   ├── legal/          # Reference legal ontologies
+│   │   │   ├── lkif-core/  #   LKIF-Core v1.1 (11 OWL modules)
+│   │   │   └── eli/        #   ELI metadata ontology
+│   │   └── law/            # Custom law ontology (generated)
+│   ├── profiles/           # Pipeline config overlays (legal.json, ...)
+│   ├── Decommissioning_Files/  # Source PDFs (gitignored)
+│   └── law_html/           # Downloaded law XML (gitignored)
+├── Planning/               # Architecture, interfaces, backlog
 │   ├── 01_ACADEMIC_OVERVIEW.md
 │   ├── 02_ARCHITECTURE.md
 │   ├── 03_INTERFACES.md
-│   ├── 04_ISSUES_BACKLOG.md
-│   ├── 05_SMOKE_TEST_RESULTS.md
-│   ├── 06_VERSIONING_GUIDE.md
-│   ├── 12_SEMANTIC_ENHANCEMENT.md
+│   ├── LAW_GRAPH_PLAN.md           # Law graph high-level plan
+│   ├── LAW_GRAPH_IMPLEMENTATION.md # Detailed implementation plan
+│   ├── LAW_ONTOLOGY_SOURCES.md     # Legal ontology citations
 │   ├── C1_*.md             # OntologyExtender blueprints
 │   └── C3_*.md             # GraphQAAgent blueprints
-├── local-docs/             # Session notes (local only, not published)
 ├── docker-compose.yml
 ├── pyproject.toml
 ├── requirements.txt

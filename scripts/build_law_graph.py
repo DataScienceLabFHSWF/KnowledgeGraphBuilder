@@ -1,15 +1,29 @@
 """Build a Legal Knowledge Graph from German federal law XML files.
 
-Two-phase pipeline:
-  Phase A (structural, no LLM): Parse XML → entities + structural relations → embed
-  Phase B (semantic, LLM): Ontology-guided extraction → enrich entities + relations
+This script is a **thin orchestrator** that composes the same KGB pipeline
+modules used by full_kg_pipeline.py, but adds a law-specific Phase A
+(structural import) before the standard ontology-guided extraction.
+
+Architecture note:
+    The KGB pipeline is designed to be ontology-agnostic. It reads whatever
+    ontology is in Fuseki and generates extraction prompts from it. For the
+    law graph we:
+    1. Add a pre-processing Phase A that parses XML and creates structural
+       entities/relations without any LLM (fast, deterministic).
+    2. Reuse the standard FullKGPipeline for Phase B by configuring it with
+       the legal ontology dataset, law document directory, and lawgraph
+       Qdrant collection.
+
+    The law-specific extractors (legal_rules, legal_llm, legal_ensemble)
+    are registered as additional extractors in the tiered/ensemble pipeline,
+    not as replacements.
 
 Usage::
 
     # Phase A only (fast, no LLM needed)
     python scripts/build_law_graph.py --phase structural
 
-    # Phase B only (requires LLM + ontology in Fuseki)
+    # Phase B only (reuses full_kg_pipeline with legal profile)
     python scripts/build_law_graph.py --phase semantic
 
     # Full pipeline (A then B)
@@ -17,11 +31,15 @@ Usage::
 
     # Specific laws only
     python scripts/build_law_graph.py --laws AtG StrlSchG StrlSchV
+
+    # Use the existing full_kg_pipeline directly with a profile:
+    python scripts/full_kg_pipeline.py --profile data/profiles/legal.json
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -35,12 +53,28 @@ DEFAULT_OUTPUT_DIR = Path("output/law_results")
 DEFAULT_QDRANT_COLLECTION = "lawgraph"
 DEFAULT_FUSEKI_DATASET = "lawgraph"
 
+# Legal profile config for full_kg_pipeline.py reuse
+LEGAL_PROFILE = {
+    "ontology_dataset": "lawgraph",
+    "ontology_path": "data/ontology/law/law-ontology-v1.0.owl",
+    "document_dir": "data/law_html",
+    "document_extensions": [".xml"],
+    "vector_collection": "lawgraph",
+    "output_dir": "output/law_results",
+}
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Build a Legal Knowledge Graph from German federal law XML.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "For Phase B, this script configures and launches the same\n"
+            "FullKGPipeline used by full_kg_pipeline.py with legal-domain\n"
+            "settings. You can also run the standard pipeline directly:\n\n"
+            "  python scripts/full_kg_pipeline.py --profile data/profiles/legal.json"
+        ),
     )
     parser.add_argument(
         "--phase",
@@ -92,6 +126,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Parse and extract but don't write to databases",
     )
     parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=1,
+        help="Number of discovery iterations for Phase B",
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Enable debug logging",
@@ -100,19 +140,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 # =========================================================================
-# Phase A: Structural Import
+# Phase A: Structural Import (law-specific, no LLM)
 # =========================================================================
 
 def run_phase_a(args: argparse.Namespace) -> dict:
     """Phase A: Structural import (no LLM).
 
+    This phase is law-specific and has no equivalent in the standard
+    full_kg_pipeline. It exploits the highly structured XML format of
+    gesetze-im-internet.de to create a structural graph deterministically.
+
     Steps:
     1. Parse all law XML files with LawXMLReader
     2. Convert to KGB Documents via LawDocumentAdapter
-    3. Extract structural relations (TEIL_VON, REFERENZIERT)
-    4. Create Gesetzbuch + Paragraf entity nodes
-    5. Embed paragraph text into Qdrant
-    6. Store entities + relations in Neo4j
+    3. Extract structural relations (TEIL_VON, REFERENZIERT) from XML
+    4. Create Gesetzbuch + Paragraf entity nodes (ExtractedEntity)
+    5. Embed paragraph text into Qdrant (reuses OllamaProvider)
+    6. Store entities + relations in Neo4j (reuses Neo4jGraphStore)
+
+    All entities get ``graph_type: "law"`` in their properties for namespace
+    separation from the decommissioning KG in the same Neo4j database.
 
     Returns:
         Stats dict with counts of entities, relations, documents.
@@ -121,26 +168,42 @@ def run_phase_a(args: argparse.Namespace) -> dict:
 
 
 # =========================================================================
-# Phase B: Ontology-Guided Semantic Extraction
+# Phase B: Ontology-Guided Semantic Extraction (reuses standard pipeline)
 # =========================================================================
 
 def run_phase_b(args: argparse.Namespace) -> dict:
     """Phase B: Ontology-guided LLM extraction.
 
+    This phase reuses the standard FullKGPipeline from full_kg_pipeline.py
+    with a legal-domain PipelineConfig. The only law-specific addition is
+    registering the LegalRuleBasedExtractor and LegalLLMExtractor as
+    additional extractors in the tiered extraction pipeline.
+
+    Config overrides applied:
+    - ontology_dataset → "lawgraph" (separate Fuseki dataset)
+    - vector_collection → "lawgraph" (separate Qdrant collection)
+    - output_dir → "output/law_results"
+    - document_extensions → [".xml"]
+
     Steps:
-    1. Load legal ontology from Fuseki
-    2. Load embedded paragraphs from Qdrant
-    3. For each paragraph, run ensemble extraction:
-       a. Rule-based: §-refs, authorities, deontic modalities
-       b. LLM-based: ontology-guided entity + relation extraction
-       c. Merge with confidence calibration
-    4. Enrich and validate extracted entities
-    5. Store enriched entities + relations in Neo4j
+    1. Build PipelineConfig with legal overrides
+    2. Register legal extractors (rule-based + LLM) in the pipeline
+    3. Run FullKGPipeline.run() — same discovery loop, enrichment, validation
+    4. Return extraction stats
 
     Returns:
         Stats dict with extraction counts.
     """
     raise NotImplementedError  # TODO: Step 6 implementation
+
+
+def write_legal_profile() -> Path:
+    """Write the legal profile JSON for full_kg_pipeline.py reuse."""
+    profile_path = Path("data/profiles/legal.json")
+    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    profile_path.write_text(json.dumps(LEGAL_PROFILE, indent=2), encoding="utf-8")
+    logger.info("Written legal profile to %s", profile_path)
+    return profile_path
 
 
 # =========================================================================
