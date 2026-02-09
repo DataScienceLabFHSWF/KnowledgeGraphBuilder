@@ -53,6 +53,7 @@ from kgbuilder.extraction.relation import (
     OntologyRelationDef,
 )
 from kgbuilder.enrichment import SemanticEnrichmentPipeline, EnrichedEntity, EnrichedRelation
+from kgbuilder.pipeline.confidence_tuning import ConfidenceTuningPipeline, ConfidenceTuningResult
 from kgbuilder.pipeline.checkpoint_cli import enrich_from_checkpoint
 from kgbuilder.storage.neo4j_store import Neo4jGraphStore
 from kgbuilder.storage.protocol import Node, Edge
@@ -147,6 +148,7 @@ class PipelineConfig(BaseModel):
     # Pipeline
     smoke_test: bool = False
     skip_discovery: bool = False
+    skip_confidence_tuning: bool = False
     skip_enrichment: bool = False
     skip_validation: bool = False
     enrich_only: bool = Field(
@@ -306,6 +308,14 @@ class FullKGPipeline:
             ontology_classes={},
         )
 
+        # Confidence tuning pipeline (Phase 5.1-5.6)
+        self.confidence_tuning_pipeline = ConfidenceTuningPipeline(
+            llm_provider=self.llm,
+            enable_calibration=True,
+            enable_consensus_voting=False,  # Only if needed, expensive
+            quality_threshold=self.config.confidence_threshold,
+        )
+
         # Checkpoint manager
         self.checkpoint_manager = CheckpointManager(self.config.output_dir / "checkpoints")
 
@@ -367,6 +377,20 @@ class FullKGPipeline:
                     })
             else:
                 logger.warning("skipping_discovery", reason="config_skip_discovery=true")
+
+            # 3.5. Confidence Tuning (Phase 5.1-5.6, if not skipped)
+            if not self.config.skip_confidence_tuning and hasattr(self, 'discovered_entities'):
+                logger.info("pipeline_step", step="confidence_tuning")
+                if self.wandb_run:
+                    self.wandb_run.log({"status": "confidence_tuning_started"})
+                self._run_confidence_tuning()
+                if self.wandb_run:
+                    self.wandb_run.log({
+                        "confidence_tuning_complete": 1,
+                        "entities_after_tuning": len(self.discovered_entities),
+                    })
+            else:
+                logger.warning("skipping_confidence_tuning", reason="config_skip_confidence_tuning=true")
 
             # 4. Enrichment (if not skipped)
             if not self.config.skip_enrichment:
@@ -687,6 +711,61 @@ class FullKGPipeline:
         except Exception as e:
             logger.error("discovery_failed", error=str(e))
             self.result.errors.append(f"Discovery failed: {str(e)}")
+            raise
+
+    def _run_confidence_tuning(self) -> None:
+        """Run confidence tuning on discovered entities and relations."""
+        try:
+            if not hasattr(self, 'discovered_entities') or not self.discovered_entities:
+                logger.warning("no_entities_for_confidence_tuning")
+                return
+
+            logger.info("confidence_tuning_start", entity_count=len(self.discovered_entities))
+
+            # Run confidence tuning pipeline
+            tuned_entities, tuned_relations, tuning_result = self.confidence_tuning_pipeline.tune(
+                entities=self.discovered_entities,
+                relations=self.discovered_relations if hasattr(self, 'discovered_relations') else [],
+            )
+
+            # Update discovered entities with tuned versions
+            self.discovered_entities = tuned_entities
+            if hasattr(self, 'discovered_relations'):
+                self.discovered_relations = tuned_relations
+
+            # Log tuning results
+            logger.info(
+                "confidence_tuning_complete",
+                input_entities=tuning_result.total_entities_input,
+                output_entities=tuning_result.total_entities_output,
+                filtered=tuning_result.entities_filtered,
+                avg_confidence_before=f"{tuning_result.avg_confidence_before:.2f}",
+                avg_confidence_after=f"{tuning_result.avg_confidence_after:.2f}",
+                coreference_clusters=tuning_result.coreference_clusters_merged,
+                calibration_applied=tuning_result.calibration_applied,
+                consensus_votes=tuning_result.consensus_votes_requested,
+                time_sec=f"{tuning_result.processing_time_sec:.1f}",
+            )
+
+            # Log to wandb if enabled
+            if self.wandb_run:
+                self.wandb_run.log({
+                    "confidence_tuning": {
+                        "input_entities": tuning_result.total_entities_input,
+                        "output_entities": tuning_result.total_entities_output,
+                        "entities_filtered": tuning_result.entities_filtered,
+                        "avg_confidence_before": tuning_result.avg_confidence_before,
+                        "avg_confidence_after": tuning_result.avg_confidence_after,
+                        "coreference_clusters_merged": tuning_result.coreference_clusters_merged,
+                        "calibration_applied": tuning_result.calibration_applied,
+                        "consensus_votes_requested": tuning_result.consensus_votes_requested,
+                        "processing_time_sec": tuning_result.processing_time_sec,
+                    }
+                })
+
+        except Exception as e:
+            logger.error("confidence_tuning_failed", error=str(e))
+            self.result.errors.append(f"Confidence tuning failed: {str(e)}")
             raise
 
     def _build_kg(self) -> None:
@@ -1091,6 +1170,11 @@ def main() -> int:
         help="Skip enrichment phase",
     )
     parser.add_argument(
+        "--skip-confidence-tuning",
+        action="store_true",
+        help="Skip confidence tuning phase (Phase 5.1-5.6)",
+    )
+    parser.add_argument(
         "--enrich-only",
         action="store_true",
         help="Load checkpoint and run enrichment only (skip discovery)",
@@ -1140,6 +1224,7 @@ def main() -> int:
             max_iterations=args.max_iterations,
             skip_validation=args.skip_validation,
             skip_discovery=args.skip_discovery,
+            skip_confidence_tuning=args.skip_confidence_tuning,
             skip_enrichment=args.skip_enrichment,
             enrich_only=args.enrich_only,
             checkpoint_path=args.checkpoint,
