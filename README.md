@@ -55,25 +55,38 @@ python scripts/full_kg_pipeline.py --smoke-test
 
 ### 3. Build the Law Graph (new)
 
+**Easy way (recommended):**
 ```bash
-# Download German law XML data
-python scripts/full_law_pipeline.py
+# Run the law graph pipeline (interactive)
+./scripts/run_law_graph.sh
 
-# Merge reference ontologies into a single file
-python scripts/merge_legal_ontologies.py --mode cherry-pick
-
-# Build custom law ontology aligned to LKIF-Core + ELI
-python scripts/build_law_ontology.py
-
-# Phase A: structural import (no LLM, fast)
-python scripts/build_law_graph.py --phase structural --laws AtG StrlSchG StrlSchV
-
-# Phase B: ontology-guided semantic extraction (LLM)
-python scripts/build_law_graph.py --phase semantic
-
-# Or run the standard pipeline with a legal profile:
-python scripts/full_kg_pipeline.py --profile data/profiles/legal.json
+# Or run in background
+./scripts/run_law_graph.sh --background
 ```
+
+**Manual way:**
+```bash
+# Activate virtual environment and set PYTHONPATH
+source .venv/bin/activate
+export PYTHONPATH=$PWD/src:$PYTHONPATH
+
+# Run the law graph pipeline in background with logging
+nohup python scripts/full_kg_pipeline.py --config data/profiles/legal.json \
+  > law_graph_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+
+# Monitor progress
+tail -f law_graph_*.log
+
+# Or run interactively for debugging
+python scripts/full_kg_pipeline.py --config data/profiles/legal.json --max-iterations 1
+```
+
+**What it does:**
+- Loads German law XML files from `data/law_html/` (BJNR*.xml format)
+- Parses laws into structured documents (paragraph-level chunking)
+- Extracts entities and relations using legal ontology (LKIF-Core + ELI)
+- Builds knowledge graph with structural relations (§ → Gesetzbuch, cross-references)
+- Validates and exports to Neo4j, RDF, and JSON-LD formats
 
 ### CLI Options
 
