@@ -244,7 +244,7 @@ class FullKGPipeline:
         # Inference Engine
         from kgbuilder.analytics.inference import Neo4jInferenceEngine
         self.inference_engine = Neo4jInferenceEngine(
-            storage=self.graph_store,
+            graph_store=self.graph_store,
             ontology_service=self.ontology_service
         )
 

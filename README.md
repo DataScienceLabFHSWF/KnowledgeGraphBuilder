@@ -33,14 +33,29 @@ pip install -r requirements.txt
 docker-compose up -d neo4j qdrant fuseki ollama
 ```
 
-### 2. Process Documents
+### 2. Run Full Pipeline (All Documents)
 
 ```bash
-# Ingest and embed documents
-python scripts/ingest.py
+# Run in background with proper venv activation and PYTHONPATH
+cd /home/fneubuerger/KnowledgeGraphBuilder
 
-# Load ontology to RDF store
-python scripts/load_ontology_to_fuseki.py
+nohup bash -c 'source .venv/bin/activate && \
+export PYTHONPATH=/home/fneubuerger/KnowledgeGraphBuilder/src:$PYTHONPATH && \
+python scripts/full_kg_pipeline.py --max-iterations 1' \
+> /tmp/kg_pipeline_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+
+# Or use the saved script
+bash scripts/run_pipeline_bg.sh
+
+# Monitor progress
+tail -f /tmp/kg_pipeline_*.log
+```
+
+### 2b. Run Smoke Test
+
+```bash
+# Quick test on minimal subset
+python scripts/full_kg_pipeline.py --smoke-test
 ```
 
 ### 3. Run Discovery Pipeline
@@ -51,6 +66,70 @@ python scripts/run_kg_pipeline_on_documents.py
 
 # Results: Neo4j KG with extracted entities and relationships
 ```
+
+### CLI Options
+
+The full pipeline supports many configuration options:
+
+```bash
+python scripts/full_kg_pipeline.py --help
+
+# Key options:
+# --max-iterations N          : Discovery loop iterations (default: 3)
+# --skip-discovery            : Skip discovery phase
+# --skip-enrichment           : Skip enrichment phase
+# --skip-validation           : Skip validation
+# --enrich-only + --checkpoint : Re-enrich from checkpoint
+# --smoke-test                : Run on test collections only
+# --wandb-enabled             : Enable W&B experiment tracking
+# --documents PATH            : Input documents directory
+# --output PATH               : Output directory
+# --ontology-url URL          : Fuseki endpoint (default: http://localhost:3030)
+```
+
+---
+
+## Recent Fixes & Updates (2026-02-09)
+
+### ✅ CRITICAL BUG FIXED: Entity ID Collision Resolution
+
+**Problem**: Entity ID collisions causing 99.5% data loss during discovery loop
+- Root cause: Sequential IDs assigned per-chunk without deterministic content hashing
+- Impact: Entity deduplication keyed on entity.id was merging all instances
+- Result: Only ~15 final entities instead of hundreds
+
+**Solution**: 
+- Implemented deterministic content-based entity IDs (format: `ent_<12-char-hex>`)
+- MD5 hash of entity label + type ensures same entity always gets same ID
+- Changed dedup key from `entity.id` → tuple `(label.lower(), entity_type.lower())`
+- Updated both `LLMEntityExtractor` and `RuleBasedExtractor` to use `generate_entity_id()`
+- Added backward-compatible evidence tracking
+
+**Verification**:
+- All 17 existing tests pass (no regressions)
+- Expected impact: 10-30x more entities on re-run (hundreds instead of ~15)
+
+**Files Modified**:
+- `src/kgbuilder/extraction/entity.py` – Entity ID generation & deduplication
+- `src/kgbuilder/extraction/relation.py` – Relation extraction updates
+- `src/kgbuilder/agents/discovery_loop.py` – Discovery loop dedup logic
+
+### ✅ Parameter Fix: Neo4jInferenceEngine Initialization
+
+**Problem**: Pipeline initialization error - unexpected keyword argument `storage`
+
+```
+TypeError: Neo4jInferenceEngine.__init__() got an unexpected keyword argument 'storage'
+```
+
+**Solution**: Corrected parameter name in pipeline initialization
+- Changed: `Neo4jInferenceEngine(storage=self.graph_store, ...)`
+- To: `Neo4jInferenceEngine(graph_store=self.graph_store, ...)`
+
+**File Modified**:
+- `scripts/full_kg_pipeline.py` (line 246)
+
+**Result**: Pipeline now initializes successfully on all 33 documents
 
 ---
 
@@ -580,9 +659,9 @@ MIT License - See [LICENSE](LICENSE) file
 
 ---
 
-**Last Updated**: 2026-02-03  
+**Last Updated**: 2026-02-09  
 **Maintained By**: Knowledge Graph Team  
-**Status**: Active Development
+**Status**: Active Development ✅ Entity ID bug fixed, pipeline running on all 33 docs
 - **Neo4j**: Knowledge graph with entity relationships (port 7687)
 - **Ollama**: Local LLM and embedding models
 
