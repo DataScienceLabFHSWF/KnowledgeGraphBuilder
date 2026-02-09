@@ -211,9 +211,13 @@ __marimo__/
 
 # KGBuilder project-specific
 data/Decommissioning_Files
-data/ontology
 kg_versions/
 experiments/
+
+# Law data (downloaded at runtime, not committed)
+data/law_html/
+data/law_index/
+data/law_jsons/
 
 # Neo4j data
 neo4j_data/
