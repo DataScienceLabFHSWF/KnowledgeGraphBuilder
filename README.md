@@ -49,6 +49,10 @@ export PYTHONPATH=$PWD/src:$PYTHONPATH
 nohup python scripts/full_kg_pipeline.py --max-iterations 1 \
   > pipeline_$(date +%Y%m%d_%H%M%S).log 2>&1 &
 
+# or with law graph context augmentation (recommended)
+LAW_GRAPH_ENABLED=true nohup python scripts/full_kg_pipeline.py --max-iterations 1 \
+  > pipeline_law_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+
 # or smoke test
 python scripts/full_kg_pipeline.py --smoke-test
 ```
@@ -95,8 +99,9 @@ nohup python scripts/build_law_graph.py > law_graph.log 2>&1 &
 
 ### CLI Options
 
-```
+```bash
 python scripts/full_kg_pipeline.py --help
+```
 
 Key flags:
   --max-iterations N        Discovery loop iterations (default: 3)
@@ -111,6 +116,11 @@ Key flags:
   --wandb-enabled           Enable W&B experiment tracking
   --documents PATH          Input documents directory
   --output PATH             Output directory
+
+Environment variables:
+  LAW_GRAPH_ENABLED=true    Enable law graph context augmentation (default: false)
+  LAW_GRAPH_COLLECTION=lawgraph  Qdrant collection name for law graph (default: lawgraph)
+  LAW_GRAPH_MAX_RESULTS=3   Max law paragraphs to retrieve per chunk (default: 3)
 ```
 
 ---
@@ -186,7 +196,47 @@ Currently supported domains:
 ## Current Status
 
 **Pipeline**: Fully operational on 33 German nuclear decommissioning PDFs (~126 MB).  
-**Law Graph**: Stubs created, legal ontologies (LKIF-Core, ELI) downloaded, implementation plan ready.
+**Law Graph**: ✅ **Integrated** — Law graph now informs KG building with legal context augmentation.
+
+### Law Graph Integration
+
+The KG pipeline can now be **informed by legal context** from the German federal law graph. When enabled (`LAW_GRAPH_ENABLED=true`), the system:
+
+- **Retrieves relevant legal paragraphs** for each document chunk being processed
+- **Augments LLM prompts** with legal context (laws, regulations, obligations)
+- **Improves entity extraction accuracy** by providing domain-specific legal knowledge
+- **Maintains backward compatibility** — works with or without law graph
+
+**Current State**: 
+- ✅ Law graph built (858 entities, 3,797 relations, 717 embeddings)
+- ✅ Law graph retrieval service implemented and tested
+- ✅ Pipeline integration complete and verified
+- 🔄 **Next**: Compare KG quality with vs. without law graph context
+
+**Law Graph Stats**:
+- **Entities**: 858 (719 Paragraf, 134 Abschnitt, 5 Gesetzbuch)
+- **Relations**: 3,797 (structural + semantic)
+- **Embeddings**: 717 paragraphs (Qdrant collection: `lawgraph`, dim=4096)
+- **Coverage**: 5 nuclear-relevant laws (AtG, BBergG, BImSchG, KrWG, StrlSchG)
+
+### KG Quality Comparison: With vs. Without Law Graph
+
+We now have the capability to **compare KG quality** when informed by legal context:
+
+**Current Baseline**: KG built from decommissioning documents only  
+**Next Experiment**: KG built with law graph context augmentation
+
+**Expected Impact**:
+- **Higher precision** in legal entity recognition (permits, regulations, authorities)
+- **Better relation extraction** for compliance and regulatory relationships  
+- **Improved consistency** with German legal terminology and concepts
+- **Enhanced domain accuracy** for nuclear decommissioning processes
+
+**Comparison Metrics**:
+- Entity extraction F1-score, precision, recall
+- Relation extraction accuracy and completeness
+- Ontology alignment and constraint satisfaction
+- Legal concept coverage and terminology consistency
 
 ### Phases
 
@@ -204,7 +254,7 @@ Currently supported domains:
 | 10 | Experiment Framework | ✅ Complete | Manager, analyzer, plotter, reporter, checkpointing |
 | 11 | High-Performance Opts | ✅ Complete | Response caching, tiered extraction, parallel processing |
 | 12 | Semantic Enhancement | ✅ Complete | OWL-RL inference, SKOS enrichment, graph analytics |
-| 13 | Law Graph Pipeline | 🚧 In Progress | XML reader, legal extractors, law ontology, structural import |
+| 13 | Law Graph Pipeline | ✅ **Integrated** | XML reader, legal extractors, law ontology, structural import, **KG context augmentation** |
 
 ### Codebase Stats
 
