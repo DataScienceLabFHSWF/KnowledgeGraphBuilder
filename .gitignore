@@ -275,3 +275,5 @@ local-docs/
 wandb/
 #presentations
 presentations/
+#nohup
+nohup.out
