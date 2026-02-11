@@ -287,6 +287,7 @@ class KGLawLinker:
             # All relationship types link to law codes (Gesetzbuch nodes)
             query = f"""
             MERGE (law:Gesetzbuch {{abbreviation: $law_code}})
+            WITH law
             MATCH (entity) WHERE entity.id = $entity_id
             MERGE (entity)-[r:{relationship_type} {{confidence: $confidence}}]->(law)
             SET r.reason = $reason

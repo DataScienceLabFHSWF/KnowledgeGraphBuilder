@@ -37,7 +37,7 @@ def load_ontology() -> None:
     fuseki_password = os.getenv("FUSEKI_PASSWORD", "")
     dataset_name = os.getenv("FUSEKI_DATASET", "kgbuilder_test")
 
-    ontology_path = Path(__file__).parent.parent / "data" / "ontology" / "plan-ontology-v1.0.owl"
+    ontology_path = Path(__file__).parent.parent / "data" / "ontology" / "domain" / "plan-ontology-v2.0.owl"
 
     logger.info(
         "loading_ontology",
