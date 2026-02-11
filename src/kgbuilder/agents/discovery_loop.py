@@ -128,6 +128,7 @@ class IterativeDiscoveryLoop:
         ontology_classes: list[Any] | None = None,
         relation_extractor: Any | None = None,  # NEW: For Phase 5
         ontology_relations: list[Any] | None = None,  # NEW: For Phase 5
+        context_provider: Any | None = None,  # Optional law graph context provider
     ) -> None:
         """Initialize discovery loop.
 
@@ -138,6 +139,7 @@ class IterativeDiscoveryLoop:
             ontology_classes: Optional list of ontology class definitions for extraction guidance
             relation_extractor: Optional RelationExtractor for Phase 5 (NEW)
             ontology_relations: Optional list of ontology relation definitions (NEW)
+            context_provider: Optional callable(text) -> str that provides additional context
         """
         self._retriever = retriever
         self._extractor = extractor
@@ -145,6 +147,7 @@ class IterativeDiscoveryLoop:
         self._ontology_classes = ontology_classes
         self._relation_extractor = relation_extractor  # NEW
         self._ontology_relations = ontology_relations  # NEW
+        self._context_provider = context_provider
         self._findings: dict[tuple[str, str], ExtractedEntity] = {}
         self._provenance: dict[tuple[str, str], set[str]] = {}  # (label, type) -> source docs
         self._relations: list[Any] = []  # NEW: Store extracted relations
@@ -385,9 +388,19 @@ class IterativeDiscoveryLoop:
             # 2. Extract entities from each document
             for result in retrieved:
                 try:
+                    # Optionally augment text with law graph context
+                    extraction_text = result.content
+                    if self._context_provider:
+                        try:
+                            extra_context = self._context_provider(result.content)
+                            if extra_context:
+                                extraction_text = f"{result.content}\n\n{extra_context}"
+                        except Exception as ctx_err:
+                            self._logger.debug("context_provider_failed", error=str(ctx_err))
+
                     # Extract entities from this document with ontology guidance
                     entities = self._extractor.extract(
-                        text=result.content,
+                        text=extraction_text,
                         ontology_classes=ontology_classes
                     )
 

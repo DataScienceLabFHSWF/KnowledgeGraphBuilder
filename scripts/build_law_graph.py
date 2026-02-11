@@ -364,12 +364,35 @@ class LawGraphPipeline:
 
         # Embed in batches
         batch_size = 32
+        failed_count = 0
         for i in range(0, len(texts), batch_size):
             batch_texts = texts[i : i + batch_size]
             batch_ids = ids[i : i + batch_size]
             batch_meta = metadata_list[i : i + batch_size]
 
-            embeddings = embedder.embed_batch(batch_texts, batch_size=batch_size)
+            # Retry up to 3 times per batch; skip individual failures
+            embeddings: list[Any] = []
+            for text_item in batch_texts:
+                emb = None
+                for attempt in range(3):
+                    try:
+                        emb = embedder.embed_query(text_item)
+                        break
+                    except Exception as exc:
+                        logger.warning(
+                            "embed_retry",
+                            attempt=attempt + 1,
+                            error=str(exc)[:100],
+                        )
+                        import time as _time
+                        _time.sleep(1.0 * (attempt + 1))
+                if emb is None:
+                    logger.error("embed_skipped", text=text_item[:60])
+                    failed_count += 1
+                    # Use zero vector as placeholder to keep alignment
+                    import numpy as np
+                    emb = np.zeros(embedder.dimension, dtype=np.float32)
+                embeddings.append(emb)
 
             if not self.config.dry_run:
                 qdrant.store(
@@ -384,8 +407,12 @@ class LawGraphPipeline:
                 size=len(batch_texts),
             )
 
-        self.result.documents_embedded = len(texts)
-        logger.info("embedding_complete", embedded=len(texts))
+        self.result.documents_embedded = len(texts) - failed_count
+        logger.info(
+            "embedding_complete",
+            embedded=len(texts) - failed_count,
+            failed=failed_count,
+        )
 
     # ------------------------------------------------------------------
     # Step 4: Store in Neo4j

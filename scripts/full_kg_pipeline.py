@@ -155,6 +155,16 @@ class PipelineConfig(BaseModel):
     skip_enrichment: bool = False
     skip_analytics: bool = False
     skip_validation: bool = False
+
+    # Law Graph integration (optional)
+    law_graph_enabled: bool = Field(
+        default_factory=lambda: os.environ.get("LAW_GRAPH_ENABLED", "false").lower() == "true",
+        description="Enable law graph retrieval to augment entity extraction"
+    )
+    law_graph_collection: str = Field(
+        default_factory=lambda: os.environ.get("LAW_GRAPH_COLLECTION", "lawgraph")
+    )
+    law_graph_max_results: int = 3
     enrich_only: bool = Field(
         default=False,
         description="Load checkpoint and run enrichment only (skip discovery)"
@@ -255,6 +265,28 @@ class FullKGPipeline:
             ontology_service=self.ontology_service
         )
 
+        # Law Graph Retriever (optional)
+        self.law_retriever = None
+        if self.config.law_graph_enabled:
+            try:
+                from kgbuilder.storage.law_retrieval import LawGraphRetriever
+                law_qdrant = QdrantStore(
+                    url=self.config.qdrant_url,
+                    collection_name=self.config.law_graph_collection,
+                )
+                self.law_retriever = LawGraphRetriever(
+                    neo4j_store=self.graph_store,
+                    qdrant_store=law_qdrant,
+                    embedding_provider=None,  # set after LLM init
+                    max_results=self.config.law_graph_max_results,
+                )
+                logger.info(
+                    "law_graph_retriever_enabled",
+                    collection=self.config.law_graph_collection,
+                )
+            except Exception as e:
+                logger.warning("law_graph_init_failed", error=str(e))
+
         logger.info("storage_services_initialized")
 
     def _init_llm_services(self) -> None:
@@ -337,6 +369,10 @@ class FullKGPipeline:
             version_dir=self.config.version_dir,
             graph_store=self.graph_store,
         )
+
+        # Wire embedding provider into law retriever (needs to happen after LLM init)
+        if self.law_retriever is not None:
+            self.law_retriever.embedding_provider = self.embedding_provider
 
         logger.info("llm_services_initialized")
 
@@ -681,6 +717,15 @@ class FullKGPipeline:
 
             retriever = VectorRetriever(self.vector_store, self.embedding_provider)
 
+            # Build law context provider if law graph is enabled
+            law_context_fn = None
+            if self.law_retriever is not None:
+                def _law_context_fn(text: str) -> str:
+                    contexts = self.law_retriever.retrieve_for_text(text)
+                    return self.law_retriever.format_as_prompt_context(contexts)
+                law_context_fn = _law_context_fn
+                logger.info("law_graph_context_enabled_for_discovery")
+
             discovery_loop = IterativeDiscoveryLoop(
                 retriever=retriever,
                 extractor=self.entity_extractor,
@@ -688,6 +733,7 @@ class FullKGPipeline:
                 ontology_classes=self.ontology_classes if hasattr(self, 'ontology_classes') else None,
                 relation_extractor=self.relation_extractor,
                 ontology_relations=self.ontology_relations if hasattr(self, 'ontology_relations') else None,
+                context_provider=law_context_fn,
             )
 
             # Load initial questions if provided

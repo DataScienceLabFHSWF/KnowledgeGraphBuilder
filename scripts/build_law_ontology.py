@@ -201,13 +201,117 @@ DATATYPE_PROPERTIES = [
 ]
 
 
+def _owl_class(cls: dict[str, object], indent: str = "    ") -> str:
+    """Generate OWL/XML for a single class definition."""
+    cls_id = cls["id"]
+    uri = f"{LAW_NS}{cls_id}"
+    lines = [f'{indent}<owl:Class rdf:about="{uri}">']
+    if label_de := cls.get("label_de"):
+        lines.append(f'{indent}    <rdfs:label xml:lang="de">{label_de}</rdfs:label>')
+    if label_en := cls.get("label_en"):
+        lines.append(f'{indent}    <rdfs:label xml:lang="en">{label_en}</rdfs:label>')
+    if comment := cls.get("comment"):
+        lines.append(f'{indent}    <rdfs:comment xml:lang="en">{comment}</rdfs:comment>')
+    if parent := cls.get("parent"):
+        lines.append(f'{indent}    <rdfs:subClassOf rdf:resource="{parent}"/>')
+    if align_to := cls.get("align_to"):
+        lines.append(f'{indent}    <owl:equivalentClass rdf:resource="{align_to}"/>')
+    lines.append(f"{indent}</owl:Class>")
+    return "\n".join(lines)
+
+
+def _owl_object_property(rel: dict[str, object], indent: str = "    ") -> str:
+    """Generate OWL/XML for an ObjectProperty."""
+    rel_id = rel["id"]
+    uri = f"{LAW_NS}{rel_id}"
+    lines = [f'{indent}<owl:ObjectProperty rdf:about="{uri}">']
+    if label := rel.get("label"):
+        lines.append(f'{indent}    <rdfs:label xml:lang="de">{label}</rdfs:label>')
+    if comment := rel.get("comment"):
+        lines.append(f'{indent}    <rdfs:comment xml:lang="en">{comment}</rdfs:comment>')
+    if domain := rel.get("domain"):
+        lines.append(f'{indent}    <rdfs:domain rdf:resource="{LAW_NS}{domain}"/>')
+    if range_ := rel.get("range"):
+        lines.append(f'{indent}    <rdfs:range rdf:resource="{LAW_NS}{range_}"/>')
+    if align_to := rel.get("align_to"):
+        lines.append(f'{indent}    <rdfs:subPropertyOf rdf:resource="{align_to}"/>')
+    lines.append(f"{indent}</owl:ObjectProperty>")
+    return "\n".join(lines)
+
+
+def _owl_datatype_property(dp: dict[str, object], indent: str = "    ") -> str:
+    """Generate OWL/XML for a DatatypeProperty."""
+    dp_id = dp["id"]
+    uri = f"{LAW_NS}{dp_id}"
+    xsd_type = dp.get("xsd_type", "string")
+    lines = [f'{indent}<owl:DatatypeProperty rdf:about="{uri}">']
+    if label := dp.get("label"):
+        lines.append(f'{indent}    <rdfs:label xml:lang="de">{label}</rdfs:label>')
+    if comment := dp.get("comment"):
+        lines.append(f'{indent}    <rdfs:comment xml:lang="en">{comment}</rdfs:comment>')
+    if domain := dp.get("domain"):
+        lines.append(f'{indent}    <rdfs:domain rdf:resource="{LAW_NS}{domain}"/>')
+    lines.append(
+        f'{indent}    <rdfs:range rdf:resource='
+        f'"http://www.w3.org/2001/XMLSchema#{xsd_type}"/>'
+    )
+    lines.append(f"{indent}</owl:DatatypeProperty>")
+    return "\n".join(lines)
+
+
 def build_ontology_owl() -> str:
     """Generate OWL/XML string for the legal ontology.
 
     Returns:
         Complete OWL/XML document as string.
     """
-    raise NotImplementedError  # TODO: Step 7 implementation
+    header = f"""\
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xmlns:law="{LAW_NS}"
+    xmlns:eli="{ELI_NS}"
+    xmlns:lkif-norm="{LKIF_NORM_NS}"
+    xmlns:lkif-la="{LKIF_LACTION_NS}"
+    xml:base="{LAW_NS[:-1]}">
+
+    <owl:Ontology rdf:about="{LAW_NS[:-1]}">
+        <rdfs:label xml:lang="en">KGBuilder Legal Ontology</rdfs:label>
+        <rdfs:label xml:lang="de">KGBuilder Rechtsontologie</rdfs:label>
+        <rdfs:comment xml:lang="en">\
+Ontology for German nuclear-domain legal knowledge graph. \
+Aligned to LKIF-Core and ELI vocabularies.</rdfs:comment>
+        <owl:versionInfo>1.0</owl:versionInfo>
+        <owl:imports rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl"/>
+        <owl:imports rdf:resource=\
+"http://www.estrellaproject.org/lkif-core/legal-action.owl"/>
+    </owl:Ontology>
+
+"""
+    sections: list[str] = []
+
+    # Classes
+    sections.append("    <!-- ===== Classes ===== -->")
+    for cls in CLASSES:
+        sections.append(_owl_class(cls))
+
+    # Object properties
+    sections.append("")
+    sections.append("    <!-- ===== Object Properties ===== -->")
+    for rel in RELATIONS:
+        sections.append(_owl_object_property(rel))
+
+    # Datatype properties
+    sections.append("")
+    sections.append("    <!-- ===== Datatype Properties ===== -->")
+    for dp in DATATYPE_PROPERTIES:
+        sections.append(_owl_datatype_property(dp))
+
+    footer = "\n</rdf:RDF>\n"
+    return header + "\n".join(sections) + footer
 
 
 def main() -> None:
