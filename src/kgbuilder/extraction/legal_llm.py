@@ -18,16 +18,20 @@ Usage::
 
 from __future__ import annotations
 
+import json
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
+from pydantic import BaseModel, Field
+
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence, generate_entity_id
 
 
 class LLMProvider(Protocol):
     """Protocol for LLM backends (matches existing KGB LLMProvider)."""
 
-    def generate(self, prompt: str, **kwargs: Any) -> str: ...
+    def generate_structured(self, prompt: str, schema: type[BaseModel], **kwargs: Any) -> Any: ...
 
     @property
     def model_name(self) -> str: ...
@@ -53,8 +57,90 @@ class LegalExtractionConfig:
 
 
 # ---------------------------------------------------------------------------
+# Pydantic schemas for structured output
+# ---------------------------------------------------------------------------
+
+class LegalEntityItem(BaseModel):
+    """Schema for individual legal entity extraction."""
+
+    label: str = Field(description="Entity label/name from text")
+    entity_type: str = Field(description="Ontology class type")
+    description: str = Field(description="Brief description of the entity")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score")
+    evidence_span: str = Field(description="Exact text span that supports this entity")
+
+
+class LegalEntityExtractionOutput(BaseModel):
+    """Schema for legal entity extraction JSON output."""
+
+    entities: list[LegalEntityItem] = Field(description="List of extracted legal entities")
+
+
+class LegalRelationItem(BaseModel):
+    """Schema for individual legal relation extraction."""
+
+    source: str = Field(description="Source entity label")
+    target: str = Field(description="Target entity label")
+    predicate: str = Field(description="Relation type from ontology")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score")
+    evidence_span: str = Field(description="Text span supporting this relation")
+
+
+class LegalRelationExtractionOutput(BaseModel):
+    """Schema for legal relation extraction JSON output."""
+
+    relations: list[LegalRelationItem] = Field(description="List of extracted legal relations")
+
+
+# ---------------------------------------------------------------------------
 # Prompt templates
 # ---------------------------------------------------------------------------
+
+ENTITY_EXTRACTION_SYSTEM_PROMPT = """\
+Du bist ein Experte für deutsches Recht. Extrahiere strukturierte Entitäten
+aus dem folgenden Gesetzestext. Verwende ausschließlich die Klassen aus der
+bereitgestellten Ontologie.
+
+Ontologie-Klassen:
+{class_definitions}
+
+Antworte ausschließlich im JSON-Format:
+{{
+  "entities": [
+    {{
+      "label": "...",
+      "entity_type": "...",
+      "description": "...",
+      "confidence": 0.0-1.0,
+      "evidence_span": "..."
+    }}
+  ]
+}}
+"""
+
+RELATION_EXTRACTION_SYSTEM_PROMPT = """\
+Du bist ein Experte für deutsches Recht. Gegeben sind Entitäten und
+Gesetzestext. Extrahiere Relationen zwischen den Entitäten.
+
+Erlaubte Relationen:
+{relation_definitions}
+
+Bereits extrahierte Entitäten:
+{entities_json}
+
+Antworte ausschließlich im JSON-Format:
+{{
+  "relations": [
+    {{
+      "source": "...",
+      "target": "...",
+      "predicate": "...",
+      "confidence": 0.0-1.0,
+      "evidence_span": "..."
+    }}
+  ]
+}}
+"""
 
 ENTITY_EXTRACTION_SYSTEM_PROMPT = """\
 Du bist ein Experte für deutsches Recht. Extrahiere strukturierte Entitäten
@@ -135,7 +221,9 @@ class LegalLLMExtractor:
         Returns:
             Tuple of (entities, relations).
         """
-        raise NotImplementedError  # TODO: Step 5 implementation
+        entities = self.extract_entities(text, paragraph_id)
+        relations = self.extract_relations(text, entities, paragraph_id)
+        return entities, relations
 
     def extract_entities(
         self,
@@ -143,7 +231,24 @@ class LegalLLMExtractor:
         paragraph_id: str = "",
     ) -> list[ExtractedEntity]:
         """Extract entities only (first pass)."""
-        raise NotImplementedError  # TODO: Step 5 implementation
+        if not text or not text.strip():
+            return []
+
+        prompt = self._build_entity_prompt(text, paragraph_id)
+
+        try:
+            output: LegalEntityExtractionOutput = self.llm.generate_structured(
+                prompt,
+                LegalEntityExtractionOutput,
+            )
+
+            if not output.entities:
+                return []
+
+            return self._parse_entity_response(output, paragraph_id)
+
+        except Exception as e:
+            raise RuntimeError(f"Entity extraction failed: {e}") from e
 
     def extract_relations(
         self,
@@ -152,7 +257,24 @@ class LegalLLMExtractor:
         paragraph_id: str = "",
     ) -> list[ExtractedRelation]:
         """Extract relations given pre-extracted entities (second pass)."""
-        raise NotImplementedError  # TODO: Step 5 implementation
+        if not text or not entities:
+            return []
+
+        prompt = self._build_relation_prompt(text, entities, paragraph_id)
+
+        try:
+            output: LegalRelationExtractionOutput = self.llm.generate_structured(
+                prompt,
+                LegalRelationExtractionOutput,
+            )
+
+            if not output.relations:
+                return []
+
+            return self._parse_relation_response(output, paragraph_id)
+
+        except Exception as e:
+            raise RuntimeError(f"Relation extraction failed: {e}") from e
 
     # ------------------------------------------------------------------
     # Prompt construction
@@ -160,40 +282,159 @@ class LegalLLMExtractor:
 
     def _build_entity_prompt(self, text: str, paragraph_id: str) -> str:
         """Build entity extraction prompt from ontology + text."""
-        raise NotImplementedError
+        class_defs = self._format_class_definitions()
+
+        prompt = ENTITY_EXTRACTION_SYSTEM_PROMPT.format(
+            class_definitions=class_defs
+        )
+
+        if paragraph_id:
+            prompt += f"\n\nParagraph: {paragraph_id}"
+
+        prompt += f"\n\nText:\n{text}\n\n"
+
+        return prompt
 
     def _build_relation_prompt(
         self, text: str, entities: list[ExtractedEntity], paragraph_id: str
     ) -> str:
         """Build relation extraction prompt from ontology + entities + text."""
-        raise NotImplementedError
+        relation_defs = self._format_relation_definitions()
+
+        # Format entities as JSON for the prompt
+        entities_data = [
+            {
+                "label": e.label,
+                "type": e.entity_type,
+                "description": getattr(e, 'description', '')
+            }
+            for e in entities
+        ]
+        entities_json = json.dumps(entities_data, ensure_ascii=False, indent=2)
+
+        prompt = RELATION_EXTRACTION_SYSTEM_PROMPT.format(
+            relation_definitions=relation_defs,
+            entities_json=entities_json
+        )
+
+        if paragraph_id:
+            prompt += f"\n\nParagraph: {paragraph_id}"
+
+        prompt += f"\n\nText:\n{text}\n\n"
+
+        return prompt
 
     def _format_class_definitions(self) -> str:
         """Format ontology classes for prompt injection."""
-        raise NotImplementedError
+        classes = self.ontology.get_class_definitions()
+        if not classes:
+            return "Keine Ontologie-Klassen verfügbar."
+
+        formatted = []
+        for cls in classes[:10]:  # Limit to first 10 classes
+            label = cls.get('label', cls.get('name', 'Unknown'))
+            desc = cls.get('description', 'Keine Beschreibung verfügbar.')
+            formatted.append(f"- {label}: {desc}")
+
+        return "\n".join(formatted)
 
     def _format_relation_definitions(self) -> str:
         """Format ontology relations for prompt injection."""
-        raise NotImplementedError
+        relations = self.ontology.get_relation_definitions()
+        if not relations:
+            return "Keine Ontologie-Relationen verfügbar."
+
+        formatted = []
+        for rel in relations[:10]:  # Limit to first 10 relations
+            label = rel.get('label', rel.get('name', 'Unknown'))
+            desc = rel.get('description', 'Keine Beschreibung verfügbar.')
+            formatted.append(f"- {label}: {desc}")
+
+        return "\n".join(formatted)
 
     # ------------------------------------------------------------------
     # Response parsing
     # ------------------------------------------------------------------
 
     def _parse_entity_response(
-        self, response: str, paragraph_id: str
+        self, output: LegalEntityExtractionOutput, paragraph_id: str
     ) -> list[ExtractedEntity]:
-        """Parse JSON entity response from LLM."""
-        raise NotImplementedError
+        """Parse entity response from LLM."""
+        entities = []
+        for item in output.entities:
+            entity = ExtractedEntity(
+                id=generate_entity_id(),
+                label=item.label,
+                entity_type=item.entity_type,
+                confidence=item.confidence,
+                evidence=[
+                    Evidence(
+                        source_text=item.evidence_span,
+                        extraction_method="legal_llm",
+                        confidence=item.confidence,
+                        metadata={
+                            "paragraph_id": paragraph_id,
+                            "description": item.description
+                        }
+                    )
+                ]
+            )
+            entities.append(entity)
+
+        # Filter by confidence threshold
+        filtered = [
+            e for e in entities
+            if e.confidence >= self.config.confidence_threshold
+        ]
+
+        # Validate against ontology
+        return self._validate_against_ontology(filtered)
 
     def _parse_relation_response(
-        self, response: str, paragraph_id: str
+        self, output: LegalRelationExtractionOutput, paragraph_id: str
     ) -> list[ExtractedRelation]:
-        """Parse JSON relation response from LLM."""
-        raise NotImplementedError
+        """Parse relation response from LLM."""
+        relations = []
+        for item in output.relations:
+            relation = ExtractedRelation(
+                id=str(uuid.uuid4()),
+                source_id="",  # Will be resolved later
+                source_label=item.source,
+                relation_type=item.predicate,
+                target_id="",  # Will be resolved later
+                target_label=item.target,
+                confidence=item.confidence,
+                evidence=[
+                    Evidence(
+                        source_text=item.evidence_span,
+                        extraction_method="legal_llm",
+                        confidence=item.confidence,
+                        metadata={"paragraph_id": paragraph_id}
+                    )
+                ]
+            )
+            relations.append(relation)
+
+        # Filter by confidence threshold
+        filtered = [
+            r for r in relations
+            if r.confidence >= self.config.confidence_threshold
+        ]
+
+        return filtered
 
     def _validate_against_ontology(
         self, entities: list[ExtractedEntity]
     ) -> list[ExtractedEntity]:
         """Filter entities whose types don't exist in the ontology."""
-        raise NotImplementedError
+        valid_classes = {cls.get('label', cls.get('name', '')) for cls in self.ontology.get_class_definitions()}
+
+        if not valid_classes:
+            return entities  # No validation possible
+
+        validated = []
+        for entity in entities:
+            if entity.entity_type in valid_classes:
+                validated.append(entity)
+
+        return validated
