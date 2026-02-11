@@ -164,9 +164,9 @@ class ConfidenceTuningPipeline:
             logger.debug("cluster_merged", size=len(cluster.entities), result_label=merged.label)
 
         # Non-clustered entities stay as-is
-        clustered_ids = set()
+        clustered_ids: set[str] = set()
         for cluster in clusters:
-            clustered_ids.update(e.id for e in cluster.entities)
+            clustered_ids.update(cluster.entities)  # entities is list[str] of IDs
 
         for entity in entities:
             if entity.id not in clustered_ids:
