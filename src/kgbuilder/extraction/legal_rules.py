@@ -143,6 +143,26 @@ class LegalRuleBasedExtractor:
         entities.extend(self._extract_deontic_modalities(text, paragraph_id))
         return entities
 
+    def extract(
+        self,
+        text: str,
+        law_abbr: str = "",
+        paragraph_id: str = "",
+    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation]]:
+        """Full extraction: entities + relations.
+        
+        Args:
+            text: Plain text of a law paragraph.
+            law_abbr: Source law abbreviation.
+            paragraph_id: Source paragraph identifier.
+        
+        Returns:
+            Tuple of (entities, relations).
+        """
+        entities = self.extract_entities(text, law_abbr, paragraph_id)
+        relations = self.extract_relations(text, entities, law_abbr, paragraph_id)
+        return entities, relations
+
     def extract_relations(
         self,
         text: str,

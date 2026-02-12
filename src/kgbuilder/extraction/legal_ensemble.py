@@ -190,9 +190,14 @@ class LegalEnsembleExtractor:
 
     def _relations_match(self, a: ExtractedRelation, b: ExtractedRelation) -> bool:
         """Check if two relations are equivalent."""
-        return (a.source_label.lower() == b.source_label.lower() and
-                a.target_label.lower() == b.target_label.lower() and
-                a.relation_type == b.relation_type)
+        a_source = getattr(a, 'source_label', '') or a.source_entity_id
+        a_target = getattr(a, 'target_label', '') or a.target_entity_id
+        b_source = getattr(b, 'source_label', '') or b.source_entity_id
+        b_target = getattr(b, 'target_label', '') or b.target_entity_id
+        
+        return (str(a_source).lower() == str(b_source).lower() and
+                str(a_target).lower() == str(b_target).lower() and
+                a.predicate == b.predicate)
 
     def _merge_single_entity(self, rule_ent: ExtractedEntity, llm_ent: ExtractedEntity) -> ExtractedEntity:
         """Merge two matching entities."""
@@ -217,7 +222,10 @@ class LegalEnsembleExtractor:
             label=rule_ent.label,  # Prefer rule-based label
             entity_type=entity_type,
             confidence=confidence,
-            evidence=combined_evidence
+            evidence=combined_evidence,
+            description=rule_ent.description or llm_ent.description,
+            aliases=list(set(rule_ent.aliases + llm_ent.aliases)) if rule_ent.aliases or llm_ent.aliases else [],
+            properties=rule_ent.properties or llm_ent.properties,
         )
 
     def _merge_single_relation(self, rule_rel: ExtractedRelation, llm_rel: ExtractedRelation) -> ExtractedRelation:
@@ -232,13 +240,12 @@ class LegalEnsembleExtractor:
 
         return ExtractedRelation(
             id=rule_rel.id,  # Keep rule-based ID
-            source_id=rule_rel.source_id,
-            source_label=rule_rel.source_label,
-            relation_type=rule_rel.relation_type,
-            target_id=rule_rel.target_id,
-            target_label=rule_rel.target_label,
+            source_entity_id=rule_rel.source_entity_id,
+            target_entity_id=rule_rel.target_entity_id,
+            predicate=rule_rel.predicate,
             confidence=confidence,
-            evidence=combined_evidence
+            evidence=combined_evidence,
+            properties=rule_rel.properties,
         )
 
     def _calculate_entity_similarity(self, a: ExtractedEntity, b: ExtractedEntity) -> float:
