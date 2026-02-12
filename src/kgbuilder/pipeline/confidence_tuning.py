@@ -180,14 +180,9 @@ class ConfidenceTuningPipeline:
         if self.enable_calibration:
             logger.info("phase_4_calibration")
             try:
-                calibration_result = self.calibrator.calibrate(entities)
-                entities = calibration_result.calibrated_entities
+                entities = self.calibrator.calibrate_batch(entities)
                 calibration_applied = True
-                logger.info(
-                    "calibration_complete",
-                    model_used=calibration_result.calibrator_type,
-                    correlation=f"{calibration_result.correlation:.3f}",
-                )
+                logger.info("calibration_complete")
             except Exception as e:
                 logger.warning("calibration_failed", error=str(e))
 
@@ -231,10 +226,7 @@ class ConfidenceTuningPipeline:
         # Task 5.6: Quality filtering
         logger.info("phase_6_quality_filter")
         entities_pre_filter = len(entities)
-        entities = self.filter.filter_entities(
-            entities,
-            confidence_threshold=self.quality_threshold,
-        )
+        entities = self.filter.filter(entities)
         entities_filtered = entities_pre_filter - len(entities)
         logger.info(
             "quality_filter_complete",
