@@ -102,20 +102,39 @@ them to the graph store.
 
 **Goal**: Pre-commit validation using SHACL2FOL theorem prover.
 
-1. Set up SHACL2FOL:
-   - Download JAR + Vampire binary to `lib/`
-   - Add to `.gitignore` (binaries not in repo)
+1. Set up SHACL2FOL (local or containerized):
+   - Option A (local): Download JAR + Vampire binary to `lib/` and update `StaticValidatorConfig`
+   - Option B (recommended): Use the provided Docker image `kgbuilder/shacl2fol` (build with `scripts/docker/run_shacl2fol_container.sh`)
+   - Add binaries to `.gitignore` (do not commit Vampire/large binaries)
    - Document setup in `README.md`
 2. Implement `ActionConverter.from_entities()` and `from_relations()`:
    - Map `entity.entity_type` → shape URI
    - Map `relation.relation_type` → property path URI
 3. Implement `StaticValidator.validate_static()`:
    - Write `config.properties` to temp dir
-   - Invoke `java -jar SHACL2FOL.jar` via subprocess
+   - Invoke `java -jar SHACL2FOL.jar` via subprocess (or run inside container)
    - Parse stdout for VALID/INVALID verdict
 4. Implement `StaticValidator.validate_entities_and_relations()` convenience wrapper
 
-**Dependencies**: Java 21+, Vampire prover (Linux x86_64)
+**Dependencies**: Java 21+, Vampire prover (Linux x86_64). Containerized workflow recommended for portability.
+
+---
+
+## Docker usage (quick)
+
+1. Build & run (example):
+
+   ./scripts/docker/run_shacl2fol_container.sh \
+     "<VAMPIRE_TAR_GZ_RELEASE_URL>" \
+     "<SHACL2FOL_JAR_DOWNLOAD_URL>"
+
+2. Example smoke test inside container:
+
+   docker run --rm -v "$PWD":/opt/project -w /opt/project kgbuilder/shacl2fol:local smoke
+
+3. Integration pattern:
+   - Pipeline can `exec` the static validator inside the same container, or
+   - Mount `lib/SHACL2FOL.jar` + Vampire binary and run `StaticValidator` in host Python but pointing `StaticValidatorConfig` to the container-mounted paths.
 
 ### Phase 3: Pipeline Integration (G1, G6, G7)
 

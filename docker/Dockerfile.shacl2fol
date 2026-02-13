@@ -1,0 +1,71 @@
+# Dockerfile for SHACL2FOL + Vampire + Python environment
+# Builds an image containing:
+#  - OpenJDK 21
+#  - Vampire prover binary
+#  - SHACL2FOL JAR (downloaded at build time via build-arg or copied)
+#  - Minimal Python runtime to run the StaticValidator inside the container
+
+ARG BASE_IMAGE=python:3.12-slim
+FROM ${BASE_IMAGE} AS build
+
+ARG VAMPIRE_RELEASE_URL=""
+ARG SHACL2FOL_JAR_URL=""
+ARG VAMPIRE_DIR=/opt/vampire
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Java 21 and utilities
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       openjdk-21-jdk-headless \
+       ca-certificates \
+       wget \
+       unzip \
+       git \
+       curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /opt/shacl2fol /opt/work /opt/vampire
+WORKDIR /opt/shacl2fol
+
+# Download Vampire if URL provided (build-time argument)
+# Example VAMPIRE_RELEASE_URL: https://github.com/vprover/vampire/releases/download/Vampire-4.6/vampire-bin-x86_64-linux-gcc-9.4.0-Release.tar.gz
+ARG VAMPIRE_RELEASE_URL
+RUN if [ -n "$VAMPIRE_RELEASE_URL" ]; then \
+      wget -qO /tmp/vampire.tar.gz "$VAMPIRE_RELEASE_URL" && \
+      tar -xzf /tmp/vampire.tar.gz -C /opt/vampire --strip-components=1 && \
+      chmod +x /opt/vampire/bin/vampire || true; \
+    fi
+
+# Download SHACL2FOL jar if URL provided
+ARG SHACL2FOL_JAR_URL
+RUN if [ -n "$SHACL2FOL_JAR_URL" ]; then \
+      wget -qO /opt/shacl2fol/SHACL2FOL.jar "$SHACL2FOL_JAR_URL" || true; \
+    fi
+
+# Copy project (only validation code + deps) into image for running smoke checks
+COPY src /opt/project/src
+COPY pyproject.toml /opt/project/pyproject.toml
+WORKDIR /opt/project
+
+# Install runtime Python deps needed by static validator (minimal)
+RUN pip install --no-cache-dir rdflib structlog pydantic
+
+# Final image
+FROM python:3.12-slim
+LABEL maintainer="GitHub Copilot <noreply@example.com>"
+
+COPY --from=build /opt/vampire /opt/vampire
+COPY --from=build /opt/shacl2fol/SHACL2FOL.jar /opt/shacl2fol/SHACL2FOL.jar
+COPY --from=build /opt/project /opt/project
+
+ENV PATH="/opt/vampire/bin:${PATH}"
+WORKDIR /opt/project
+
+COPY docker/shacl-entrypoint.sh /usr/local/bin/shacl-entrypoint.sh
+RUN chmod +x /usr/local/bin/shacl-entrypoint.sh
+
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/shacl-entrypoint.sh"]
+CMD ["/bin/sh"]
