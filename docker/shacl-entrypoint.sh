@@ -19,12 +19,10 @@ else
 fi
 
 if [ "$1" = "smoke" ]; then
-  echo "Running smoke prerequisites check via StaticValidator..."
-  PYTHONPATH=src python - <<'PY'
-from kgbuilder.validation.static_validator import StaticValidator
-v=StaticValidator()
-print(v.check_prerequisites())
-PY
+  echo "Smoke prerequisites:"
+  printf "  - vampire: %s\n" "$(if command -v vampire >/dev/null 2>&1; then echo ok; else echo missing; fi)"
+  printf "  - SHACL2FOL.jar: %s\n" "$(if [ -f /opt/shacl2fol/SHACL2FOL.jar ]; then echo ok; else echo missing; fi)"
+  exit 0
 fi
 
 exec "$@"

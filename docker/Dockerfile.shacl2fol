@@ -36,12 +36,21 @@ RUN if [ -n "$VAMPIRE_RELEASE_URL" ]; then \
       wget -qO /tmp/vampire.tar.gz "$VAMPIRE_RELEASE_URL" && \
       tar -xzf /tmp/vampire.tar.gz -C /opt/vampire --strip-components=1 && \
       chmod +x /opt/vampire/bin/vampire || true; \
+    else \
+      # Fallback: use the vampire binary bundled in SHACL2FOL runnable (if available)
+      wget -qO /opt/vampire.bin "https://raw.githubusercontent.com/paolo7/SHACL2FOL/main/runnable/vampire" || true; \
+      if [ -f /opt/vampire.bin ]; then \
+        mkdir -p /opt/vampire/bin && mv /opt/vampire.bin /opt/vampire/bin/vampire && chmod +x /opt/vampire/bin/vampire || true; \
+      fi; \
     fi
 
 # Download SHACL2FOL jar if URL provided
 ARG SHACL2FOL_JAR_URL
 RUN if [ -n "$SHACL2FOL_JAR_URL" ]; then \
       wget -qO /opt/shacl2fol/SHACL2FOL.jar "$SHACL2FOL_JAR_URL" || true; \
+    else \
+      # Fallback: fetch the runnable JAR directly from the repository
+      wget -qO /opt/shacl2fol/SHACL2FOL.jar "https://raw.githubusercontent.com/paolo7/SHACL2FOL/main/runnable/SHACL2FOL.jar" || true; \
     fi
 
 # Copy project (only validation code + deps) into image for running smoke checks
