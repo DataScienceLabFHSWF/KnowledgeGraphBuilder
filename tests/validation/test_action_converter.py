@@ -39,6 +39,11 @@ class TestPathAction:
         assert d["type"] == "PathAction"
         assert d["path"] == "http://ex.org/requires"
 
+    def test_operation_is_serialized_when_not_add(self) -> None:
+        action = PathAction(path="http://ex.org/requires", operation="remove")
+        d = action.to_dict()
+        assert d["operation"] == "remove"
+
 
 class TestActionSet:
     """Test ActionSet collection."""
@@ -109,6 +114,41 @@ class TestActionConverter:
         loaded = ActionConverter.read_json(path)
         assert len(loaded) == 2
 
+    def test_actions_support_operation_semantics(self) -> None:
+        converter = ActionConverter()
+        # Entities with remove operation
+        ent = MagicMock()
+        ent.entity_type = "Facility"
+        actions = converter.from_entities([ent], operation="remove")
+        assert actions.metadata.get("operation") == "remove"
+        assert actions.shape_actions[0].operation == "remove"
+        json_list = actions.to_json_list()
+        assert any(a.get("operation") == "remove" for a in json_list)
+
+        # Relations with update operation produce both remove+add entries
+        rel = MagicMock()
+        rel.relation_type = "requires"
+        rel.source_type = "Facility"
+        rel.target_type = "Document"
+        actions = converter.from_relations([rel], operation="update")
+        # update produces a single ActionSet but contains both remove/add semantics
+        ops = {a.get("operation") for a in actions.to_json_list() if a.get("operation")}
+        assert "remove" in ops and "add" in ops
+
+    def test_from_relations_expands_inverse_using_ontology(self) -> None:
+        # Mock ontology service that declares inverse pair (requires, requiredBy)
+        mock_onto = MagicMock()
+        mock_onto.get_special_properties.return_value = {"inverse": [("requires", "requiredBy")]} 
+        converter = ActionConverter(ontology_service=mock_onto)
+        rel = MagicMock()
+        rel.relation_type = "requires"
+        rel.source_type = "Facility"
+        rel.target_type = "Document"
+        actions = converter.from_relations([rel])
+        paths = [p.path for p in actions.path_actions]
+        assert any(p.endswith("requires") for p in paths)
+        assert any(p.endswith("requiredBy") for p in paths)
+
     def test_from_entities_creates_shape_actions(self) -> None:
         converter = ActionConverter()
         entity = MagicMock()
@@ -128,3 +168,23 @@ class TestActionConverter:
         assert len(actions.path_actions) == 1
         assert len(actions.shape_actions) == 1
         assert actions.path_actions[0].path.endswith("requires")
+
+    def test_update_serialization_includes_operation_field(self) -> None:
+        """When an ActionSet encodes an `update` (remove+add), the JSON
+        serialization must include an explicit `operation` value for every
+        action so downstream tools can see both `remove` and `add`."""
+        converter = ActionConverter()
+
+        rel = MagicMock()
+        rel.relation_type = "requires"
+        rel.source_type = "Facility"
+        rel.target_type = "Document"
+
+        # Build an ActionSet that represents an update (merged remove+add)
+        actions = converter.from_relations([rel], operation="update")
+        json_list = actions.to_json_list()
+
+        # All serialized actions must include an explicit `operation` field
+        assert all("operation" in a for a in json_list)
+        ops = {a.get("operation") for a in json_list}
+        assert "remove" in ops and "add" in ops
