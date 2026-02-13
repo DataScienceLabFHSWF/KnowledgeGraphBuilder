@@ -271,8 +271,21 @@ class KGExporter:
         ]
         
         # Add nodes
+def _node_ref(nid: str) -> str:
+            """Return a Turtle-safe reference for a node id.
+
+            - If the node id is a safe local name, use `:localName`.
+            - Otherwise return a full <…> URI using the export base URI + percent-encoded id.
+            """
+            import re
+            from urllib.parse import quote
+
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_\-]*", nid):
+                return f":{nid}"
+            return f"<{self._config.base_uri.rstrip('/')}/{quote(nid, safe='')}>"
+
         for node in self._store.get_all_nodes():
-            node_uri = f":{node.id}"
+            node_uri = _node_ref(node.id)
             lines.append(f"# Node: {node.label}")
             lines.append(f"{node_uri} a kg:{self._sanitize_uri(node.node_type)} ;")
             lines.append(f'    rdfs:label "{self._escape_turtle(node.label)}" ;')
@@ -445,8 +458,24 @@ class KGExporter:
         return edge.to_dict()
     
     def _sanitize_uri(self, s: str) -> str:
-        """Sanitize string for use in URI."""
-        return s.replace(" ", "_").replace("-", "_").replace("/", "_")
+        """Sanitize string for use in URI local-name.
+
+        Replace whitespace and common unsafe characters and percent-encode any
+        remaining characters that are not alphanumeric or underscore so the
+        resulting token is safe for use as `kg:LocalName` in Turtle.
+        """
+        import re
+        from urllib.parse import quote
+
+        if not s:
+            return ""
+        # Replace common separators with underscore
+        s = s.replace(" ", "_").replace("-", "_").replace("/", "_")
+        # If remaining string is a safe local name, return it; otherwise percent-encode
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", s):
+            return s
+        return quote(s, safe='')
+
     
     def _escape_turtle(self, s: str) -> str:
         """Escape string for Turtle format."""
