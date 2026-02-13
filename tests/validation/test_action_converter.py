@@ -109,16 +109,15 @@ class TestActionConverter:
         loaded = ActionConverter.read_json(path)
         assert len(loaded) == 2
 
-    @pytest.mark.skip(reason="from_entities() not yet implemented")
     def test_from_entities_creates_shape_actions(self) -> None:
         converter = ActionConverter()
         entity = MagicMock()
         entity.entity_type = "Facility"
         entity.label = "KKW Emsland"
         actions = converter.from_entities([entity])
-        assert actions.total_actions > 0
+        assert actions.total_actions == 1
+        assert actions.shape_actions[0].subject_shape.endswith("FacilityShape")
 
-    @pytest.mark.skip(reason="from_relations() not yet implemented")
     def test_from_relations_creates_path_and_shape_actions(self) -> None:
         converter = ActionConverter()
         relation = MagicMock()
@@ -126,5 +125,6 @@ class TestActionConverter:
         relation.source_type = "Facility"
         relation.target_type = "Document"
         actions = converter.from_relations([relation])
-        assert len(actions.path_actions) > 0
-        assert len(actions.shape_actions) > 0
+        assert len(actions.path_actions) == 1
+        assert len(actions.shape_actions) == 1
+        assert actions.path_actions[0].path.endswith("requires")

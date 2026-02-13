@@ -182,31 +182,19 @@ class StaticValidator:
         shapes_path: Path,
         actions_path: Path,
     ) -> StaticValidationResult:
-        """Static validation under graph updates (mode 4).
+        """Static validation under graph updates (mode 'a').
 
-        Determines whether applying *actions* to any graph that currently
-        satisfies *shapes* will always produce a valid graph.
-
-        This is the primary entry point for pipeline integration.
-
-        Args:
-            shapes_path: Path to SHACL shapes file (Turtle).
-            actions_path: Path to SHACL2FOL actions file (JSON).
-
-        Returns:
-            ``StaticValidationResult`` with validity verdict.
-
-        Raises:
-            NotImplementedError: Pending implementation.
+        Invokes SHACL2FOL and parses the prover result.
         """
-        # TODO (Phase 2): Implement subprocess invocation
-        #   1. Write config.properties to work_dir
-        #   2. Invoke: java -jar SHACL2FOL.jar \
-        #        --shapes <shapes_path> --actions <actions_path> \
-        #        --mode staticValidation
-        #   3. Parse stdout for "VALID" / "INVALID" / counterexample
-        #   4. Return StaticValidationResult
-        raise NotImplementedError
+        work_dir = Path(self._config.work_dir or Path.cwd())
+        work_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure config.properties present
+        self._write_config_properties(work_dir)
+
+        proc = self._invoke_jar(shapes_path, actions_path, mode="staticValidation", work_dir=work_dir)
+        stdout = proc.stdout or ""
+        result = self._parse_output(stdout, mode="staticValidation")
+        return result
 
     def validate_entities_and_relations(
         self,
@@ -214,27 +202,28 @@ class StaticValidator:
         entities: list[Any],
         relations: list[Any],
     ) -> StaticValidationResult:
-        """Convenience wrapper: convert entities/relations to actions, then validate.
-
-        Uses ``ActionConverter`` to translate pipeline entities and relations
-        into SHACL2FOL action JSON, then calls ``validate_static()``.
+        """Convert entities/relations to actions and run static validation.
 
         Args:
             shapes_path: Path to SHACL shapes file (Turtle).
-            entities: List of extracted entities (``ExtractedEntity``).
-            relations: List of extracted relations (``ExtractedRelation``).
-
-        Returns:
-            ``StaticValidationResult`` with validity verdict.
-
-        Raises:
-            NotImplementedError: Pending implementation.
+            entities: List of extracted entities.
+            relations: List of extracted relations.
         """
-        # TODO (Phase 2):
-        #   1. Use ActionConverter to build actions JSON
-        #   2. Write to temp file
-        #   3. Call validate_static()
-        raise NotImplementedError
+        if shapes_path is None:
+            raise ValueError("shapes_path must be provided for static validation")
+
+        from kgbuilder.validation.action_converter import ActionConverter
+
+        converter = ActionConverter()
+        actions = converter.from_entities_and_relations(entities or [], relations or [])
+
+        # Write actions to temp file and invoke prover
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            actions_path = Path(td) / "actions.json"
+            converter.write_json(actions, actions_path)
+            return self.validate_static(shapes_path, actions_path)
 
     # ------------------------------------------------------------------
     # Health / setup checks
@@ -299,34 +288,58 @@ class StaticValidator:
         mode: str,
         work_dir: Path,
     ) -> subprocess.CompletedProcess[str]:
-        """Invoke the SHACL2FOL JAR via subprocess.
+        """Invoke the SHACL2FOL JAR via subprocess and return CompletedProcess."""
+        jar = self._config.jar_path
+        if not jar.exists():
+            raise FileNotFoundError(f"SHACL2FOL JAR not found at {jar}")
 
-        Args:
-            shapes_path: Path to SHACL shapes (Turtle).
-            actions_path: Path to actions JSON (required for staticValidation).
-            mode: SHACL2FOL mode string.
-            work_dir: Working directory for the subprocess.
+        cmd = [
+            self._config.java_bin,
+            "-jar",
+            str(jar),
+        ]
+        # Map mode names to single-letter args expected by SHACL2FOL
+        mode_map = {"satisfiability": "s", "containment": "c", "validity": "v", "staticValidation": "a"}
+        arg0 = mode_map.get(mode, mode)
+        cmd.append(arg0)
+        cmd.append(str(shapes_path))
+        if actions_path is not None:
+            cmd.append(str(actions_path))
 
-        Returns:
-            Completed process with stdout/stderr captured.
-
-        Raises:
-            NotImplementedError: Pending implementation.
-        """
-        # TODO: Build command list, run subprocess, return result
-        raise NotImplementedError
+        env = None
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=str(work_dir),
+                timeout=self._config.timeout_seconds,
+                env=env,
+            )
+            return proc
+        except subprocess.TimeoutExpired as e:
+            raise RuntimeError(f"SHACL2FOL invocation timed out: {e}") from e
 
     def _parse_output(self, stdout: str, mode: str) -> StaticValidationResult:
-        """Parse SHACL2FOL stdout into a structured result.
+        """Parse SHACL2FOL stdout into a structured StaticValidationResult."""
+        out = StaticValidationResult(mode=mode, raw_output=stdout)
+        text = (stdout or "").lower()
+        # Simple heuristics: look for VALID/INVALID or szs-style status
+        if "valid" in text and "invalid" not in text:
+            out.valid = True
+        elif "invalid" in text:
+            out.valid = False
+        elif "szs status satisfiable" in text or "satisfiable" in text:
+            out.valid = True
+        elif "unsatisfiable" in text or "szs status unsatisfiable" in text:
+            out.valid = False
+        else:
+            # Unknown — conservatively mark as invalid and include raw output
+            out.valid = False
+            out.error = "Could not parse prover output"
 
-        Args:
-            stdout: Raw stdout from the JAR invocation.
-            mode: The mode that was run (affects output format).
+        # Attempt to capture a counterexample snippet
+        if "counterexample" in text or "model" in text:
+            out.counterexample = stdout.strip()[:200]
 
-        Returns:
-            Parsed ``StaticValidationResult``.
-
-        Raises:
-            NotImplementedError: Pending implementation.
-        """
-        raise NotImplementedError
+        return out

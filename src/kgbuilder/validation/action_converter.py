@@ -144,67 +144,55 @@ class ActionConverter:
 
         Each entity type maps to a ``ShapeAction`` asserting the node
         conforms to the corresponding NodeShape.
-
-        Args:
-            entities: List of ``ExtractedEntity`` objects.
-
-        Returns:
-            ActionSet with generated actions.
-
-        Raises:
-            NotImplementedError: Pending implementation.
         """
-        # TODO (Phase 2):
-        #   For each entity:
-        #     shape_uri = shapes_namespace + entity.entity_type + "Shape"
-        #     Create ShapeAction(subject_shape=shape_uri, object_shape=shape_uri)
-        raise NotImplementedError
+        action_set = ActionSet()
+        for ent in entities:
+            # Expect attribute `entity_type` on entity model
+            ent_type = getattr(ent, "entity_type", None) or getattr(ent, "type", None)
+            if not ent_type:
+                continue
+            shape_uri = f"{self._shapes_ns}{ent_type}Shape"
+            action_set.shape_actions.append(ShapeAction(subject_shape=shape_uri, object_shape=shape_uri))
+        action_set.metadata["generated_from"] = "entities"
+        return action_set
 
     def from_relations(self, relations: list[Any]) -> ActionSet:
         """Convert extracted relations to SHACL2FOL actions.
 
-        Each relation maps to:
-        - A ``PathAction`` for the property path.
-        - A ``ShapeAction`` linking source and target node shapes.
-
-        Args:
-            relations: List of ``ExtractedRelation`` objects.
-
-        Returns:
-            ActionSet with generated actions.
-
-        Raises:
-            NotImplementedError: Pending implementation.
+        Each relation maps to a ``PathAction`` for the predicate path and a
+        ``ShapeAction`` linking the source/target node shapes when type info
+        is available.
         """
-        # TODO (Phase 2):
-        #   For each relation:
-        #     path_uri = ontology_namespace + relation.relation_type
-        #     PathAction(path=path_uri)
-        #     ShapeAction(
-        #       subject_shape=source_type + "Shape",
-        #       object_shape=target_type + "Shape",
-        #     )
-        raise NotImplementedError
+        action_set = ActionSet()
+        for rel in relations:
+            rel_type = getattr(rel, "relation_type", None) or getattr(rel, "predicate", None) or getattr(rel, "type", None)
+            if rel_type:
+                path_uri = f"{self._ont_ns}{rel_type}"
+                action_set.path_actions.append(PathAction(path=path_uri))
+            # Try to link shapes if source/target types are present
+            src_type = getattr(rel, "source_type", None) or getattr(rel, "source_class", None)
+            tgt_type = getattr(rel, "target_type", None) or getattr(rel, "target_class", None)
+            if src_type and tgt_type:
+                subj_shape = f"{self._shapes_ns}{src_type}Shape"
+                obj_shape = f"{self._shapes_ns}{tgt_type}Shape"
+                action_set.shape_actions.append(ShapeAction(subject_shape=subj_shape, object_shape=obj_shape))
+        action_set.metadata["generated_from"] = "relations"
+        return action_set
 
     def from_entities_and_relations(
         self,
         entities: list[Any],
         relations: list[Any],
     ) -> ActionSet:
-        """Convert both entities and relations into a combined ActionSet.
-
-        Args:
-            entities: List of ``ExtractedEntity`` objects.
-            relations: List of ``ExtractedRelation`` objects.
-
-        Returns:
-            Merged ``ActionSet``.
-
-        Raises:
-            NotImplementedError: Pending implementation.
-        """
-        # TODO: Merge from_entities() and from_relations() results
-        raise NotImplementedError
+        """Convert both entities and relations into a combined ActionSet."""
+        entities_set = self.from_entities(entities)
+        relations_set = self.from_relations(relations)
+        merged = ActionSet(
+            shape_actions=entities_set.shape_actions + relations_set.shape_actions,
+            path_actions=entities_set.path_actions + relations_set.path_actions,
+            metadata={"merged_from": [entities_set.metadata.get("generated_from"), relations_set.metadata.get("generated_from")]},
+        )
+        return merged
 
     # ------------------------------------------------------------------
     # Serialization helpers
