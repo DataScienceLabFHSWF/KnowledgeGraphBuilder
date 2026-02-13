@@ -78,17 +78,17 @@ The cost-benefit analysis is unfavourable:
 
 Port three patterns from LangExtract into our existing extractors:
 
-1. **`WordAligner` pattern** (~100 LOC) — Use `difflib.SequenceMatcher` to
-   verify and correct LLM-reported character positions. Track
-   `AlignmentStatus` on each `ExtractedEntity` for provenance quality.
+1. **`WordAligner` pattern** (✅ **Implemented**)
+   - Use `difflib.SequenceMatcher` to verify and correct LLM-reported character positions.
+   - **Status**: Implemented in `src/kgbuilder/extraction/aligner.py` and integrated into `LegalLLMExtractor` to penalize confidence on mismatch.
 
-2. **Multi-pass extraction** (~50 LOC) — Add `extraction_passes: int`
-   parameter to `LLMEntityExtractor.extract()`. Run the same prompt N times
-   and merge non-overlapping results to improve recall.
+2. **Multi-pass extraction** (Recommended)
+   - Add `extraction_passes: int` parameter to `LLMEntityExtractor.extract()`.
+   - Run the same prompt N times and merge non-overlapping results to improve recall.
 
-3. **Cross-chunk context injection** (~30 LOC) — Pass trailing characters
-   from the previous chunk as context prefix. Helps with coreference across
-   chunk boundaries.
+3. **Cross-chunk context injection** (Recommended)
+   - Pass trailing characters from the previous chunk as context prefix.
+   - Helps with coreference across chunk boundaries.
 
 These improvements give us LangExtract's main advantages without the
 dependency or the loss of our ontology-guided extraction.

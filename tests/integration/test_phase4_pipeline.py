@@ -17,7 +17,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop

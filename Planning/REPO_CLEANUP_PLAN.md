@@ -108,6 +108,12 @@ file, and 1 misplaced test.
 
 | Action | File(s) | Detail |
 |--------|---------|--------|
+| **Delete** | `scripts/pipeline_phase6.py` | [x] Completed (Deleted) |
+| **Move** | `scripts/test_inference.py` | [x] -> `tests/integration/manual/test_inference_manual.py` |
+| **Rename** | `scripts/ABLATION_STUDY_EXAMPLES.py` | [x] -> `examples/ABLATION_STUDY_GUIDE.md` |
+| **Consolidate** | `build_kg.py`, `run_kg_pipeline_on_documents.py` | [x] Combined -> `scripts/full_kg_pipeline.py` (legacy one archived) |
+| **Keep** | `download_law_xml_zips.py`, `download_law_paragraphs.py` | [x] Retained as primary downloaders |
+| **Archive** | `organize_and_download_xml.py` | [x] Moved to `scripts/archive/` |
 | **Delete** | `build_law_graph.py.bak` | Dead backup |
 | **Delete or archive** | `pipeline_phase6.py` | References archived MASTER_PLAN.md; likely dead |
 | **Move → `tests/`** | `test_inference.py` | It's a test, not a script |

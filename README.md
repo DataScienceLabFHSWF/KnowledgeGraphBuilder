@@ -21,7 +21,7 @@ Part of a three-repository research ecosystem:
    chunks them semantically; embeds them into Qdrant for hybrid retrieval.
 2. **Ontology-guided extraction** — generates LLM prompts from OWL class and
    property definitions; extracts entities and relations with confidence
-   scores.
+   scores and **provenance verification** (checking extracted spans against source text).
 3. **Autonomous discovery** — iteratively generates competency questions,
    retrieves relevant chunks, and extracts additional facts until coverage
    converges.
@@ -29,7 +29,8 @@ Part of a three-repository research ecosystem:
    coreference resolution, LLM consensus voting, and quality filtering.
 5. **KG assembly & validation** — assembles nodes and edges in Neo4j;
    validates against SHACL shapes generated from the ontology; runs pySHACL
-   and (optionally) SHACL2FOL/Vampire static checks.
+   and (optionally) SHACL2FOL/Vampire static checks; calculates automated
+   quality scores.
 6. **Analytics & export** — OWL-RL inference, SKOS enrichment, graph metrics;
    exports to JSON-LD, RDF/Turtle, Cypher, GraphML, and plain JSON.
 7. **Experiment framework** — manages multi-variant runs with W&B logging,
@@ -50,6 +51,7 @@ git clone https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder.git
 cd KnowledgeGraphBuilder
 cp .env.example .env          # configure endpoints
 pip install -e ".[dev]"
+./scripts/setup_shacl2fol.sh  # download SHACL2FOL dependencies
 
 # 2. Start infrastructure
 docker-compose up -d neo4j qdrant fuseki ollama
@@ -91,7 +93,7 @@ src/kgbuilder/
   core/           Protocols, data models, exceptions, config
   document/       Document loaders (PDF, DOCX, law XML) and chunking
   embedding/      Embedding generation (Ollama)
-  extraction/     Entity and relation extraction (LLM + rule-based)
+  extraction/     Entity and relation extraction (LLM + rule-based) with text alignment
   confidence/     Confidence tuning (analyzer, booster, coreference, voter)
   enrichment/     Post-extraction enrichment pipeline
   assembly/       KG assembly (SimpleKGAssembler, KGBuilder)

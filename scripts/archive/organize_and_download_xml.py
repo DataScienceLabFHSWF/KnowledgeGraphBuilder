@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import requests
 import shutil
 
-LAW_DIR = Path(__file__).parent.parent / "data" / "law_html"
+LAW_DIR = Path(__file__).parent.parent.parent / "data" / "law_html"
 IMPORTANT_ABBRS = [
     "AO", "AtG", "BauGB", "BBergG", "BGB", "BImSchG", "KrWG", "OWiG", "SprengG", "StandAG",
     "StPO", "StrlSchG", "StrlSchV", "UVPG", "VVG", "VwGO", "VwVfG"

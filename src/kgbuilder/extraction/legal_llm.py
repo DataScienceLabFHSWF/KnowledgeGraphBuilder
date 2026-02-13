@@ -26,6 +26,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, Field
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence, generate_entity_id
+from kgbuilder.extraction.aligner import TextAligner, AlignmentStatus
 
 
 class LLMProvider(Protocol):
@@ -54,6 +55,7 @@ class LegalExtractionConfig:
     few_shot_examples: int = 3          # Examples per class
     confidence_threshold: float = 0.5   # Min confidence to keep
     batch_size: int = 5                 # Norms per LLM call (if batching)
+    verify_evidence: bool = True        # Whether to verify evidence spans match text
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +203,10 @@ class LegalLLMExtractor:
     ontology: OntologyService
     config: LegalExtractionConfig = field(default_factory=LegalExtractionConfig)
 
+    def __post_init__(self) -> None:
+        """Initialize internal components."""
+        self._aligner = TextAligner()
+
     def extract(
         self,
         text: str,
@@ -245,7 +251,7 @@ class LegalLLMExtractor:
             if not output.entities:
                 return []
 
-            return self._parse_entity_response(output, paragraph_id)
+            return self._parse_entity_response(output, paragraph_id, source_text=text)
 
         except Exception as e:
             raise RuntimeError(f"Entity extraction failed: {e}") from e
@@ -357,27 +363,54 @@ class LegalLLMExtractor:
     # ------------------------------------------------------------------
 
     def _parse_entity_response(
-        self, output: LegalEntityExtractionOutput, paragraph_id: str
+        self, output: LegalEntityExtractionOutput, paragraph_id: str, source_text: str | None = None
     ) -> list[ExtractedEntity]:
         """Parse entity response from LLM."""
         entities = []
         for item in output.entities:
+            # Verify evidence span if source text provided
+            alignment = None
+            confidence = item.confidence
+            
+            if source_text and self.config.verify_evidence:
+                alignment = self._aligner.align(item.evidence_span, source_text)
+                
+                # Boost/Penalize confidence based on alignment
+                if alignment.status == AlignmentStatus.EXACT:
+                    confidence = min(1.0, confidence + 0.1)
+                elif alignment.status == AlignmentStatus.FUZZY:
+                    # Keep as is, maybe slight boost
+                    pass
+                elif alignment.status == AlignmentStatus.PARTIAL:
+                    confidence = confidence * 0.8
+                else: # MISSING
+                    confidence = confidence * 0.5
+
+            entity_id = generate_entity_id(item.label, item.entity_type)
+            
+            evidence_metadata = {
+                "paragraph_id": paragraph_id,
+                "description": item.description
+            }
+            if alignment:
+                 evidence_metadata["alignment"] = alignment.status.value
+                 evidence_metadata["matched_span"] = alignment.matched_text
+
             entity = ExtractedEntity(
-                id=generate_entity_id(),
+                id=entity_id,
                 label=item.label,
                 entity_type=item.entity_type,
-                confidence=item.confidence,
+                description=item.description,
+                confidence=confidence,
                 evidence=[
                     Evidence(
-                        source_text=item.evidence_span,
-                        extraction_method="legal_llm",
-                        confidence=item.confidence,
-                        metadata={
-                            "paragraph_id": paragraph_id,
-                            "description": item.description
-                        }
+                        source_type="text",
+                        source_id=paragraph_id or "unknown",
+                        text_span=item.evidence_span,
+                        confidence=confidence
                     )
-                ]
+                ],
+                properties=evidence_metadata  # Store validation metadata in properties
             )
             entities.append(entity)
 

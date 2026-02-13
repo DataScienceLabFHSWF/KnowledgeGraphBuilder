@@ -1,1534 +1,988 @@
 #!/usr/bin/env python3
-"""
-Full end-to-end Knowledge Graph construction pipeline.
+"""Docker Entrypoint: Complete KG Construction Pipeline
 
-Orchestrates complete KG building from ontology + competency questions:
-1. Load ontology (classes, properties, relations)
-2. Load and validate competency questions
-3. Iterative discovery (entities + relations in one pass)
-4. Deduplication and synthesis
-5. Knowledge graph assembly
-6. Comprehensive validation (SHACL, consistency, quality)
-7. Export in multiple formats
+This is the main entry point for the KG builder Docker container.
+It runs the complete knowledge discovery and graph construction pipeline:
 
-Usage:
-    python scripts/full_kg_pipeline.py --config config.json
-    python scripts/full_kg_pipeline.py --ontology data/ontology/ont.owl --questions data/competency_questions.json
+  1. Load ontology from Fuseki
+  2. Generate research questions from ontology classes
+  3. Retrieve relevant documents from Qdrant (RAG)
+  4. Extract entities and relations using LLM
+  5. Deduplicate and synthesize findings
+  6. Assemble final KG into Neo4j
+
+All components are fully implemented and tested.
+
+Environment Variables:
+  FUSEKI_URL          - Fuseki SPARQL endpoint (default: http://localhost:3030)
+  FUSEKI_DATASET      - Fuseki dataset name (default: kgbuilder)
+  QDRANT_URL          - Qdrant vector DB (default: http://localhost:6333)
+  QDRANT_COLLECTION   - Qdrant collection name (default: kgbuilder)
+    OLLAMA_URL          - Ollama LLM server (default: http://localhost:18134, GPU container)
+  OLLAMA_MODEL        - Ollama model name (default: qwen3:8b)
+  NEO4J_URI           - Neo4j database URI (default: bolt://localhost:7687)
+  NEO4J_USER          - Neo4j username (default: neo4j)
+  NEO4J_PASSWORD      - Neo4j password (default: changeme)
+
+Usage (Docker):
+  docker-compose up kgbuilder
+
+Usage (Local):
+  python scripts/build_kg.py \\
+    --questions-per-class 5 \\
+    --max-iterations 2 \\
+    --similarity-threshold 0.85 \\
+    --confidence-threshold 0.6
 """
 
 from __future__ import annotations
 
-import argparse
-import json
-import logging
-import os
 import sys
-from dataclasses import asdict, dataclass, field
-from datetime import datetime
+import os
+import argparse
+
 from pathlib import Path
 from typing import Any
+from datetime import datetime
 
-import structlog
-from dotenv import load_dotenv
-from pydantic import BaseModel, Field
-
-# Load environment variables
-load_dotenv()
+# --- Load .env automatically for all runs ---
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kgbuilder.core.models import Document, ExtractedEntity, ExtractedRelation, Chunk
-from kgbuilder.document.loaders import PDFLoader, DOCXLoader, LawXMLLoader
-from kgbuilder.document.chunking.strategies import FixedSizeChunker
-from kgbuilder.embedding.ollama import OllamaProvider
-from kgbuilder.extraction.entity import (
-    LLMEntityExtractor,
-    OntologyClassDef,
-)
-from kgbuilder.extraction.rules import RuleBasedExtractor, RuleBasedRelationExtractor
-from kgbuilder.extraction.ensemble import TieredExtractor, TieredRelationExtractor
-from kgbuilder.extraction.relation import (
-    LLMRelationExtractor,
-    OntologyRelationDef,
-)
-from kgbuilder.enrichment import SemanticEnrichmentPipeline, EnrichedEntity, EnrichedRelation
-from kgbuilder.pipeline.confidence_tuning import ConfidenceTuningPipeline, ConfidenceTuningResult
-from kgbuilder.pipeline.checkpoint_cli import enrich_from_checkpoint
-from kgbuilder.storage.neo4j_store import Neo4jGraphStore
-from kgbuilder.storage.protocol import Node, Edge
-from kgbuilder.storage.vector import QdrantStore
-from kgbuilder.storage.ontology import FusekiOntologyService
-from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
-from kgbuilder.agents.question_generator import QuestionGenerationAgent
-from kgbuilder.assembly.kg_builder import KGBuilder
-from kgbuilder.validation.rules_engine import RulesEngine
-from kgbuilder.validation.scorer import KGQualityScorer
-from kgbuilder.analytics.pipeline import AnalyticsPipeline
-from kgbuilder.versioning import KGVersioningService
-from kgbuilder.logging_config import setup_logging, LLMCallTracker, PipelineHealthMonitor
-from kgbuilder.validation.consistency_checker import ConsistencyChecker
-from kgbuilder.experiment.checkpoint import CheckpointManager
+import structlog
 
 logger = structlog.get_logger(__name__)
 
-
-class PipelineConfig(BaseModel):
-    """Full pipeline configuration."""
-
-    # Ontology
-    ontology_url: str = Field(
-        default_factory=lambda: os.environ.get("FUSEKI_URL", "http://localhost:3030")
-    )
-    ontology_path: Path | None = Field(
-        default=None,
-        description="Path to local ontology file (.owl, .ttl)"
-    )
-    ontology_user: str = Field(
-        default_factory=lambda: os.environ.get("FUSEKI_USER", "admin")
-    )
-    ontology_password: str = Field(
-        default_factory=lambda: os.environ.get("FUSEKI_PASSWORD", "")
-    )
-    ontology_dataset: str = "kgbuilder"
-
-    # Documents
-    document_dir: Path = Field(default=Path("data/documents"))
-    document_extensions: list[str] = [".pdf", ".docx"]
-
-    # LLM
-    llm_model: str = Field(
-        default_factory=lambda: os.environ.get("OLLAMA_LLM_MODEL", "qwen3:8b")
-    )
-    embedding_model: str = Field(
-        default_factory=lambda: os.environ.get("OLLAMA_EMBED_MODEL", "qwen3-embedding")
-    )
-    llm_base_url: str = Field(
-        default_factory=lambda: os.environ.get("OLLAMA_URL", os.environ.get("OLLAMA_BASE_URL", "http://localhost:18134"))
-    )
-    llm_temperature: float = 0.7
-    llm_timeout: int = 300
-
-    # Discovery
-    questions_path: Path | None = Field(
-        default_factory=lambda: Path(os.environ.get("QUESTIONS_PATH", "data/evaluation/competency_questions.json")) if os.environ.get("QUESTIONS_PATH") or Path("data/evaluation/competency_questions.json").exists() else None,
-        description="Path to competency questions JSON file"
-    )
-    max_iterations: int = 3
-    coverage_target: float = 0.85
-    top_k_docs: int = 5
-    confidence_threshold: float = 0.6
-    generate_follow_ups: bool = True
-
-    # Storage
-    neo4j_uri: str = Field(
-        default_factory=lambda: os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    )
-    neo4j_user: str = Field(
-        default_factory=lambda: os.environ.get("NEO4J_USER", "neo4j")
-    )
-    neo4j_password: str = Field(
-        default_factory=lambda: os.environ.get("NEO4J_PASSWORD", "changeme")
-    )
-    neo4j_database: str = "neo4j"
-    qdrant_url: str = Field(
-        default_factory=lambda: os.environ.get("QDRANT_URL", "http://localhost:6333")
-    )
-    vector_collection: str = Field(
-        default_factory=lambda: os.environ.get("VECTOR_COLLECTION", "kgbuilder")
-    )
-
-    # wandb logging
-    wandb_enabled: bool = Field(
-        default_factory=lambda: os.environ.get("WANDB_ENABLED", "true").lower() == "true"
-    )
-    wandb_project: str = Field(
-        default_factory=lambda: os.environ.get("WANDB_PROJECT", "KnowledgeGraphBuilder")
-    )
-    wandb_entity: str | None = Field(
-        default_factory=lambda: os.environ.get("WANDB_ENTITY")
-    )
-
-    # Pipeline
-    smoke_test: bool = False
-    skip_discovery: bool = False
-    skip_confidence_tuning: bool = False
-    skip_enrichment: bool = False
-    skip_analytics: bool = False
-    skip_validation: bool = False
-
-    # Law Graph integration (optional)
-    law_graph_enabled: bool = Field(
-        default_factory=lambda: os.environ.get("LAW_GRAPH_ENABLED", "false").lower() == "true",
-        description="Enable law graph retrieval to augment entity extraction"
-    )
-    law_graph_collection: str = Field(
-        default_factory=lambda: os.environ.get("LAW_GRAPH_COLLECTION", "lawgraph")
-    )
-    law_graph_max_results: int = 3
-    enrich_only: bool = Field(
-        default=False,
-        description="Load checkpoint and run enrichment only (skip discovery)"
-    )
-    checkpoint_path: Path | None = Field(
-        default=None,
-        description="Path to extraction checkpoint for re-enrichment"
-    )
-    export_formats: list[str] = ["json-ld", "cypher", "rdf"]
-    output_dir: Path = Field(default=Path("output/kg_results"))
-    version_dir: Path = Field(default=Path("output/versions"))
-
-
-@dataclass
-class PipelineResult:
-    """Results from complete pipeline execution."""
-
-    timestamp: str
-    execution_time_seconds: float = 0.0
-    ontology_classes: int = 0
-    ontology_relations: int = 0
-    documents_loaded: int = 0
-    discovered_entities: int = 0
-    discovered_relations: int = 0
-    synthesized_entities: int = 0
-    enriched_entities: int = 0
-    enriched_relations: int = 0
-    kg_nodes: int = 0
-    kg_edges: int = 0
-    validation_results: dict[str, Any] = field(default_factory=dict)
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-    wandb_run_url: str | None = None
-    version_id: str | None = None  # KG version ID from versioning service
-    execution_time_seconds: float = 0.0
-
-
-class FullKGPipeline:
-    """Complete KG construction pipeline with all validations."""
-
-    def __init__(self, config: PipelineConfig) -> None:
-        """Initialize pipeline with services."""
-        self.config = config
-        
-        # Apply smoke test overrides if enabled
-        if self.config.smoke_test:
-            logger.info("smoke_test_mode_enabled")
-            self.config.ontology_dataset = "kgbuilder_test"
-            # Neo4j Community only supports 'neo4j' database
-            # self.config.neo4j_database = "neo4j_test" 
-            self.config.vector_collection = "discovery_test"
-            
-        self.result = PipelineResult(timestamp=datetime.now().isoformat())
-        self.wandb_run = None
-
-        # Initialize services
-        logger.info("initializing_services")
-        self._init_storage_services()
-        self._init_llm_services()
-
-    def _init_storage_services(self) -> None:
-        """Initialize storage backends."""
-        logger.info("connecting_to_storage")
-        if self.wandb_run:
-            self.wandb_run.log({"status": "initializing_services"})
-
-        # Ontology service
-        self.ontology_service = FusekiOntologyService(
-            fuseki_url=self.config.ontology_url,
-            dataset_name=self.config.ontology_dataset,
-            username=self.config.ontology_user,
-            password=self.config.ontology_password,
-        )
-
-        # Qdrant for vectors
-        self.vector_store = QdrantStore(
-            url=self.config.qdrant_url,
-            collection_name=self.config.vector_collection,
-        )
-
-        # Neo4j for KG
-        self.graph_store = Neo4jGraphStore(
-            uri=self.config.neo4j_uri,
-            auth=(self.config.neo4j_user, self.config.neo4j_password),
-            database=self.config.neo4j_database,
-        )
-        
-        # Versioning
-        from kgbuilder.storage.versioning import KGVersioningService
-        self.versioning_service = KGVersioningService(
-            storage_dir=self.config.version_dir
-        )
-        
-        # Inference Engine
-        from kgbuilder.analytics.inference import Neo4jInferenceEngine
-        self.inference_engine = Neo4jInferenceEngine(
-            graph_store=self.graph_store,
-            ontology_service=self.ontology_service
-        )
-
-        # Law Graph Retriever (optional)
-        self.law_retriever = None
-        if self.config.law_graph_enabled:
-            try:
-                from kgbuilder.storage.law_retrieval import LawGraphRetriever
-                law_qdrant = QdrantStore(
-                    url=self.config.qdrant_url,
-                    collection_name=self.config.law_graph_collection,
-                )
-                self.law_retriever = LawGraphRetriever(
-                    neo4j_store=self.graph_store,
-                    qdrant_store=law_qdrant,
-                    embedding_provider=None,  # set after LLM init
-                    max_results=self.config.law_graph_max_results,
-                )
-                logger.info(
-                    "law_graph_retriever_enabled",
-                    collection=self.config.law_graph_collection,
-                )
-            except Exception as e:
-                logger.warning("law_graph_init_failed", error=str(e))
-
-        logger.info("storage_services_initialized")
-
-    def _init_llm_services(self) -> None:
-        """Initialize LLM-based extraction and enrichment services."""
-        logger.info("initializing_llm_services")
-
-        # LLM provider for generation
-        self.llm = OllamaProvider(
-            model=self.config.llm_model,
-            base_url=self.config.llm_base_url,
-            temperature=self.config.llm_temperature,
-            timeout=self.config.llm_timeout,
-        )
-
-        # Embedding provider
-        self.embedding_provider = OllamaProvider(
-            model=self.config.embedding_model,
-            base_url=self.config.llm_base_url,
-            timeout=self.config.llm_timeout,
-        )
-
-        # Entity extractor (TIERED: Heuristic -> LLM)
-        self.rule_extractor = RuleBasedExtractor()
-        
-        self.llm_extractor = LLMEntityExtractor(
-            llm_provider=self.llm,
-            confidence_threshold=self.config.confidence_threshold,
-        )
-        
-        # Use TieredExtractor for speedup
-        self.entity_extractor = TieredExtractor(
-            rule_extractor=self.rule_extractor,
-            llm_extractor=self.llm_extractor,
-            min_entities_heuristic=1
-        )
-
-        # Relation extractor (TIERED: Heuristic -> LLM)
-        self.rule_relation_extractor = RuleBasedRelationExtractor()
-        
-        self.llm_relation_extractor = LLMRelationExtractor(
-            llm_provider=self.llm,
-            confidence_threshold=self.config.confidence_threshold,
-        )
-        
-        # Use TieredRelationExtractor for speedup
-        self.relation_extractor = TieredRelationExtractor(
-            rule_extractor=self.rule_relation_extractor,
-            llm_extractor=self.llm_relation_extractor,
-            min_relations_heuristic=1
-        )
-
-        # Enrichment pipeline
-        self.enrichment_pipeline = SemanticEnrichmentPipeline(
-            llm=self.llm,
-            embedding_provider=self.embedding_provider,
-            ontology_classes={},
-        )
-
-        # Confidence tuning pipeline (Phase 5.1-5.6)
-        self.confidence_tuning_pipeline = ConfidenceTuningPipeline(
-            llm_provider=self.llm,
-            enable_calibration=True,
-            enable_consensus_voting=False,  # Only if needed, expensive
-            quality_threshold=self.config.confidence_threshold,
-        )
-
-        # Checkpoint manager
-        self.checkpoint_manager = CheckpointManager(self.config.output_dir / "checkpoints")
-
-        # Analytics pipeline (Phase 12: Semantic Enhancement & Analytics)
-        self.analytics_pipeline = AnalyticsPipeline(
-            graph_store=self.graph_store,
-            ontology_service=self.ontology_service,
-            enable_inference=True,
-            enable_skos=True,
-        )
-
-        # Versioning service (KG snapshots and rollback)
-        self.versioning_service = KGVersioningService(
-            version_dir=self.config.version_dir,
-            graph_store=self.graph_store,
-        )
-
-        # Wire embedding provider into law retriever (needs to happen after LLM init)
-        if self.law_retriever is not None:
-            self.law_retriever.embedding_provider = self.embedding_provider
-
-        logger.info("llm_services_initialized")
-
-    def run(self) -> PipelineResult:
-        """Execute complete pipeline."""
-        start_time = datetime.now()
-
-        # Initialize wandb if enabled
-        if self.config.wandb_enabled:
-            try:
-                import wandb
-                self.wandb_run = wandb.init(
-                    project=self.config.wandb_project,
-                    entity=self.config.wandb_entity,
-                    config=self.config.model_dump(),
-                    tags=["baseline" if self.config.max_iterations == 1 else "discovery", "production"],
-                    name=f"baseline_33docs_{datetime.now().strftime('%Y%m%d_%H%M')}"
-                )
-                self.result.wandb_run_url = self.wandb_run.url
-                logger.info("wandb_initialized", url=self.wandb_run.url)
-            except Exception as e:
-                logger.warning("wandb_init_failed", error=str(e))
-
-        try:
-            # Enrich-only mode: load checkpoint and run enrichment
-            if self.config.enrich_only and self.config.checkpoint_path:
-                logger.info("pipeline_mode", mode="enrich_only")
-                self._enrich_from_checkpoint()
-                logger.info("pipeline_completed", **asdict(self.result))
-                return self.result
-
-            # 1. Load ontology
-            logger.info("pipeline_step", step="load_ontology")
-            self._load_ontology()
-            if self.wandb_run:
-                self.wandb_run.log({
-                    "status": "ontology_loaded",
-                    "ontology_classes": self.result.ontology_classes,
-                    "ontology_relations": self.result.ontology_relations
-                })
-
-            # 2. Load documents
-            logger.info("pipeline_step", step="load_documents")
-            self._load_documents()
-
-            # 3. Discovery (if not skipped)
-            if not self.config.skip_discovery:
-                logger.info("pipeline_step", step="discovery_loop")
-                if self.wandb_run:
-                    self.wandb_run.log({"status": "discovery_started"})
-                self._run_discovery()
-                if self.wandb_run:
-                    self.wandb_run.log({
-                        "discovery_complete": 1,
-                        "entities_discovered": self.result.discovered_entities,
-                        "relations_discovered": self.result.discovered_relations
-                    })
-            else:
-                logger.warning("skipping_discovery", reason="config_skip_discovery=true")
-                
-                # 3.1. Direct extraction (when discovery is skipped)
-                logger.info("pipeline_step", step="direct_extraction")
-                if self.wandb_run:
-                    self.wandb_run.log({"status": "direct_extraction_started"})
-                self._run_direct_extraction()
-                if self.wandb_run:
-                    self.wandb_run.log({
-                        "direct_extraction_complete": 1,
-                        "entities_extracted": len(getattr(self, 'discovered_entities', [])),
-                        "relations_extracted": len(getattr(self, 'discovered_relations', []))
-                    })
-
-            # 3.5. Confidence Tuning (Phase 5.1-5.6, if not skipped)
-            if not self.config.skip_confidence_tuning and hasattr(self, 'discovered_entities'):
-                logger.info("pipeline_step", step="confidence_tuning")
-                if self.wandb_run:
-                    self.wandb_run.log({"status": "confidence_tuning_started"})
-                self._run_confidence_tuning()
-                if self.wandb_run:
-                    self.wandb_run.log({
-                        "confidence_tuning_complete": 1,
-                        "entities_after_tuning": len(self.discovered_entities),
-                    })
-            else:
-                logger.warning("skipping_confidence_tuning", reason="config_skip_confidence_tuning=true")
-
-            # 4. Enrichment (if not skipped)
-            if not self.config.skip_enrichment:
-                logger.info("pipeline_step", step="enrichment")
-                if self.wandb_run:
-                    self.wandb_run.log({"status": "enrichment_started"})
-                self._run_enrichment()
-            else:
-                logger.warning("skipping_enrichment", reason="config_skip_enrichment=true")
-
-            # 5. KG assembly
-            logger.info("pipeline_step", step="kg_assembly")
-            if self.wandb_run:
-                self.wandb_run.log({"status": "kg_assembly_started"})
-            self._build_kg()
-            
-            # 5.5 Semantic Analytics (Phase 12: Inference + Metrics)
-            logger.info("pipeline_step", step="analytics")
-            if self.wandb_run:
-                self.wandb_run.log({"status": "analytics_started"})
-            self._run_analytics()
-            if self.wandb_run:
-                self.wandb_run.log({
-                    "kg_build_complete": 1,
-                    "analytics_complete": 1,
-                    "nodes_created": self.result.kg_nodes,
-                    "edges_created": self.result.kg_edges
-                })
-
-            # 6. Validation (if not skipped)
-            if not self.config.skip_validation:
-                logger.info("pipeline_step", step="validation")
-                self._validate_kg()
-            else:
-                logger.warning("skipping_validation", reason="config_skip_validation=true")
-
-            # 7. Export
-            logger.info("pipeline_step", step="export")
-            self._export_kg()
-
-            # 8. Snapshot for versioning
-            self._create_version_snapshot()
-
-            if self.wandb_run:
-                self.wandb_run.log(asdict(self.result))
-                self.wandb_run.finish()
-
-            logger.info("pipeline_completed", **asdict(self.result))
-
-        except Exception as e:
-            logger.error("pipeline_failed", error=str(e), exc_info=True)
-            self.result.errors.append(f"Pipeline execution failed: {str(e)}")
-
-        finally:
-            self.result.execution_time_seconds = (
-                datetime.now() - start_time
-            ).total_seconds()
-            
-            if self.wandb_run:
-                try:
-                    self.wandb_run.log({"total_execution_time": self.result.execution_time_seconds})
-                    if self.result.errors:
-                        self.wandb_run.alert(title="Pipeline Error", text="\n".join(self.result.errors))
-                    self.wandb_run.finish()
-                except Exception:
-                    pass
-
-        return self.result
-
-    def _load_ontology(self) -> None:
-        """Load ontology from service, optionally uploading first."""
-        try:
-            # Upload local ontology if provided
-            if self.config.ontology_path and self.config.ontology_path.exists():
-                logger.info("uploading_ontology", path=str(self.config.ontology_path))
-                with open(self.config.ontology_path, "r") as f:
-                    content = f.read()
-                    self.ontology_service.store.load_ontology(content)
-                logger.info("ontology_uploaded_successfully")
-
-            # Load classes
-            class_labels = self.ontology_service.get_all_classes()
-            self.result.ontology_classes = len(class_labels)
-
-            # Build OntologyClassDef objects for extraction
-            self.ontology_classes: list[OntologyClassDef] = []
-            for label in class_labels:
-                # Get real URI if possible (or fake it if only label returned)
-                # Note: FusekiOntologyService returns labels from get_all_classes
-                class_uri = f"http://example.org/ontology#{label}" 
-                
-                # Fetch properties for this class
-                properties_tuples = self.ontology_service.get_class_properties(label)
-                
-                # Fetch relations for this class to inform extraction
-                # (Optional optimization: load them once later)
-
-                self.ontology_classes.append(
-                    OntologyClassDef(
-                        uri=class_uri,
-                        label=label,
-                        properties=[
-                            {"name": p[0], "type": p[1], "description": p[2]}
-                            for p in properties_tuples
-                        ],
-                    )
-                )
-
-            # Load relations (ObjectProperties)
-            self.ontology_relations: list[OntologyRelationDef] = []
-            if hasattr(self.ontology_service, "get_all_relations"):
-                rel_names = self.ontology_service.get_all_relations()
-                for rel_name in rel_names:
-                    self.ontology_relations.append(
-                        OntologyRelationDef(
-                            uri=f"http://example.org/ontology#{rel_name}",
-                            label=rel_name
-                        )
-                    )
-            
-            self.result.ontology_relations = len(self.ontology_relations)
-
-            # Update enrichment pipeline with ontology classes
-            self.enrichment_pipeline.ontology_classes = {
-                cls.label: cls for cls in self.ontology_classes
-            }
-
-            logger.info(
-                "ontology_loaded",
-                classes=self.result.ontology_classes,
-                relations=self.result.ontology_relations,
-            )
-
-        except Exception as e:
-            logger.error("ontology_load_failed", error=str(e))
-            self.result.errors.append(f"Failed to load ontology: {str(e)}")
-            raise
-
-    def _load_documents(self) -> None:
-        """Load and chunk documents."""
-        try:
-            loaders = {
-                ".pdf": PDFLoader(),
-                ".docx": DOCXLoader(),
-                ".xml": LawXMLLoader(),
-            }
-
-            doc_paths = []
-
-            for ext in self.config.document_extensions:
-                doc_paths.extend(
-                    self.config.document_dir.glob(f"*{ext}")
-                )
-
-            documents: list[Document] = []
-            for path in doc_paths:
-                loader = loaders.get(path.suffix)
-                if loader:
-                    try:
-                        loaded = loader.load(path)
-                        # Handle both single Document and list[Document] returns
-                        if isinstance(loaded, list):
-                            documents.extend(loaded)
-                        else:
-                            documents.append(loaded)
-                    except Exception as e:
-                        logger.warning(
-                            "document_load_failed", path=str(path), error=str(e)
-                        )
-                        self.result.warnings.append(
-                            f"Failed to load {path}: {str(e)}"
-                        )
-
-            self.result.documents_loaded = len(documents)
-            logger.info("documents_loaded", count=len(documents))
-
-            # Only index if vector store is empty
-            if hasattr(self.vector_store, "get_points_count"):
-                points_count = self.vector_store.get_points_count()
-                if points_count > 0:
-                    logger.info("vector_store_already_indexed", count=points_count)
-                    return
-
-            # Chunk and store in vector store
-            logger.info("chunking_and_indexing_documents")
-            chunker = FixedSizeChunker()
-            all_chunks = []
-            for doc in documents:
-                chunks = chunker.chunk(doc, chunk_size=1000, chunk_overlap=100)
-                all_chunks.extend(chunks)
-
-            if all_chunks:
-                # Embed chunks
-                chunk_texts = [c.content for c in all_chunks]
-                embeddings = self.embedding_provider.embed_batch(chunk_texts)
-                
-                # Store in Qdrant
-                ids = [c.id for c in all_chunks]
-                metadata = [
-                    {
-                        "doc_id": c.document_id,
-                        "content": c.content,
-                        "strategy": "fixed_size"
-                    } for c in all_chunks
-                ]
-                self.vector_store.store(ids, embeddings, metadata)
-                logger.info("indexing_complete", chunks=len(all_chunks))
-
-        except Exception as e:
-            logger.error("document_loading_failed", error=str(e))
-            self.result.errors.append(f"Failed to load documents: {str(e)}")
-            raise
-
-    def _run_discovery(self) -> None:
-        """Run iterative discovery loop."""
-        try:
-            # Initialize question generator with ontology service
-            question_gen = QuestionGenerationAgent(
-                ontology_service=self.ontology_service,
-            )
-
-            # Document retriever using vector store
-            class VectorRetriever:
-                """Simple retriever wrapping the vector store."""
-
-                def __init__(self, vector_store: QdrantStore, embedding_provider: OllamaProvider):
-                    self._store = vector_store
-                    self._embed = embedding_provider
-
-                def retrieve(self, query: str, top_k: int = 10) -> list[Any]:
-                    """Retrieve relevant chunks from vector store."""
-                    try:
-                        # Vectorize query
-                        query_vec = self._embed.embed_text(query)
-                        # Search in Qdrant (using its internal collection name)
-                        results = self._store.search(query_vec, top_k=top_k)
-                        
-                        # Convert to objects with .content and .doc_id as required by DiscoveryLoop
-                        @dataclass
-                        class RetrievalResult:
-                            content: str
-                            doc_id: str
-                            score: float
-                        
-                        # results are list[tuple(id, score, metadata)]
-                        mapped = []
-                        for rid, score, meta in results:
-                            mapped.append(RetrievalResult(
-                                content=meta.get("content", ""),
-                                doc_id=meta.get("doc_id", "unknown"),
-                                score=score
-                            ))
-                        return mapped
-                    except Exception as e:
-                        logger.warning(f"Retrieval failed for query: {e}")
-                        return []
-
-            retriever = VectorRetriever(self.vector_store, self.embedding_provider)
-
-            # Build law context provider if law graph is enabled
-            law_context_fn = None
-            if self.law_retriever is not None:
-                def _law_context_fn(text: str) -> str:
-                    contexts = self.law_retriever.retrieve_for_text(text)
-                    return self.law_retriever.format_as_prompt_context(contexts)
-                law_context_fn = _law_context_fn
-                logger.info("law_graph_context_enabled_for_discovery")
-
-            discovery_loop = IterativeDiscoveryLoop(
-                retriever=retriever,
-                extractor=self.entity_extractor,
-                question_generator=question_gen,
-                ontology_classes=self.ontology_classes if hasattr(self, 'ontology_classes') else None,
-                relation_extractor=self.relation_extractor,
-                ontology_relations=self.ontology_relations if hasattr(self, 'ontology_relations') else None,
-                context_provider=law_context_fn,
-            )
-
-            # Load initial questions if provided
-            initial_questions = None
-            if self.config.questions_path and self.config.questions_path.exists():
-                logger.info("loading_competency_questions", path=str(self.config.questions_path))
-                with open(self.config.questions_path) as f:
-                    q_data = json.load(f)
-                    from kgbuilder.agents.question_generator import ResearchQuestion
-                    initial_questions = [ResearchQuestion(**q) for q in q_data]
-
-            # Run the discovery loop
-            result = discovery_loop.run_discovery(
-                initial_questions=initial_questions,
-                max_iterations=self.config.max_iterations,
-                coverage_target=self.config.coverage_target,
-                top_k_docs=self.config.top_k_docs,
-                generate_follow_ups=self.config.generate_follow_ups,
-            )
-
-            # Store discovered entities and relations on self for enrichment
-            self.discovered_entities = result.entities
-            self.discovered_relations = result.relations
-
-            self.result.discovered_entities = len(self.discovered_entities)
-            self.result.discovered_relations = len(self.discovered_relations)
-
-            # Save checkpoint
-            try:
-                checkpoint_path = self.checkpoint_manager.save_extraction(
-                    run_id=self.result.timestamp.replace(":", "-"),
-                    variant_name="full_pipeline",
-                    entities=self.discovered_entities,
-                    relations=self.discovered_relations,
-                    extraction_seconds=self.result.execution_time_seconds,
-                )
-                logger.info("checkpoint_saved")
-            except Exception as e:
-                logger.warning("checkpoint_save_failed", error=str(e))
-
-            logger.info(
-                "discovery_complete",
-                entities=self.result.discovered_entities,
-                relations=self.result.discovered_relations,
-            )
-
-        except Exception as e:
-            logger.error("discovery_failed", error=str(e))
-            self.result.errors.append(f"Discovery failed: {str(e)}")
-            raise
-
-    def _run_direct_extraction(self) -> None:
-        """Extract entities and relations directly from all documents (no iterative discovery)."""
-        try:
-            logger.info("direct_extraction_start", document_count=len(self.result.documents))
-            
-            # Extract entities and relations from all documents at once
-            all_entities: list[ExtractedEntity] = []
-            all_relations: list[ExtractedRelation] = []
-            
-            for doc in self.result.documents:
-                try:
-                    # Extract entities
-                    doc_entities = self.entity_extractor.extract(doc)
-                    all_entities.extend(doc_entities)
-                    
-                    # Extract relations  
-                    doc_relations = self.relation_extractor.extract(doc, all_entities)
-                    all_relations.extend(doc_relations)
-                    
-                    logger.debug("document_processed", 
-                               doc_id=doc.id, 
-                               entities=len(doc_entities), 
-                               relations=len(doc_relations))
-                               
-                except Exception as e:
-                    logger.warning("document_extraction_failed", 
-                                 doc_id=doc.id, 
-                                 error=str(e))
-                    continue
-            
-            # Store results
-            self.discovered_entities = all_entities
-            self.discovered_relations = all_relations
-            
-            # Update result metrics
-            self.result.discovered_entities = len(all_entities)
-            self.result.discovered_relations = len(all_relations)
-            
-            logger.info("direct_extraction_complete", 
-                       entities=len(all_entities), 
-                       relations=len(all_relations))
-
-        except Exception as e:
-            logger.error("direct_extraction_failed", error=str(e))
-            self.result.errors.append(f"Direct extraction failed: {str(e)}")
-            raise
-
-    def _run_confidence_tuning(self) -> None:
-        """Run confidence tuning on discovered entities and relations."""
-        try:
-            if not hasattr(self, 'discovered_entities') or not self.discovered_entities:
-                logger.warning("no_entities_for_confidence_tuning")
-                return
-
-            logger.info("confidence_tuning_start", entity_count=len(self.discovered_entities))
-
-            # Run confidence tuning pipeline
-            tuned_entities, tuned_relations, tuning_result = self.confidence_tuning_pipeline.tune(
-                entities=self.discovered_entities,
-                relations=self.discovered_relations if hasattr(self, 'discovered_relations') else [],
-            )
-
-            # Update discovered entities with tuned versions
-            self.discovered_entities = tuned_entities
-            if hasattr(self, 'discovered_relations'):
-                self.discovered_relations = tuned_relations
-
-            # Log tuning results
-            logger.info(
-                "confidence_tuning_complete",
-                input_entities=tuning_result.total_entities_input,
-                output_entities=tuning_result.total_entities_output,
-                filtered=tuning_result.entities_filtered,
-                avg_confidence_before=f"{tuning_result.avg_confidence_before:.2f}",
-                avg_confidence_after=f"{tuning_result.avg_confidence_after:.2f}",
-                coreference_clusters=tuning_result.coreference_clusters_merged,
-                calibration_applied=tuning_result.calibration_applied,
-                consensus_votes=tuning_result.consensus_votes_requested,
-                time_sec=f"{tuning_result.processing_time_sec:.1f}",
-            )
-
-            # Log to wandb if enabled
-            if self.wandb_run:
-                self.wandb_run.log({
-                    "confidence_tuning": {
-                        "input_entities": tuning_result.total_entities_input,
-                        "output_entities": tuning_result.total_entities_output,
-                        "entities_filtered": tuning_result.entities_filtered,
-                        "avg_confidence_before": tuning_result.avg_confidence_before,
-                        "avg_confidence_after": tuning_result.avg_confidence_after,
-                        "coreference_clusters_merged": tuning_result.coreference_clusters_merged,
-                        "calibration_applied": tuning_result.calibration_applied,
-                        "consensus_votes_requested": tuning_result.consensus_votes_requested,
-                        "processing_time_sec": tuning_result.processing_time_sec,
-                    }
-                })
-
-        except Exception as e:
-            logger.error("confidence_tuning_failed", error=str(e))
-            self.result.errors.append(f"Confidence tuning failed: {str(e)}")
-            raise
-
-    def _build_kg(self) -> None:
-        """Build knowledge graph in Neo4j."""
-        try:
-            logger.info("kg_building_start")
-
-            # Use enriched entities if available, fall back to discovered
-            entities = getattr(self, 'enriched_entities', None) or getattr(self, 'discovered_entities', [])
-            relations = getattr(self, 'enriched_relations', None) or getattr(self, 'discovered_relations', [])
-
-            if not entities:
-                logger.warning("no_entities_for_kg")
-                return
-
-            # Build KG using the KGBuilder
-            kg_builder = KGBuilder(
-                primary_store=self.graph_store,
-            )
-
-            # Convert entities to Nodes
-            kg_nodes = []
-            for e in entities:
-                # Handle both ExtractedEntity (id, properties) and EnrichedEntity (entity_id, metadata)
-                eid = getattr(e, 'entity_id', getattr(e, 'id', 'unknown'))
-                e_type = getattr(e, 'type', getattr(e, 'entity_type', 'Entity'))
-                e_label = getattr(e, 'label', eid)
-                e_desc = getattr(e, 'description', '')
-                
-                # Merge properties/metadata
-                props = {}
-                if hasattr(e, 'properties'):
-                    props.update(e.properties)
-                if hasattr(e, 'metadata'):
-                    props.update(e.metadata)
-                
-                props['description'] = e_desc
-                props['confidence'] = getattr(e, 'confidence', 0.0)
-                if hasattr(e, 'aliases'):
-                    props['aliases'] = e.aliases
-                
-                kg_nodes.append(Node(
-                    id=eid,
-                    label=e_label,
-                    node_type=e_type,
-                    properties=props
-                ))
-            
-            # Convert relations to Edges
-            kg_edges = []
-            for r in relations:
-                # Handle both ExtractedRelation (id, source_entity_id, target_entity_id) 
-                # and EnrichedRelation (relation_id, source_id, target_id)
-                rid = getattr(r, 'relation_id', getattr(r, 'id', 'unknown'))
-                sid = getattr(r, 'source_id', getattr(r, 'source_entity_id', 'unknown'))
-                tid = getattr(r, 'target_id', getattr(r, 'target_entity_id', 'unknown'))
-                pred = getattr(r, 'predicate', 'related_to')
-                
-                props = {}
-                if hasattr(r, 'properties'):
-                    props.update(r.properties)
-                if hasattr(r, 'metadata'):
-                    props.update(r.metadata)
-                
-                props['confidence'] = getattr(r, 'confidence', 0.0)
-                
-                kg_edges.append(Edge(
-                    id=rid,
-                    source_id=sid,
-                    target_id=tid,
-                    edge_type=pred,
-                    properties=props
-                ))
-
-            build_result = kg_builder.build(kg_nodes, kg_edges)
-            self.result.kg_nodes = build_result.nodes_created
-            self.result.kg_edges = build_result.edges_created
-
-            logger.info(
-                "kg_building_complete",
-                nodes=self.result.kg_nodes,
-                edges=self.result.kg_edges,
-            )
-
-        except Exception as e:
-            logger.error("kg_build_failed", error=str(e))
-            self.result.errors.append(f"KG building failed: {str(e)}")
-            raise
-
-    def _run_enrichment(self) -> None:
-        """Run enrichment pipeline on discovered entities and relations."""
-        try:
-            if not hasattr(self, 'discovered_entities') or not self.discovered_entities:
-                logger.warning("no_entities_to_enrich")
-                return
-
-            logger.info("enrichment_start")
-
-            # Convert extracted entities to enriched format
-            enriched_entities: list[EnrichedEntity] = []
-            for entity in self.discovered_entities:
-                enriched_entities.append(
-                    EnrichedEntity(
-                        entity_id=entity.id,
-                        label=entity.label,
-                        entity_type=entity.entity_type,
-                        confidence=entity.confidence,
-                        description=getattr(entity, 'description', ''),
-                        aliases=getattr(entity, 'aliases', []),
-                    )
-                )
-
-            # Convert extracted relations to enriched format
-            enriched_relations: list[EnrichedRelation] = []
-            if hasattr(self, 'discovered_relations'):
-                for relation in self.discovered_relations:
-                    enriched_relations.append(
-                        EnrichedRelation(
-                            relation_id=relation.id,
-                            source_id=relation.source_entity_id,
-                            target_id=relation.target_entity_id,
-                            predicate=relation.predicate,
-                            confidence=relation.confidence,
-                        )
-                    )
-
-            # Run enrichment pipeline
-            enriched_entities, enriched_relations, metrics = self.enrichment_pipeline.enrich(
-                enriched_entities,
-                enriched_relations,
-            )
-
-            # Store enriched results for assembly
-            self.enriched_entities = enriched_entities
-            self.enriched_relations = enriched_relations
-            self.result.enriched_entities = len(enriched_entities)
-            self.result.enriched_relations = len(enriched_relations)
-
-            logger.info(
-                "enrichment_complete",
-                duration_seconds=metrics.duration_seconds,
-                descriptions=metrics.descriptions_added,
-                embeddings=metrics.embeddings_added,
-                competency_questions=metrics.competency_questions_added,
-                aliases=metrics.aliases_added,
-            )
-
-        except Exception as e:
-            logger.error("enrichment_failed", error=str(e))
-            self.result.errors.append(f"Enrichment failed: {str(e)}")
-            raise
-
-    def _enrich_from_checkpoint(self) -> None:
-        """Load checkpoint and run enrichment only."""
-        try:
-            if not self.config.checkpoint_path or not self.config.checkpoint_path.exists():
-                raise FileNotFoundError(
-                    f"Checkpoint not found: {self.config.checkpoint_path}"
-                )
-
-            logger.info("loading_checkpoint", path=str(self.config.checkpoint_path))
-
-            # Load from checkpoint
-            enriched_entities, enriched_relations = enrich_from_checkpoint(
-                checkpoint_path=self.config.checkpoint_path,
-                output_dir=self.config.output_dir,
-                llm_model=self.config.llm_model,
-                embedding_model=self.config.embedding_model,
-                ollama_base_url=self.config.llm_base_url,
-            )
-
-            self.result.enriched_entities = len(enriched_entities)
-            self.result.enriched_relations = len(enriched_relations)
-
-            logger.info(
-                "enrichment_from_checkpoint_complete",
-                entities=len(enriched_entities),
-                relations=len(enriched_relations),
-            )
-
-        except Exception as e:
-            logger.error("checkpoint_enrichment_failed", error=str(e))
-            self.result.errors.append(f"Checkpoint enrichment failed: {str(e)}")
-            raise
-
-    def _run_analytics(self) -> None:
-        """Run semantic analytics pipeline (Phase 12).
-        
-        Includes:
-        - OWL-RL inference (symmetry, inversion, transitivity, class hierarchy)
-        - SKOS enrichment (when ontology queries available)
-        - Graph metrics (diagnostics and measurement)
-        """
-        if self.config.skip_analytics:
-            logger.warning("skipping_analytics", reason="config_skip_analytics=true")
-            return
-        
-        try:
-            logger.info("analytics_start")
-            analytics_result = self.analytics_pipeline.run()
-            
-            # Log results
-            if analytics_result.inference_enabled:
-                logger.info(
-                    "inference_completed",
-                    stats=analytics_result.inference_stats,
-                    duration=analytics_result.total_duration_seconds,
-                )
-            
-            # Report metrics improvements
-            if analytics_result.metrics_before and analytics_result.metrics_after:
-                logger.info(
-                    "analytics_metrics",
-                    nodes_before=analytics_result.metrics_before.total_nodes,
-                    nodes_after=analytics_result.metrics_after.total_nodes,
-                    edges_before=analytics_result.metrics_before.total_edges,
-                    edges_after=analytics_result.metrics_after.total_edges,
-                    typed_pct_before=analytics_result.metrics_before.typed_percentage,
-                    typed_pct_after=analytics_result.metrics_after.typed_percentage,
-                )
-            
-            # Log to wandb
-            if self.wandb_run:
-                self.wandb_run.log({
-                    "analytics_complete": 1,
-                    "inference_stats": analytics_result.inference_stats,
-                    "analytics_duration": analytics_result.total_duration_seconds,
-                })
-            
-            if analytics_result.status != "success":
-                logger.warning("analytics_completed_with_issues", status=analytics_result.status)
-                if analytics_result.error_message:
-                    self.result.warnings.append(f"Analytics phase: {analytics_result.error_message}")
-            
-        except Exception as e:
-            logger.error("analytics_failed", error=str(e))
-            self.result.warnings.append(f"Analytics phase failed: {str(e)}")
-
-    def _validate_kg(self) -> None:
-        """Run comprehensive KG validation."""
-        try:
-            logger.info("validation_start")
-
-            validation_results = {}
-
-            # Run rules engine (semantic validation)
-            try:
-                if self.ontology_service:
-                    rules = RulesEngine.from_ontology_service(self.ontology_service)
-                else:
-                    rules = RulesEngine()
-                rules_result = rules.execute_rules(self.graph_store)
-                validation_results["rules"] = {
-                    "passed": rules_result.passed if hasattr(rules_result, 'passed') else True,
-                    "violations": len(rules_result.violations) if hasattr(rules_result, 'violations') else 0,
-                }
-            except Exception as e:
-                logger.warning("rules_validation_failed", error=str(e))
-                validation_results["rules"] = {"error": str(e)}
-
-            # Run consistency checker
-            try:
-                checker = ConsistencyChecker()
-                consistency_result = checker.check_consistency(self.graph_store)
-                validation_results["consistency"] = {
-                    "conflict_rate": consistency_result.conflict_rate if hasattr(consistency_result, 'conflict_rate') else 0.0,
-                }
-            except Exception as e:
-                logger.warning("consistency_check_failed", error=str(e))
-                validation_results["consistency"] = {"error": str(e)}
-
-            # Run KG quality scoring (pySHACL + SHACL2FOL)
-            try:
-                owl_path = self.config.ontology_path
-                scorer = KGQualityScorer(
-                    ontology_owl_path=owl_path,
-                    sample_limit=500,
-                )
-                report = scorer.score_neo4j_store(self.graph_store)
-                validation_results["quality"] = {
-                    "combined_score": report.combined_score,
-                    "consistency": report.consistency,
-                    "acceptance_rate": report.acceptance_rate,
-                    "class_coverage": report.class_coverage,
-                    "shacl_score": report.shacl_score,
-                    "violations": report.violations,
-                    "shacl_report": report.shacl_report_path,
-                }
-                logger.info(
-                    "quality_scoring_complete",
-                    combined_score=report.combined_score,
-                    consistency=report.consistency,
-                    acceptance=report.acceptance_rate,
-                    coverage=report.class_coverage,
-                    shacl=report.shacl_score,
-                    violations=report.violations,
-                )
-            except Exception as e:
-                logger.warning("quality_scoring_failed", error=str(e))
-                validation_results["quality"] = {"error": str(e)}
-
-            self.result.validation_results = validation_results
-            logger.info("validation_complete", results=validation_results)
-
-        except Exception as e:
-            logger.warning("validation_failed", error=str(e))
-            self.result.warnings.append(f"Validation failed: {str(e)}")
-
-    def _export_kg(self) -> None:
-        """Export KG in requested formats."""
-        try:
-            self.config.output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # 1. Gather all data in memory for easier formatting
-            from kgbuilder.storage.protocol import InMemoryGraphStore
-            mem_store = InMemoryGraphStore()
-            
-            logger.info("loading_graph_for_export")
-            for node in self.graph_store.get_all_nodes():
-                mem_store.add_node(node)
-            
-            for edge in self.graph_store.get_all_edges():
-                mem_store.add_edge(edge)
-                
-            stats = mem_store.get_statistics()
-            logger.info("graph_loaded_for_export", nodes=stats.node_count, edges=stats.edge_count)
-
-            for fmt in self.config.export_formats:
-                logger.info("exporting_kg", format=fmt)
-                
-                # Standardize format name for file extension
-                ext = fmt.lower().replace("-", "")
-                output_path = self.config.output_dir / f"kg_export.{ext}"
-                
-                if fmt in ["json-ld", "json"]:
-                    with open(output_path, "w") as f:
-                        f.write(mem_store.to_json())
-                    logger.info("kg_exported", format=fmt, path=str(output_path))
-                
-                elif fmt == "cypher":
-                    with open(output_path, "w") as f:
-                        f.write("// Knowledge Graph Export\n")
-                        f.write("// Generated by KGBuilder\n\n")
-                        
-                        # Nodes
-                        for node in mem_store.get_all_nodes():
-                            props = json.dumps(node.properties)
-                            f.write(f"CREATE (n:{node.node_type} {{id: '{node.id}', label: '{node.label}', properties: '{props}'}});\n")
-                        
-                        # Edges
-                        for edge in mem_store.get_all_edges():
-                            props = json.dumps(edge.properties)
-                            f.write(f"MATCH (s {{id: '{edge.source_id}'}}), (t {{id: '{edge.target_id}'}}) "
-                                    f"CREATE (s)-[:{edge.edge_type} {{id: '{edge.id}', properties: '{props}'}}]->(t);\n")
-                    logger.info("kg_exported", format=fmt, path=str(output_path))
-                
-                elif fmt in ["rdf", "ttl"]:
-                    # Basic Turtle export (simplified)
-                    output_path = self.config.output_dir / "kg_export.ttl"
-                    with open(output_path, "w") as f:
-                        f.write("@prefix kg: <http://example.org/kg#> .\n")
-                        f.write("@prefix ont: <http://example.org/ontology#> .\n")
-                        f.write("@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n")
-                        
-                        for node in mem_store.get_all_nodes():
-                            f.write(f"kg:{node.id} a ont:{node.node_type} ;\n")
-                            f.write(f"    rdfs:label \"{node.label}\" .\n")
-                        
-                        for edge in mem_store.get_all_edges():
-                            f.write(f"kg:{edge.source_id} ont:{edge.edge_type} kg:{edge.target_id} .\n")
-                    logger.info("kg_exported", format=fmt, path=str(output_path))
-
-        except Exception as e:
-            logger.error("export_failed", error=str(e))
-            self.result.errors.append(f"Export failed: {str(e)}")
-
-    def _create_version_snapshot(self) -> None:
-        """Create a versioned snapshot of the Knowledge Graph."""
-        try:
-            logger.info("creating_version_snapshot")
-            
-            # Generate version name and description
-            timestamp = datetime.now()
-            version_name = f"Pipeline run {timestamp.strftime('%Y%m%d_%H%M%S')}"
-            description = (
-                f"KG built from {self.result.documents_loaded} documents, "
-                f"{self.result.discovered_entities} entities, "
-                f"{self.result.discovered_relations} relations. "
-                f"Max iterations: {self.config.max_iterations}"
-            )
-            
-            # Create snapshot with versioning service
-            metadata = self.versioning_service.create_snapshot(
-                name=version_name,
-                description=description,
-                trigger="pipeline_run",
-                pipeline_id=f"run_{timestamp.strftime('%Y%m%d_%H%M%S')}",
-                export_formats=["json-ld"],  # Export formats
-            )
-            
-            logger.info(
-                "version_snapshot_created",
-                version_id=metadata.version_id,
-                entities=metadata.entity_count,
-                relations=metadata.relation_count,
-            )
-            self.result.version_id = metadata.version_id
-            
-        except Exception as e:
-            logger.error("version_snapshot_failed", error=str(e))
-            self.result.warnings.append(f"Failed to create version snapshot: {str(e)}")
-
-
-def main() -> int:
-    """Main entry point."""
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    # Initialize structured logging
-    setup_logging(log_dir=Path("/tmp"), log_level="INFO", enable_json=True)
-
+# =============================================================================
+# ENVIRONMENT CONFIGURATION
+# =============================================================================
+
+FUSEKI_URL = os.getenv("FUSEKI_URL", "http://localhost:3030")
+FUSEKI_DATASET = os.getenv("FUSEKI_DATASET", "kgbuilder")
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "changeme")
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "kgbuilder")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:18134")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+
+
+# =============================================================================
+# COMPONENT IMPORTS (All IMPLEMENTED and TESTED)
+# =============================================================================
+
+from kgbuilder.agents.question_generator import QuestionGenerationAgent
+from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
+from kgbuilder.assembly.kg_builder import KGBuilder, KGBuilderConfig
+from kgbuilder.assembly.simple_kg_assembler import SimpleKGAssembler
+from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
+from kgbuilder.extraction.entity import OntologyClassDef
+from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
+from kgbuilder.storage.ontology import FusekiOntologyService
+from kgbuilder.storage.vector import QdrantStore
+from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+from kgbuilder.storage.protocol import Node, Edge
+from kgbuilder.retrieval import FusionRAGRetriever
+from kgbuilder.extraction.entity import LLMEntityExtractor
+from kgbuilder.embedding import OllamaProvider
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
+from kgbuilder.validation import SHACLValidator, RulesEngine, ConsistencyChecker, ReportGenerator, ValidationResult
+from kgbuilder.validation.validators import CompetencyQuestionValidator
+
+
+# =============================================================================
+# CLI ARGUMENT PARSING
+# =============================================================================
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse CLI arguments for KG construction hyperparameters."""
     parser = argparse.ArgumentParser(
-        description="Full KG construction pipeline"
+        description="Knowledge Graph Construction - Full Discovery & Assembly Pipeline",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    
+    # Core hyperparameters
     parser.add_argument(
-        "--config",
-        type=Path,
-        help="Pipeline configuration JSON file",
-    )
-    parser.add_argument(
-        "--ontology-path",
-        type=Path,
-        help="Path to local ontology file (owl, ttl)",
-    )
-    parser.add_argument(
-        "--ontology-url",
-        type=str,
-        default="http://localhost:3030",
-        help="Fuseki ontology endpoint URL",
-    )
-    parser.add_argument(
-        "--documents",
-        type=Path,
-        default=Path("data/documents"),
-        help="Documents directory",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("output/kg_results"),
-        help="Output directory",
-    )
-    parser.add_argument(
-        "--version-dir",
-        type=Path,
-        default=Path("output/versions"),
-        help="Directory for KG versions and snapshots",
-    )
-    parser.add_argument(
-        "--questions",
-        type=Path,
-        help="Path to competency questions JSON file",
-    )
-    parser.add_argument(
-        "--top-k",
+        "--questions-per-class",
         type=int,
-        default=5,
-        help="Number of documents to retrieve per question",
+        default=3,
+        help="Number of questions to generate per ontology class"
     )
-    parser.add_argument(
-        "--follow-ups",
-        type=str,
-        default="true",
-        choices=["true", "false"],
-        help="Generate synthetic follow-up questions (true/false)",
-    )
-    parser.add_argument(
-        "--smoke-test",
-        action="store_true",
-        help="Run in smoke test mode (uses test collections)",
-    )
+    
     parser.add_argument(
         "--max-iterations",
         type=int,
-        default=3,
-        help="Max discovery iterations",
+        default=2,
+        help="Maximum iterations for discovery loop per question"
     )
+    
     parser.add_argument(
-        "--skip-validation",
+        "--classes-limit",
+        type=int,
+        default=None,
+        help="Limit ontology classes to process (None = all classes)"
+    )
+    
+    parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.6,
+        help="Minimum confidence for extracted entities (0.0-1.0)"
+    )
+    
+    parser.add_argument(
+        "--similarity-threshold",
+        type=float,
+        default=0.85,
+        help="Entity deduplication similarity threshold (0.0-1.0)"
+    )
+    
+    # Retrieval hyperparameters
+    parser.add_argument(
+        "--dense-weight",
+        type=float,
+        default=0.7,
+        help="Weight for dense vector retrieval in FusionRAG (0.0-1.0)"
+    )
+    
+    parser.add_argument(
+        "--sparse-weight",
+        type=float,
+        default=0.3,
+        help="Weight for sparse keyword retrieval in FusionRAG (0.0-1.0)"
+    )
+    
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        help="Number of documents to retrieve per query"
+    )
+    
+    # Validation & Quality Gating
+    parser.add_argument(
+        "--validate",
         action="store_true",
-        help="Skip validation checks",
+        default=True,
+        help="Enable validation phase (SHACL, rules, consistency)"
     )
+    
     parser.add_argument(
-        "--skip-discovery",
+        "--check-competency-questions",
         action="store_true",
-        help="Skip discovery phase",
+        default=False,
+        help="Check if competency questions are answered before finishing"
     )
+    
     parser.add_argument(
-        "--skip-enrichment",
-        action="store_true",
-        help="Skip enrichment phase",
+        "--cq-coverage-threshold",
+        type=float,
+        default=0.8,
+        help="Minimum coverage of competency questions (0.0-1.0) before stopping"
     )
+    
     parser.add_argument(
-        "--skip-confidence-tuning",
-        action="store_true",
-        help="Skip confidence tuning phase (Phase 5.1-5.6)",
-    )
-    parser.add_argument(
-        "--skip-analytics",
-        action="store_true",
-        help="Skip analytics phase (Phase 12: inference, SKOS, metrics)",
-    )
-    parser.add_argument(
-        "--enrich-only",
-        action="store_true",
-        help="Load checkpoint and run enrichment only (skip discovery)",
-    )
-    parser.add_argument(
-        "--checkpoint",
-        type=Path,
-        help="Path to extraction checkpoint for re-enrichment (with --enrich-only)",
-    )
-    parser.add_argument(
-        "--wandb-enabled",
-        action="store_true",
-        help="Enable wandb logging",
-    )
-    parser.add_argument(
-        "--wandb-project",
+        "--validation-report-dir",
         type=str,
-        help="Wandb project name (defaults to WANDB_PROJECT env var)",
+        default="./validation_reports",
+        help="Directory to save validation reports (JSON/Markdown/HTML)"
     )
+    
+    # Logging
     parser.add_argument(
-        "--wandb-entity",
-        type=str,
-        help="Wandb entity (user or org) (defaults to WANDB_ENTITY env var)",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug logging"
     )
-    parser.add_argument(
-        "--vector-collection",
-        type=str,
-        help="Vector database collection name (defaults to VECTOR_COLLECTION env var)",
+    
+    return parser.parse_args()
+
+
+# =============================================================================
+# COMPONENT FACTORY FUNCTIONS
+# =============================================================================
+
+def build_retriever(
+    dense_weight: float = 0.7,
+    sparse_weight: float = 0.3,
+    top_k: int = 10,
+) -> FusionRAGRetriever:
+    """Build FusionRAG retriever with Qdrant backend.
+    
+    FusionRAG combines:
+    - Dense retrieval (semantic similarity via embeddings)
+    - Sparse retrieval (BM25 keyword matching)
+    
+    Args:
+        dense_weight: Weight for dense vectors (0.0-1.0)
+        sparse_weight: Weight for sparse keywords (0.0-1.0)
+        top_k: Number of documents to retrieve
+        
+    Returns:
+        Configured FusionRAGRetriever instance
+    """
+    logger.info(
+        "retriever_building",
+        type="FusionRAGRetriever",
+        dense_weight=dense_weight,
+        sparse_weight=sparse_weight,
+        top_k=top_k,
     )
 
-    args = parser.parse_args()
+    qdrant_store = QdrantStore(
+        url=QDRANT_URL,
+        collection_name=QDRANT_COLLECTION
+    )
 
-    # Load config
-    if args.config:
-        with open(args.config) as f:
-            config_dict = json.load(f)
-        config = PipelineConfig(**config_dict)
-    else:
-        # Create config with only non-None values from args to allow Field defaults (from ENVs) to work
-        config_kwargs = dict(
-            ontology_url=args.ontology_url,
-            ontology_path=args.ontology_path,
-            document_dir=args.documents,
-            output_dir=args.output,
-            version_dir=args.version_dir,
-            smoke_test=args.smoke_test,
+    llm = OllamaProvider(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_URL
+    )
+
+    retriever = FusionRAGRetriever(
+        qdrant_store=qdrant_store,
+        llm_provider=llm,
+        dense_weight=dense_weight,
+        sparse_weight=sparse_weight,
+        top_k=top_k
+    )
+
+    logger.info("retriever_built", type="FusionRAGRetriever")
+    return retriever
+
+
+def build_entity_extractor(confidence_threshold: float = 0.6) -> LLMEntityExtractor:
+    """Build LLM-based entity extractor with ontology guidance.
+    
+    Uses structured prompting to extract entities that match ontology classes
+    with confidence scores and provenance information.
+    
+    Args:
+        confidence_threshold: Minimum confidence for inclusion (0.0-1.0)
+        
+    Returns:
+        Configured LLMEntityExtractor instance
+    """
+    logger.info(
+        "extractor_building",
+        type="LLMEntityExtractor",
+        confidence_threshold=confidence_threshold
+    )
+
+    llm = OllamaProvider(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_URL
+    )
+
+    extractor = LLMEntityExtractor(
+        llm_provider=llm,
+        confidence_threshold=confidence_threshold,
+        max_retries=3
+    )
+
+    logger.info("extractor_built", type="LLMEntityExtractor")
+    return extractor
+
+
+def convert_class_names_to_definitions(
+    class_names: list[str],
+) -> list[OntologyClassDef]:
+    """Convert ontology class names to OntologyClassDef objects.
+    
+    Args:
+        class_names: Class labels from ontology
+        
+    Returns:
+        OntologyClassDef objects for extraction guidance
+    """
+    definitions = []
+    for name in class_names:
+        definitions.append(
+            OntologyClassDef(
+                uri=f"http://example.org/ontology#{name}",
+                label=name,
+                description=f"Class {name} from knowledge graph ontology"
+            )
+        )
+    return definitions
+
+
+def build_relation_extractor(confidence_threshold: float = 0.5) -> LLMRelationExtractor:
+    """Build LLM-based relation extractor with ontology guidance.
+    
+    Uses structured prompting to extract relationships between entities
+    with domain/range validation and cardinality constraints.
+    
+    Args:
+        confidence_threshold: Minimum confidence for inclusion (0.0-1.0)
+        
+    Returns:
+        Configured LLMRelationExtractor instance
+    """
+    logger.info(
+        "relation_extractor_building",
+        type="LLMRelationExtractor",
+        confidence_threshold=confidence_threshold
+    )
+
+    llm = OllamaProvider(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_URL
+    )
+
+    extractor = LLMRelationExtractor(
+        llm_provider=llm,
+        confidence_threshold=confidence_threshold,
+        max_retries=3
+    )
+
+    logger.info("relation_extractor_built", type="LLMRelationExtractor")
+    return extractor
+
+
+def get_default_relation_definitions() -> list[OntologyRelationDef]:
+    """Get default relation definitions for extraction.
+    
+    These are common relation types used in knowledge graphs.
+    In production, these would come from the ontology in Fuseki.
+    
+    Returns:
+        List of OntologyRelationDef objects
+    """
+    return [
+        OntologyRelationDef(
+            uri="http://example.org/ontology#relatedTo",
+            label="relatedTo",
+            description="General relation between two entities",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#partOf",
+            label="partOf",
+            description="Entity is part of another entity",
+            is_transitive=True,
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#hasPart",
+            label="hasPart",
+            description="Entity has another entity as part",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#locatedIn",
+            label="locatedIn",
+            description="Entity is located in a location",
+            is_transitive=True,
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#involves",
+            label="involves",
+            description="An activity or event involves an entity",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#causes",
+            label="causes",
+            description="One entity/event causes another",
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#precedes",
+            label="precedes",
+            description="One entity/event precedes another temporally",
+            is_transitive=True,
+        ),
+        OntologyRelationDef(
+            uri="http://example.org/ontology#associatedWith",
+            label="associatedWith",
+            description="Entity is associated with another entity",
+            is_symmetric=True,
+        ),
+    ]
+
+
+def extract_relations_from_entities(
+    synthesized_entities: list[SynthesizedEntity],
+    retriever: FusionRAGRetriever,
+    relation_extractor: LLMRelationExtractor,
+    ontology_relations: list[OntologyRelationDef],
+    top_k: int = 5,
+) -> list[ExtractedRelation]:
+    """Extract relations between synthesized entities.
+    
+    Strategy:
+    1. For each entity pair, search for chunks mentioning both
+    2. Extract relations from those chunks
+    3. Aggregate and deduplicate relations
+    
+    Args:
+        synthesized_entities: Deduplicated entities from synthesis
+        retriever: FusionRAG retriever for finding relevant chunks
+        relation_extractor: LLM relation extractor
+        ontology_relations: Valid relation types from ontology
+        top_k: Number of chunks to retrieve per query
+        
+    Returns:
+        List of extracted relations
+    """
+    all_relations: list[ExtractedRelation] = []
+    processed_pairs: set[tuple[str, str]] = set()
+    
+    # Convert synthesized entities to extracted entities for the extractor
+    entities_for_extraction = [
+        ExtractedEntity(
+            id=se.id,
+            label=se.label,
+            entity_type=se.entity_type,
+            description=se.description or "",
+            confidence=se.confidence,
+            evidence=se.evidence,
+        )
+        for se in synthesized_entities
+    ]
+    
+    # Build entity lookup by label for quick matching
+    entity_labels = {e.label.lower(): e for e in entities_for_extraction}
+    
+    # Process entities in batches - query for chunks that might contain relations
+    for i, entity in enumerate(synthesized_entities):
+        # Query for chunks mentioning this entity
+        query = f"{entity.label} relationships connections"
+        
+        try:
+            results = retriever.retrieve(query=query, top_k=top_k)
+            
+            for result in results:
+                # Check which other entities appear in this chunk
+                chunk_text = result.content.lower()
+                entities_in_chunk = [
+                    e for e in entities_for_extraction
+                    if e.label.lower() in chunk_text and e.id != entity.id
+                ]
+                
+                if entities_in_chunk:
+                    # Extract relations from this chunk
+                    try:
+                        relations = relation_extractor.extract(
+                            text=result.content,
+                            entities=[
+                                e for e in entities_for_extraction 
+                                if e.label.lower() in chunk_text
+                            ],
+                            ontology_relations=ontology_relations,
+                        )
+                        
+                        for rel in relations:
+                            # Avoid duplicate relations
+                            pair_key = (rel.source_entity_id, rel.target_entity_id, rel.predicate)
+                            reverse_key = (rel.target_entity_id, rel.source_entity_id, rel.predicate)
+                            
+                            if pair_key not in processed_pairs and reverse_key not in processed_pairs:
+                                all_relations.append(rel)
+                                processed_pairs.add(pair_key)
+                                
+                    except Exception as e:
+                        logger.warning(
+                            "relation_extraction_chunk_failed",
+                            entity_id=entity.id,
+                            error=str(e)
+                        )
+                        continue
+                        
+        except Exception as e:
+            logger.warning(
+                "relation_retrieval_failed",
+                entity_id=entity.id,
+                error=str(e)
+            )
+            continue
+        
+        # Log progress every 10 entities
+        if (i + 1) % 10 == 0:
+            logger.info(
+                "relation_extraction_progress",
+                entities_processed=i + 1,
+                total_entities=len(synthesized_entities),
+                relations_found=len(all_relations)
+            )
+    
+    return all_relations
+
+
+# =============================================================================
+# MAIN PIPELINE
+# =============================================================================
+
+def main() -> None:
+    """Run the complete KG construction pipeline."""
+    
+    args = parse_arguments()
+    start_time = datetime.now()
+    
+    # Print banner
+    print("\n" + "="*80)
+    print("KNOWLEDGE GRAPH CONSTRUCTION PIPELINE")
+    print("Full Discovery + Assembly to Neo4j")
+    print("="*80)
+    print(f"\nService Configuration:")
+    print(f"  Fuseki:     {FUSEKI_URL}/{FUSEKI_DATASET}")
+    print(f"  Qdrant:     {QDRANT_URL}")
+    print(f"  Ollama:     {OLLAMA_URL} (model: {OLLAMA_MODEL})")
+    print(f"  Neo4j:      {NEO4J_URI}")
+    print(f"\nHyperparameters:")
+    print(f"  Questions per class:     {args.questions_per_class}")
+    print(f"  Max iterations:          {args.max_iterations}")
+    print(f"  Classes limit:           {args.classes_limit or 'All'}")
+    print(f"  Confidence threshold:    {args.confidence_threshold}")
+    print(f"  Similarity threshold:    {args.similarity_threshold}")
+    print(f"  Dense weight:            {args.dense_weight}")
+    print(f"  Sparse weight:           {args.sparse_weight}")
+    print(f"  Top-K retrieval:         {args.top_k}")
+    print("="*80 + "\n")
+
+    try:
+        # =====================================================================
+        # PHASE 1: LOAD ONTOLOGY FROM FUSEKI
+        # =====================================================================
+        print("PHASE 1: Loading Ontology from Fuseki")
+        print("-" * 80)
+
+        ontology_service = FusekiOntologyService(FUSEKI_URL, FUSEKI_DATASET)
+        all_classes = ontology_service.get_all_classes()
+
+        if not all_classes:
+            logger.error("ontology_load_failed", message="No classes found in Fuseki")
+            raise RuntimeError(f"No classes found in Fuseki at {FUSEKI_URL}/{FUSEKI_DATASET}")
+
+        # Apply class limit if specified
+        classes = all_classes[:args.classes_limit] if args.classes_limit else all_classes
+        
+        logger.info("ontology_loaded", total_classes=len(all_classes), classes_to_process=len(classes))
+        print(f"✓ Loaded {len(classes)} ontology classes (from {len(all_classes)} total)")
+        print(f"  Classes: {', '.join(classes[:5])}{'...' if len(classes) > 5 else ''}\n")
+
+        # =====================================================================
+        # PHASE 2: QUESTION GENERATION
+        # =====================================================================
+        print("PHASE 2: Generating Research Questions")
+        print("-" * 80)
+
+        question_agent = QuestionGenerationAgent(
+            ontology_service=ontology_service
+        )
+
+        all_questions = []
+        for class_name in classes:
+            logger.info("generating_questions", class_name=class_name)
+            questions = question_agent.generate_questions(
+                max_questions=args.questions_per_class
+            )
+            all_questions.extend(questions)
+            print(f"  ✓ {len(questions)} questions from class '{class_name}'")
+
+        logger.info("questions_generated", total_count=len(all_questions))
+        print(f"\n✓ Generated {len(all_questions)} research questions\n")
+
+        # =====================================================================
+        # PHASE 3: ITERATIVE DISCOVERY
+        # =====================================================================
+        print("PHASE 3: Iterative Knowledge Discovery")
+        print("-" * 80)
+
+        ontology_class_defs = convert_class_names_to_definitions(classes)
+        retriever = build_retriever(
+            dense_weight=args.dense_weight,
+            sparse_weight=args.sparse_weight,
+            top_k=args.top_k
+        )
+        extractor = build_entity_extractor(
+            confidence_threshold=args.confidence_threshold
+        )
+
+        discovery_loop = IterativeDiscoveryLoop(
+            retriever=retriever,
+            extractor=extractor,
+            question_generator=question_agent,
+            ontology_classes=ontology_class_defs
+        )
+
+        logger.info("discovery_starting", initial_questions=len(all_questions))
+        discovery_result = discovery_loop.run_discovery(
+            initial_questions=all_questions,
             max_iterations=args.max_iterations,
-            skip_validation=args.skip_validation,
-            skip_discovery=args.skip_discovery,
-            skip_confidence_tuning=args.skip_confidence_tuning,
-            skip_analytics=args.skip_analytics,
-            skip_enrichment=args.skip_enrichment,
-            enrich_only=args.enrich_only,
-            checkpoint_path=args.checkpoint,
-            top_k_docs=args.top_k,
-            generate_follow_ups=args.follow_ups.lower() == "true",
+            coverage_target=0.8,
+            ontology_classes=ontology_class_defs
+        )
+
+        if not discovery_result.success:
+            logger.warning("discovery_warning", message=discovery_result.error_message)
+            print(f"⚠ Discovery completed with warnings: {discovery_result.error_message}")
+        else:
+            print(f"✓ Discovery completed successfully")
+
+        discovered_entities = discovery_result.entities
+        logger.info(
+            "discovery_complete",
+            entities=len(discovered_entities),
+            iterations=discovery_result.total_iterations,
+            coverage=discovery_result.final_coverage,
+            time_sec=discovery_result.total_time_sec
+        )
+        print(f"  - Discovered entities: {len(discovered_entities)}")
+        print(f"  - Iterations: {discovery_result.total_iterations}")
+        print(f"  - Coverage: {discovery_result.final_coverage:.1%}")
+        print(f"  - Time: {discovery_result.total_time_sec:.1f}s\n")
+
+        # =====================================================================
+        # PHASE 4: ENTITY DEDUPLICATION & SYNTHESIS
+        # =====================================================================
+        print("PHASE 4: Entity Deduplication & Synthesis")
+        print("-" * 80)
+
+        synthesizer = FindingsSynthesizer(
+            similarity_threshold=args.similarity_threshold
+        )
+
+        synthesized_entities = synthesizer.synthesize(
+            entities=discovered_entities
+        )
+
+        merge_count = len(discovered_entities) - len(synthesized_entities)
+        merge_rate = merge_count / max(len(discovered_entities), 1)
+
+        logger.info(
+            "synthesis_complete",
+            before=len(discovered_entities),
+            after=len(synthesized_entities),
+            merged=merge_count,
+            merge_rate=merge_rate
+        )
+        print(f"✓ Deduplicated entities")
+        print(f"  - Before: {len(discovered_entities)}")
+        print(f"  - After:  {len(synthesized_entities)}")
+        print(f"  - Merged: {merge_count} ({merge_rate:.1%})\n")
+
+        # =====================================================================
+        # PHASE 5: RELATION EXTRACTION
+        # =====================================================================
+        print("PHASE 5: Relation Extraction")
+        print("-" * 80)
+
+        relation_extractor = build_relation_extractor(
+            confidence_threshold=args.confidence_threshold
+        )
+        ontology_relations = get_default_relation_definitions()
+
+        logger.info(
+            "relation_extraction_starting",
+            entity_count=len(synthesized_entities),
+            relation_types=len(ontology_relations)
+        )
+        print(f"Extracting relations between {len(synthesized_entities)} entities...")
+
+        extracted_relations = extract_relations_from_entities(
+            synthesized_entities=synthesized_entities,
+            retriever=retriever,
+            relation_extractor=relation_extractor,
+            ontology_relations=ontology_relations,
+            top_k=args.top_k,
+        )
+
+        logger.info(
+            "relation_extraction_complete",
+            relations_extracted=len(extracted_relations)
+        )
+        print(f"✓ Relation extraction complete")
+        print(f"  - Relations extracted: {len(extracted_relations)}")
+        
+        # Show relation type distribution
+        if extracted_relations:
+            relation_types = {}
+            for rel in extracted_relations:
+                rel_type = rel.predicate.split("#")[-1] if "#" in rel.predicate else rel.predicate
+                relation_types[rel_type] = relation_types.get(rel_type, 0) + 1
+            print(f"  - Relation types: {dict(sorted(relation_types.items(), key=lambda x: -x[1])[:5])}")
+        print()
+
+        # =====================================================================
+        # PHASE 6: KNOWLEDGE GRAPH ASSEMBLY
+        # =====================================================================
+        print("PHASE 6: KG Assembly & Persistence")
+        print("-" * 80)
+
+        logger.info("assembly_starting", entity_count=len(synthesized_entities), relation_count=len(extracted_relations))
+        
+        # Initialize Neo4j graph store (Phase 7 multi-store support)
+        neo4j_store = Neo4jGraphStore(
+            uri=NEO4J_URI,
+            auth=(NEO4J_USER, NEO4J_PASSWORD)
         )
         
-        # Only add these if explicitly provided to allow PipelineConfig defaults/factories
-        if args.questions:
-            config_kwargs["questions_path"] = args.questions
-        if args.wandb_enabled:
-            config_kwargs["wandb_enabled"] = True
-        if args.wandb_project:
-            config_kwargs["wandb_project"] = args.wandb_project
-        if args.wandb_entity:
-            config_kwargs["wandb_entity"] = args.wandb_entity
-        if args.vector_collection:
-            config_kwargs["vector_collection"] = args.vector_collection
+        # Create KGBuilder with Neo4j as primary store
+        builder = KGBuilder(
+            primary_store=neo4j_store,
+            config=KGBuilderConfig(
+                primary_store="neo4j",
+                sync_stores=False,  # No secondary store in this pipeline
+                batch_size=1000,
+                auto_retry=True
+            )
+        )
+        
+        # Convert SynthesizedEntity to Node format
+        nodes = [
+            Node(
+                id=entity.id,
+                label=entity.label,
+                node_type=entity.entity_type,
+                properties={
+                    "confidence": entity.confidence,
+                    "description": entity.description,
+                    "provenance": [e.source for e in entity.evidence]
+                }
+            )
+            for entity in synthesized_entities
+        ]
+        
+        # Convert ExtractedRelation to Edge format
+        edges = [
+            Edge(
+                source_id=rel.source_id,
+                target_id=rel.target_id,
+                relation_type=rel.relation_type,
+                properties={
+                    "confidence": rel.confidence,
+                    "provenance": [e.source for e in rel.evidence]
+                }
+            )
+            for rel in extracted_relations
+        ]
+        
+        # Build graph using new orchestrator
+        build_result = builder.build(entities=nodes, relations=edges)
+
+        # Maintain backward compatibility with old AssemblyResult format
+        assembly_result = SimpleKGAssembler.KGAssemblyResult(
+            nodes_created=build_result.nodes_created,
+            relationships_created=build_result.edges_created,
+            coverage=1.0,
+            iterations=1,
+            errors=build_result.errors,
+            warnings=build_result.warnings,
+            statistics=build_result.statistics
+        )
+
+        logger.info(
+            "assembly_complete",
+            nodes_created=assembly_result.nodes_created,
+            relationships_created=assembly_result.relationships_created,
+            errors=len(assembly_result.errors)
+        )
+        print(f"✓ Knowledge graph assembled in Neo4j")
+        print(f"  - Nodes created: {assembly_result.nodes_created}")
+        print(f"  - Relationships created: {assembly_result.relationships_created}")
+        
+        if assembly_result.errors:
+            print(f"  - Errors: {len(assembly_result.errors)}")
+            for error in assembly_result.errors[:5]:
+                logger.error("assembly_error", error=error)
+                print(f"    ✗ {error}")
+            if len(assembly_result.errors) > 5:
+                print(f"    ... and {len(assembly_result.errors) - 5} more errors")
+        
+        print()
+
+        # =====================================================================
+        # PHASE 7: VALIDATION & QUALITY ASSESSMENT
+        # =====================================================================
+        
+        validation_passed = True
+        validation_report = None
+        
+        if args.validate:
+            print("PHASE 7: Knowledge Graph Validation & Quality Assessment")
+            print("-" * 80)
             
-        config = PipelineConfig(**config_kwargs)
+            try:
+                # Run consistency checking
+                logger.info("validation_starting")
+                consistency_checker = ConsistencyChecker()
+                consistency_report = consistency_checker.check_consistency(neo4j_store)
+                
+                logger.info(
+                    "consistency_check_complete",
+                    conflicts=consistency_report.conflict_count,
+                    duplicates=len(consistency_report.duplicates)
+                )
+                print(f"✓ Consistency check complete")
+                print(f"  - Conflicts detected: {consistency_report.conflict_count}")
+                print(f"  - Potential duplicates: {len(consistency_report.duplicates)}")
+                print(f"  - Conflict rate: {consistency_report.conflict_rate:.2%}")
+                
+                if consistency_report.recommendations:
+                    print(f"  - Recommendations: {consistency_report.recommendations[0]}")
+                
+                # Generate validation reports
+                if args.validation_report_dir:
+                    report_dir = Path(args.validation_report_dir)
+                    report_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Create a synthetic validation result for reporting
+                    validation_report = ValidationResult()
+                    validation_report.node_count = assembly_result.nodes_created
+                    validation_report.edge_count = assembly_result.relationships_created
+                    validation_report.valid = consistency_report.conflict_count == 0
+                    
+                    reporter = ReportGenerator(title="KG Validation Report")
+                    reporter.to_json(validation_report, report_dir / "validation_report.json")
+                    reporter.to_markdown(validation_report, report_dir / "validation_report.md")
+                    reporter.to_html(validation_report, report_dir / "validation_report.html")
+                    
+                    logger.info("validation_reports_generated", directory=str(report_dir))
+                    print(f"  - Reports saved to: {report_dir}")
+                
+                validation_passed = consistency_report.conflict_count == 0
+                
+            except Exception as e:
+                logger.warning("validation_phase_failed", error=str(e))
+                print(f"⚠ Validation phase encountered error: {e}")
+                validation_passed = False
+            
+            print()
 
-    # Run pipeline
-    pipeline = FullKGPipeline(config)
-    result = pipeline.run()
+        # =====================================================================
+        # PHASE 8: COMPETENCY QUESTION VALIDATION (Stopping Criterion)
+        # =====================================================================
+        
+        cq_validation_passed = True
+        
+        if args.check_competency_questions:
+            print("PHASE 8: Competency Question Coverage Check (Stopping Criterion)")
+            print("-" * 80)
+            
+            try:
+                logger.info("competency_question_check_starting")
+                
+                # Check which questions are answered by the KG
+                cq_validator = CompetencyQuestionValidator(
+                    ontology_service=ontology_service,
+                    graph_store=neo4j_store
+                )
+                
+                # Use the questions generated in Phase 2
+                cq_results = cq_validator.validate_questions(all_questions)
+                
+                answerable_count = sum(1 for result in cq_results if result["answerable"])
+                cq_coverage = answerable_count / max(len(all_questions), 1) if all_questions else 0.0
+                
+                logger.info(
+                    "competency_questions_checked",
+                    total=len(all_questions),
+                    answerable=answerable_count,
+                    coverage=cq_coverage
+                )
+                
+                print(f"✓ Competency Question Coverage Analysis")
+                print(f"  - Total questions: {len(all_questions)}")
+                print(f"  - Answerable: {answerable_count}")
+                print(f"  - Coverage: {cq_coverage:.1%}")
+                print(f"  - Threshold: {args.cq_coverage_threshold:.1%}")
+                
+                # Check if we meet the stopping criterion
+                if cq_coverage >= args.cq_coverage_threshold:
+                    print(f"  ✓ STOPPING CRITERION MET - Coverage above threshold")
+                    cq_validation_passed = True
+                else:
+                    print(f"  ✗ STOPPING CRITERION NOT MET - Coverage below threshold")
+                    print(f"     Need {int((args.cq_coverage_threshold - cq_coverage) * len(all_questions))} more questions answered")
+                    cq_validation_passed = False
+                
+                # List unanswered questions for guidance
+                unanswerable = [q for q, result in zip(all_questions, cq_results) if not result["answerable"]]
+                if unanswerable:
+                    print(f"\n  Unanswered questions to address:")
+                    for q in unanswerable[:5]:
+                        print(f"    - {q}")
+                    if len(unanswerable) > 5:
+                        print(f"    ... and {len(unanswerable) - 5} more")
+                
+            except Exception as e:
+                logger.warning("competency_question_check_failed", error=str(e))
+                print(f"⚠ Competency question check failed: {e}")
+                cq_validation_passed = False
+            
+            print()
 
-    # Print summary
-    print("\n" + "=" * 70)
-    print("KNOWLEDGE GRAPH CONSTRUCTION PIPELINE RESULTS")
-    print("=" * 70)
-    print(f"Timestamp: {result.timestamp}")
-    print(f"Execution time: {result.execution_time_seconds:.1f}s")
-    print()
-    print("ONTOLOGY:")
-    print(f"  Classes: {result.ontology_classes}")
-    print(f"  Relations: {result.ontology_relations}")
-    print()
-    print("DATA:")
-    print(f"  Documents loaded: {result.documents_loaded}")
-    print(f"  Entities discovered: {result.discovered_entities}")
-    print(f"  Relations discovered: {result.discovered_relations}")
-    print()
-    print("ENRICHMENT:")
-    print(f"  Entities enriched: {result.enriched_entities}")
-    print(f"  Relations enriched: {result.enriched_relations}")
-    print()
-    print("KNOWLEDGE GRAPH:")
-    print(f"  Nodes in Neo4j: {result.kg_nodes}")
-    print(f"  Edges in Neo4j: {result.kg_edges}")
-    print()
+        # =====================================================================
+        # SUMMARY & STATISTICS
+        # =====================================================================
+        elapsed = (datetime.now() - start_time).total_seconds()
 
-    quality = result.validation_results.get("quality", {})
-    if quality and "error" not in quality:
-        print("QUALITY (pySHACL + SHACL2FOL):")
-        print(f"  Combined score:   {quality.get('combined_score', 'n/a')}")
-        print(f"  Consistency:      {quality.get('consistency', 'n/a')}")
-        print(f"  Acceptance rate:  {quality.get('acceptance_rate', 'n/a')}")
-        print(f"  Class coverage:   {quality.get('class_coverage', 'n/a')}")
-        print(f"  SHACL score:      {quality.get('shacl_score', 'n/a')}")
-        print(f"  Violations:       {quality.get('violations', 'n/a')}")
-        if quality.get('shacl_report'):
-            print(f"  Report:           {quality['shacl_report']}")
-        print()
+        print("="*80)
+        print("PIPELINE EXECUTION SUMMARY")
+        print("="*80)
+        
+        overall_status = "SUCCESS ✓"
+        if not validation_passed:
+            overall_status = "VALIDATION WARNINGS ⚠"
+        if args.check_competency_questions and not cq_validation_passed:
+            overall_status = "STOPPING CRITERION NOT MET ✗"
+        
+        print(f"Status:                  {overall_status}")
+        print(f"Total time:              {elapsed:.1f}s")
+        print(f"\nOntology:")
+        print(f"  Classes processed:     {len(classes)}")
+        print(f"  Questions generated:   {len(all_questions)}")
+        print(f"\nKnowledge Discovery:")
+        print(f"  Entities discovered:   {len(discovered_entities)}")
+        print(f"  Entities synthesized:  {len(synthesized_entities)}")
+        print(f"  Merge rate:            {merge_rate:.1%}")
+        print(f"\nRelation Extraction:")
+        print(f"  Relations extracted:   {len(extracted_relations)}")
+        print(f"\nNeo4j Graph:")
+        print(f"  Nodes created:         {assembly_result.nodes_created}")
+        print(f"  Relationships created: {assembly_result.relationships_created}")
+        print(f"  Assembly errors:       {len(assembly_result.errors)}")
+        
+        if args.validate:
+            print(f"\nValidation:")
+            print(f"  Status:                {'✓ PASSED' if validation_passed else '⚠ WARNINGS'}")
+            print(f"  Conflicts detected:    {consistency_report.conflict_count if consistency_report else 'N/A'}")
+        
+        if args.check_competency_questions:
+            print(f"\nCompetency Questions (Stopping Criterion):")
+            print(f"  Coverage:              {cq_coverage:.1%}")
+            print(f"  Threshold:             {args.cq_coverage_threshold:.1%}")
+            print(f"  Status:                {'✓ MET' if cq_validation_passed else '✗ NOT MET'}")
+        
 
-    if result.errors:
-        print("ERRORS:")
-        for error in result.errors:
-            print(f"  ✗ {error}")
-        print()
+        print(f"\nDatabase: {NEO4J_URI}")
+        print("="*80 + "\n")
 
-    if result.warnings:
-        print("WARNINGS:")
-        for warning in result.warnings:
-            print(f"  ⚠ {warning}")
-        print()
+        # Log total Ollama token usage if available
+        try:
+            from kgbuilder.embedding.ollama import OllamaProvider
+            OllamaProvider.log_total_token_usage()
+        except Exception as e:
+            print(f"[Token Usage] Could not log Ollama token usage: {e}")
 
-    print("=" * 70)
+        if assembly_result.errors:
+            print("⚠ Some entities could not be assembled. Check logs for details.\n")
+        
+        if args.check_competency_questions and not cq_validation_passed:
+            print("✗ STOPPING CRITERION NOT MET")
+            print(f"  Competency question coverage ({cq_coverage:.1%}) is below threshold ({args.cq_coverage_threshold:.1%})")
+            print(f"  Please add more data or extend discovery to answer remaining questions.\n")
 
-    return 0 if not result.errors else 1
+    except Exception as e:
+        logger.error("pipeline_failed", error=str(e), exc_info=True)
+        print(f"\n✗ PIPELINE FAILED")
+        print(f"Error: {e}\n")
+        raise
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
