@@ -341,13 +341,28 @@ class SHACLValidator:
             # Get all edges from store
             edges = store.get_all_edges()
             for edge in edges:
-                # Create RDF URIs
-                source_uri = rdflib.URIRef(
-                    f"{self.ontology_uri}/{edge.source_node_type}/{edge.source_id}"
-                )
-                target_uri = rdflib.URIRef(
-                    f"{self.ontology_uri}/{edge.target_node_type}/{edge.target_id}"
-                )
+                # Determine source/target node types: prefer explicit attrs on Edge,
+                # otherwise look up nodes from the store (Neo4jGraphStore yields
+                # edges without node-type attrs).
+                src_type = getattr(edge, "source_node_type", None)
+                tgt_type = getattr(edge, "target_node_type", None)
+
+                if not src_type:
+                    try:
+                        src_node = store.get_node(getattr(edge, "source_id"))
+                        src_type = getattr(src_node, "node_type", "Thing") if src_node else "Thing"
+                    except Exception:
+                        src_type = "Thing"
+
+                if not tgt_type:
+                    try:
+                        tgt_node = store.get_node(getattr(edge, "target_id"))
+                        tgt_type = getattr(tgt_node, "node_type", "Thing") if tgt_node else "Thing"
+                    except Exception:
+                        tgt_type = "Thing"
+
+                source_uri = rdflib.URIRef(f"{self.ontology_uri}/{src_type}/{edge.source_id}")
+                target_uri = rdflib.URIRef(f"{self.ontology_uri}/{tgt_type}/{edge.target_id}")
                 predicate_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}")
 
                 # Add edge triple
@@ -357,7 +372,6 @@ class SHACLValidator:
                 for key, value in edge.properties.items():
                     if value is not None:
                         prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}_{key}")
-                        # Store edge properties as string properties for now
                         graph.add((source_uri, prop_uri, rdflib.Literal(value)))
 
             logger.info(
