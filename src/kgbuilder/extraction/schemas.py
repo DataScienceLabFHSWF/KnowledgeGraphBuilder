@@ -17,14 +17,9 @@ class EntityExtractionOutput(BaseModel):
     Matches ExtractedEntity structure for seamless integration.
     """
 
-    model_config = {"populate_by_name": True}
-
-    entities: list[EntityItem] = Field(
-        description="List of extracted entities from text"
-    )
-
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "populate_by_name": True,
+        "json_schema_extra": {
             "example": {
                 "entities": [
                     {
@@ -38,7 +33,12 @@ class EntityExtractionOutput(BaseModel):
                     }
                 ]
             }
-        }
+        },
+    }
+
+    entities: list[EntityItem] = Field(
+        description="List of extracted entities from text"
+    )
 
 
 class EntityItem(BaseModel):
@@ -65,15 +65,9 @@ class EntityItem(BaseModel):
 class RelationExtractionOutput(BaseModel):
     """Schema for relation extraction JSON output."""
 
-    model_config = {"populate_by_name": True}
-
-    relations: list[RelationItem] = Field(
-        alias="relationships",
-        description="List of extracted relations between entities",
-    )
-
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "populate_by_name": True,
+        "json_schema_extra": {
             "example": {
                 "relations": [
                     {
@@ -87,7 +81,13 @@ class RelationExtractionOutput(BaseModel):
                     }
                 ]
             }
-        }
+        },
+    }
+
+    relations: list[RelationItem] = Field(
+        alias="relationships",
+        description="List of extracted relations between entities",
+    )
 
 
 class RelationItem(BaseModel):
@@ -112,12 +112,8 @@ class RelationItem(BaseModel):
 class FindingsSynthesisOutput(BaseModel):
     """Schema for synthesized findings combining entities and relations."""
 
-    findings: list[FindingItem] = Field(
-        description="List of extracted findings/facts"
-    )
-
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "findings": [
                     {
@@ -129,7 +125,12 @@ class FindingsSynthesisOutput(BaseModel):
                     }
                 ]
             }
-        }
+        },
+    }
+
+    findings: list[FindingItem] = Field(
+        description="List of extracted findings/facts"
+    )
 
 
 class FindingItem(BaseModel):
