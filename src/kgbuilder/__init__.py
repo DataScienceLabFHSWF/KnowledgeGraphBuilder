@@ -1,73 +1,115 @@
-"""KnowledgeGraphBuilder – Ontology-driven Knowledge Graph construction pipeline."""
+"""KnowledgeGraphBuilder – Ontology-driven Knowledge Graph construction pipeline.
 
-from kgbuilder.assembly import (
-    GraphStatistics,
-    KGAssembler,
-    SimpleKGAssembler,
-)
+Make top-level imports tolerant: many submodules (LangChain, optional extractors,
+etc.) are optional for certain runtime uses (scoring, validation). Importing the
+package should not fail when optional third-party packages are missing — those
+submodules will be available only when their dependencies are installed.
+"""
+
+# Import lightweight core first; defer heavy/optional imports behind try/except
 from kgbuilder.core import (
     Document,
     ExtractedEntity,
     ExtractedRelation,
     KGBuilderError,
 )
-from kgbuilder.extraction import (
-    EntityExtractor,
-    FindingsSynthesizer,
-    LLMEntityExtractor,
-    LLMRelationExtractor,
-    OntologyClassDef,
-    OntologyRelationDef,
-    RelationExtractor,
-)
-from kgbuilder.storage import (
-    FusekiStore,
-    GraphStore,
-    Neo4jStore,
-    QdrantStore,
-    RDFStore,
-    VectorStore,
-)
-from kgbuilder.validation import (
-    CompetencyQuestionValidator,
-    OntologyValidator,
-    SHACLValidator,
-    Validator,
-    ValidationViolation,
-)
 
 __version__ = "0.1.0"
 
-__all__ = [
-    "__version__",
-    # Core models and exceptions
-    "Document",
-    "ExtractedEntity",
-    "ExtractedRelation",
-    "KGBuilderError",
-    # Extraction
-    "EntityExtractor",
-    "LLMEntityExtractor",
-    "OntologyClassDef",
-    "RelationExtractor",
-    "LLMRelationExtractor",
-    "OntologyRelationDef",
-    "FindingsSynthesizer",
-    # Storage
-    "VectorStore",
-    "QdrantStore",
-    "GraphStore",
-    "Neo4jStore",
-    "RDFStore",
-    "FusekiStore",
-    # Assembly
-    "KGAssembler",
-    "SimpleKGAssembler",
-    "GraphStatistics",
-    # Validation
-    "Validator",
-    "ValidationViolation",
-    "SHACLValidator",
-    "OntologyValidator",
-    "CompetencyQuestionValidator",
-]
+# Try to import optional feature groups; if unavailable, keep names undefined so
+# callers can import specific modules directly when required.
+_optional_symbols = {}
+
+try:
+    from kgbuilder.assembly import (
+        GraphStatistics,
+        KGAssembler,
+        SimpleKGAssembler,
+    )
+
+    _optional_symbols.update(
+        {
+            "GraphStatistics": GraphStatistics,
+            "KGAssembler": KGAssembler,
+            "SimpleKGAssembler": SimpleKGAssembler,
+        }
+    )
+except Exception:
+    # LangChain or other heavy deps may be missing — skip assembly exports
+    pass
+
+try:
+    from kgbuilder.extraction import (
+        EntityExtractor,
+        FindingsSynthesizer,
+        LLMEntityExtractor,
+        LLMRelationExtractor,
+        OntologyClassDef,
+        OntologyRelationDef,
+        RelationExtractor,
+    )
+
+    _optional_symbols.update(
+        {
+            "EntityExtractor": EntityExtractor,
+            "FindingsSynthesizer": FindingsSynthesizer,
+            "LLMEntityExtractor": LLMEntityExtractor,
+            "LLMRelationExtractor": LLMRelationExtractor,
+            "OntologyClassDef": OntologyClassDef,
+            "OntologyRelationDef": OntologyRelationDef,
+            "RelationExtractor": RelationExtractor,
+        }
+    )
+except Exception:
+    pass
+
+try:
+    from kgbuilder.storage import (
+        FusekiStore,
+        GraphStore,
+        Neo4jStore,
+        QdrantStore,
+        RDFStore,
+        VectorStore,
+    )
+
+    _optional_symbols.update(
+        {
+            "FusekiStore": FusekiStore,
+            "GraphStore": GraphStore,
+            "Neo4jStore": Neo4jStore,
+            "QdrantStore": QdrantStore,
+            "RDFStore": RDFStore,
+            "VectorStore": VectorStore,
+        }
+    )
+except Exception:
+    pass
+
+try:
+    from kgbuilder.validation import (
+        CompetencyQuestionValidator,
+        OntologyValidator,
+        SHACLValidator,
+        Validator,
+        ValidationViolation,
+    )
+
+    _optional_symbols.update(
+        {
+            "CompetencyQuestionValidator": CompetencyQuestionValidator,
+            "OntologyValidator": OntologyValidator,
+            "SHACLValidator": SHACLValidator,
+            "Validator": Validator,
+            "ValidationViolation": ValidationViolation,
+        }
+    )
+except Exception:
+    pass
+
+# Build __all__ dynamically to include only successfully imported names.
+__all__ = ["__version__", "Document", "ExtractedEntity", "ExtractedRelation", "KGBuilderError"]
+__all__.extend(sorted(_optional_symbols.keys()))
+
+# Export optional symbols into module globals so `from kgbuilder import X` works
+globals().update(_optional_symbols)
