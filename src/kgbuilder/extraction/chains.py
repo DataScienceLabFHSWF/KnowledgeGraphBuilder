@@ -60,11 +60,15 @@ class ExtractionChains:
         model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
         base_url = get_base_url(base_url)
 
-        # Initialize LLM with structured output
+        # Initialize LLM with structured output (attach Langsmith callbacks if enabled)
+        from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
+
+        callbacks = get_langsmith_callbacks()
         llm = ChatOllama(
             model=model,
             base_url=base_url,
             temperature=temperature,
+            callbacks=callbacks if callbacks is not None else None,
         )
 
         # Create output parser
@@ -175,11 +179,15 @@ Return ONLY valid JSON matching this format:
         model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
         base_url = get_base_url(base_url)
 
-        # Initialize LLM
+        # Initialize LLM (attach Langsmith callbacks if enabled)
+        from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
+
+        callbacks = get_langsmith_callbacks()
         llm = ChatOllama(
             model=model,
             base_url=base_url,
             temperature=temperature,
+            callbacks=callbacks if callbacks is not None else None,
         )
 
         # Create output parser

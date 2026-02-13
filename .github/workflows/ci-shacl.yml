@@ -1,0 +1,37 @@
+name: CI — tests & SHACL2FOL smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run unit tests
+        run: PYTHONPATH=src pytest -q
+
+  shacl_image:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build SHACL2FOL Docker image
+        run: |
+          docker build --file docker/Dockerfile.shacl2fol -t kgbuilder/shacl2fol:ci .
+      - name: Smoke-check SHACL2FOL container
+        run: |
+          # Run smoke entrypoint; container prints readiness
+          docker run --rm -v $GITHUB_WORKSPACE:/opt/project -w /opt/project kgbuilder/shacl2fol:ci smoke /bin/sh -c "echo smoke OK"
+      - name: Run real SHACL2FOL integration test inside container
+        run: |
+          docker run --rm -v $GITHUB_WORKSPACE:/opt/project -w /opt/project kgbuilder/shacl2fol:ci pytest tests/integration/test_static_validation_real.py -q

@@ -124,11 +124,15 @@ class SimpleKGAssembler:
         llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "qwen3:8b")
         llm_base_url = llm_base_url or os.environ.get("OLLAMA_URL", "http://localhost:18134")
 
-        # Initialize LLM
+        # Initialize LLM (attach Langsmith callbacks if enabled)
+        from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
+
+        callbacks = get_langsmith_callbacks()
         self._llm = ChatOllama(
             model=llm_model,
             base_url=llm_base_url,
             temperature=0.5,
+            callbacks=callbacks if callbacks is not None else None,
         )
 
         # Initialize text splitter

@@ -88,10 +88,24 @@ class SHACLValidator:
         try:
             # Convert store to RDF graph
             data_graph = self._convert_store_to_rdf(store)
-            result.node_count = len(list(store.query("MATCH (n) RETURN COUNT(n)")))
-            result.edge_count = len(
-                list(store.query("MATCH (n)-[r]->(m) RETURN COUNT(r)"))
-            )
+
+            # Prefer using store.get_statistics() (implemented by stores such as Neo4j). Fall
+            # back to SPARQL/Cypher queries if unavailable.
+            try:
+                stats = store.get_statistics()
+                result.node_count = getattr(stats, "node_count", 0)
+                result.edge_count = getattr(stats, "edge_count", 0)
+            except Exception:
+                try:
+                    qr = store.query("MATCH (n) RETURN COUNT(n) AS cnt")
+                    result.node_count = int(qr.records[0].get("cnt", 0)) if qr.records else 0
+                except Exception:
+                    result.node_count = 0
+                try:
+                    qr2 = store.query("MATCH (n)-[r]->(m) RETURN COUNT(r) AS cnt")
+                    result.edge_count = int(qr2.records[0].get("cnt", 0)) if qr2.records else 0
+                except Exception:
+                    result.edge_count = 0
 
             # Run SHACL validation
             conforms, results_graph, results_text = validate(
@@ -311,8 +325,8 @@ class SHACLValidator:
         try:
             logger.debug("converting_store_to_rdf", store_type=type(store).__name__)
 
-            # Get all nodes from store
-            nodes = store.get_all_nodes()
+            # Get all nodes from store (materialize iterator so we can log counts)
+            nodes = list(store.get_all_nodes())
             for node in nodes:
                 # Create RDF URI for node
                 node_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}/{node.id}")
@@ -338,8 +352,8 @@ class SHACLValidator:
                         literal_value = rdflib.Literal(value)
                         graph.add((node_uri, prop_uri, literal_value))
 
-            # Get all edges from store
-            edges = store.get_all_edges()
+            # Get all edges from store (materialize iterator)
+            edges = list(store.get_all_edges())
             for edge in edges:
                 # Determine source/target node types: prefer explicit attrs on Edge,
                 # otherwise look up nodes from the store (Neo4jGraphStore yields

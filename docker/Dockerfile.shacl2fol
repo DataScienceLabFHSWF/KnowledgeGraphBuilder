@@ -72,6 +72,12 @@ COPY --from=build /opt/project /opt/project
 ENV PATH="/opt/vampire/bin:${PATH}"
 WORKDIR /opt/project
 
+# Install the project and a small set of optional LangChain packages that
+# are referenced by top-level imports so the container can execute repo
+# utilities (scoring, assembly, chains) without import-time failures.
+RUN pip install --no-cache-dir /opt/project \
+    && pip install --no-cache-dir langchain-core langchain-community langchain-text-splitters langchain-ollama langchain || true
+
 COPY docker/shacl-entrypoint.sh /usr/local/bin/shacl-entrypoint.sh
 RUN chmod +x /usr/local/bin/shacl-entrypoint.sh
 

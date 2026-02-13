@@ -15,10 +15,11 @@ class DummyStore:
         self.nodes = []
         self.edges = []
 
-    def batch_create_nodes(self, nodes, batch_size):
+    # GraphStore protocol expects batch_create_nodes(nodes: list)
+    def batch_create_nodes(self, nodes):
         return [f"n{i}" for i, _ in enumerate(nodes)]
 
-    def batch_create_edges(self, edges, batch_size):
+    def batch_create_edges(self, edges):
         return [f"e{i}" for i, _ in enumerate(edges)]
 
     def health_check(self):

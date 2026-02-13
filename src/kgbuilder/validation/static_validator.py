@@ -142,19 +142,14 @@ class StaticValidator:
     def check_satisfiability(self, shapes_path: Path) -> StaticValidationResult:
         """Check whether a SHACL shapes graph is internally satisfiable.
 
-        A satisfiable shape graph has at least one valid graph instance.
-
-        Args:
-            shapes_path: Path to Turtle file with SHACL shapes.
-
-        Returns:
-            Result indicating satisfiability.
-
-        Raises:
-            NotImplementedError: Pending implementation.
+        Invokes SHACL2FOL in `satisfiability` mode and parses the result.
         """
-        # TODO: Invoke SHACL2FOL with mode=satisfiability
-        raise NotImplementedError
+        work_dir = Path(self._config.work_dir or Path.cwd())
+        work_dir.mkdir(parents=True, exist_ok=True)
+        self._write_config_properties(work_dir)
+
+        proc = self._invoke_jar(shapes_path, None, mode="satisfiability", work_dir=work_dir)
+        return self._parse_output(proc.stdout or "", mode="satisfiability")
 
     def check_containment(
         self,
@@ -163,19 +158,15 @@ class StaticValidator:
     ) -> StaticValidationResult:
         """Check whether shape A is contained in shape B.
 
-        Containment means every graph valid under A is also valid under B.
-
-        Args:
-            shapes_a_path: Path to first shapes graph (Turtle).
-            shapes_b_path: Path to second shapes graph (Turtle).
-
-        Returns:
-            Result indicating containment.
-
-        Raises:
-            NotImplementedError: Pending implementation.
+        Uses SHACL2FOL containment mode to decide whether A ⊆ B.
         """
-        raise NotImplementedError
+        work_dir = Path(self._config.work_dir or Path.cwd())
+        work_dir.mkdir(parents=True, exist_ok=True)
+        self._write_config_properties(work_dir)
+
+        # SHACL2FOL expects two shapes arguments for containment
+        proc = self._invoke_jar(shapes_a_path, shapes_b_path, mode="containment", work_dir=work_dir)
+        return self._parse_output(proc.stdout or "", mode="containment")
 
     def validate_static(
         self,
@@ -201,6 +192,8 @@ class StaticValidator:
         shapes_path: Path,
         entities: list[Any],
         relations: list[Any],
+        operation: str = "add",
+        ontology_service: Any | None = None,
     ) -> StaticValidationResult:
         """Convert entities/relations to actions and run static validation.
 
@@ -208,14 +201,17 @@ class StaticValidator:
             shapes_path: Path to SHACL shapes file (Turtle).
             entities: List of extracted entities.
             relations: List of extracted relations.
+            operation: Update operation to encode in actions ('add'|'remove'|'update').
+            ontology_service: Optional ontology service passed through to the ActionConverter
+                to enable inverse-action expansion and richer action generation.
         """
         if shapes_path is None:
             raise ValueError("shapes_path must be provided for static validation")
 
         from kgbuilder.validation.action_converter import ActionConverter
 
-        converter = ActionConverter()
-        actions = converter.from_entities_and_relations(entities or [], relations or [])
+        converter = ActionConverter(ontology_service=ontology_service)
+        actions = converter.from_entities_and_relations(entities or [], relations or [], operation=operation)
 
         # Write actions to temp file and invoke prover
         import tempfile

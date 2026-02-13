@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 # Helper to build & run SHACL2FOL container locally.
 # Usage:
-#  ./scripts/docker/run_shacl2fol_container.sh --vampire-url <VAMPIRE_TAR_GZ_URL> --shacl2fol-jar <JAR_URL>
+#  ./scripts/docker/run_shacl2fol_container.sh <VAMPIRE_TAR_GZ_URL> <SHACL2FOL_JAR_URL>
 
 set -euo pipefail
 VAMPIRE_URL="${1:-}"

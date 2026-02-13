@@ -1,10 +1,16 @@
-"""Run KGQualityScorer against Neo4j (uses .env for connection)."""
-from pathlib import Path
+"""Run KGQualityScorer against Neo4j (uses .env for connection).
+
+Always runs pySHACL validation.  SHACL shapes are generated from the OWL
+ontology when no pre-built ``shapes.ttl`` exists.
+"""
+
+from __future__ import annotations
+
 import os
-# load .env if python-dotenv is available (optional)
+from pathlib import Path
+
 try:
     import dotenv
-
     dotenv.load_dotenv()
 except Exception:
     pass
@@ -19,19 +25,28 @@ def main() -> None:
     pwd = os.getenv("NEO4J_PASSWORD", "changeme")
 
     print(f"Connecting to Neo4j at {uri} as {user}...")
-    try:
-        # Neo4jGraphStore expects auth as a (user, password) tuple
-        store = Neo4jGraphStore(uri, (user, pwd))
-    except Exception as e:
-        print("Failed to connect to Neo4j:", e)
-        raise
+    store = Neo4jGraphStore(uri, (user, pwd))
 
     shapes_path = Path(os.getenv("STATIC_SHAPES_PATH", "./data/ontology/shapes.ttl"))
-    scorer = KGQualityScorer()
+    owl_path = Path(os.getenv("ONTOLOGY_OWL_PATH", "./data/ontology/law/law-ontology-v1.0.owl"))
+
+    scorer = KGQualityScorer(
+        ontology_owl_path=owl_path,
+        sample_limit=500,
+    )
     report = scorer.score_neo4j_store(store, shapes_path)
 
-    print("KG quality report:")
-    print(report)
+    print("\n=== KG Quality Report ===")
+    print(f"  consistency:    {report.consistency}")
+    print(f"  acceptance:     {report.acceptance_rate}")
+    print(f"  class_coverage: {report.class_coverage}")
+    print(f"  shacl_score:    {report.shacl_score}")
+    print(f"  violations:     {report.violations}")
+    print(f"  combined_score: {report.combined_score}")
+    print(f"  shacl_report:   {report.shacl_report_path}")
+    if report.details.get("sampling"):
+        s = report.details["sampling"]
+        print(f"  sampled:        {s['entities']} entities, {s['relations']} relations")
 
 
 if __name__ == "__main__":

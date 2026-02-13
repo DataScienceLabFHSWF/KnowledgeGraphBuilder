@@ -86,6 +86,7 @@ class KGBuilder:
         secondary_store: GraphStore | None = None,
         config: KGBuilderConfig | None = None,
         static_validator: object | None = None,
+        ontology_service: Any | None = None,
     ) -> None:
         """Initialize KG builder.
 
@@ -93,11 +94,13 @@ class KGBuilder:
             primary_store: Primary graph store (Neo4j or RDF)
             secondary_store: Optional secondary store for sync
             config: Builder configuration
+            ontology_service: Optional ontology backend to use for validation helpers
         """
         self._primary = primary_store
         self._secondary = secondary_store
         self._config = config or KGBuilderConfig()
         self._static_validator = static_validator
+        self._ontology_service = ontology_service
 
         logger.info(
             "kg_builder_initialized",
@@ -137,7 +140,7 @@ class KGBuilder:
 
                     shapes_path = Path(shapes_path_str)
                     sv_result = self._static_validator.validate_entities_and_relations(
-                        shapes_path, entities, relations or []
+                        shapes_path, entities, relations or [], ontology_service=self._ontology_service
                     )
                     logger.info("static_validation_result", valid=sv_result.valid)
                     if not sv_result.valid:

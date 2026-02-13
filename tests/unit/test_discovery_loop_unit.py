@@ -322,7 +322,85 @@ def test_entity_accumulation(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
+
+def test_static_validation_blocks_invalid_document(
+    mock_retriever: MagicMock,
+    mock_extractor: MagicMock,
+    mock_question_generator: MagicMock,
+) -> None:
+    """If static validator rejects, document-level entities should be skipped."""
+    # Mock retriever returns one document
+    retriever = MagicMock(spec=Retriever)
+    res = MagicMock()
+    res.doc_id = "docX"
+    res.content = "doc content"
+    retriever.retrieve.return_value = [res]
+
+    # Mock extractor returns one entity
+    extractor = MagicMock(spec=EntityExtractor)
+    entity = ExtractedEntity(
+        id="e1",
+        label="Test",
+        entity_type="Facility",
+        description="",
+        confidence=0.9,
+        evidence=[],
+    )
+    extractor.extract.return_value = [entity]
+
+    # Static validator rejects
+    sv = MagicMock()
+    sv.validate_entities_and_relations.return_value = MagicMock(valid=False, counterexample="violation")
+
+    loop = IterativeDiscoveryLoop(
+        retriever=retriever,
+        extractor=extractor,
+        question_generator=mock_question_generator,
+        static_validator=sv,
+        static_shapes_path="/tmp/shapes.ttl",
+    )
+
+    result = loop.run_discovery(initial_questions=mock_question_generator.generate_questions.return_value[:1], max_iterations=1)
+    assert len(result.entities) == 0
+
+
+def test_static_validation_allows_valid_document(
+    mock_retriever: MagicMock,
+    mock_extractor: MagicMock,
+    mock_question_generator: MagicMock,
+) -> None:
+    """If static validator accepts, document-level entities should be added."""
+    retriever = MagicMock(spec=Retriever)
+    res = MagicMock()
+    res.doc_id = "docY"
+    res.content = "doc content"
+    retriever.retrieve.return_value = [res]
+
+    extractor = MagicMock(spec=EntityExtractor)
+    entity = ExtractedEntity(
+        id="e2",
+        label="Allowed",
+        entity_type="Facility",
+        description="",
+        confidence=0.92,
+        evidence=[],
+    )
+    extractor.extract.return_value = [entity]
+
+    sv = MagicMock()
+    sv.validate_entities_and_relations.return_value = MagicMock(valid=True)
+
+    loop = IterativeDiscoveryLoop(
+        retriever=retriever,
+        extractor=extractor,
+        question_generator=mock_question_generator,
+        static_validator=sv,
+        static_shapes_path="/tmp/shapes.ttl",
+    )
+
+    result = loop.run_discovery(initial_questions=mock_question_generator.generate_questions.return_value[:1], max_iterations=1)
+    assert len(result.entities) == 1    
     questions = [
         ResearchQuestion(
             question_id="q_1",

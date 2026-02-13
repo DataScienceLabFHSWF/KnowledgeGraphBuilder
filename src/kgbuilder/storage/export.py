@@ -271,7 +271,7 @@ class KGExporter:
         ]
         
         # Add nodes
-def _node_ref(nid: str) -> str:
+        def _node_ref(nid: str) -> str:
             """Return a Turtle-safe reference for a node id.
 
             - If the node id is a safe local name, use `:localName`.
@@ -307,8 +307,8 @@ def _node_ref(nid: str) -> str:
         # Add edges
         lines.append("# Relationships")
         for edge in self._store.get_all_edges():
-            source_uri = f":{edge.source_id}"
-            target_uri = f":{edge.target_id}"
+            source_uri = _node_ref(edge.source_id)
+            target_uri = _node_ref(edge.target_id)
             predicate = f"kg:{self._sanitize_uri(edge.edge_type)}"
             lines.append(f"{source_uri} {predicate} {target_uri} .")
         

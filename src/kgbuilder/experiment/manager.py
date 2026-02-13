@@ -246,6 +246,11 @@ class ConfigRunner:
             kg_metrics = self._build_kg(variant, run_id, wandb_run=wandb_run)
             eval_metrics = self._simulate_evaluation(variant)
 
+            # SHACL quality scoring (best-effort)
+            shacl_metrics = self._run_shacl_scoring(run_id, wandb_run=wandb_run)
+            if shacl_metrics:
+                kg_metrics["shacl"] = shacl_metrics
+
             run.kg_metrics = kg_metrics
             run.eval_metrics = eval_metrics
             run.status = "completed"
@@ -588,6 +593,55 @@ class ConfigRunner:
         except Exception as e:
             logger.error("kg_build_failed", run_id=run_id, error=str(e))
             raise
+
+    def _run_shacl_scoring(
+        self, run_id: str, wandb_run: Any = None,
+    ) -> dict[str, Any] | None:
+        """Run KGQualityScorer and persist the SHACL report with run artifacts.
+
+        Returns a dict with scorer metrics or ``None`` on failure.
+        """
+        import os, shutil
+        try:
+            from kgbuilder.validation.scorer import KGQualityScorer
+            from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+
+            neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+            neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")
+            owl_path = Path(os.getenv(
+                "ONTOLOGY_OWL_PATH",
+                "./data/ontology/law/law-ontology-v1.0.owl",
+            ))
+
+            store = Neo4jGraphStore(neo4j_uri, (neo4j_user, neo4j_password))
+            scorer = KGQualityScorer(ontology_owl_path=owl_path, sample_limit=500)
+            report = scorer.score_neo4j_store(store)
+
+            # Copy SHACL report JSON into the run directory
+            run_dir = self.output_dir / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            if report.shacl_report_path:
+                dest = run_dir / "shacl_report.json"
+                shutil.copy2(report.shacl_report_path, dest)
+                logger.info("shacl_report_saved", dest=str(dest), run_id=run_id)
+
+            metrics = {
+                "combined_score": report.combined_score,
+                "shacl_score": report.shacl_score,
+                "consistency": report.consistency,
+                "violations": report.violations,
+                "class_coverage": report.class_coverage,
+            }
+
+            if wandb_run is not None:
+                wandb_run.log({f"shacl_{k}": v for k, v in metrics.items()})
+
+            return metrics
+
+        except Exception as exc:
+            logger.warning("shacl_scoring_failed", run_id=run_id, error=str(exc))
+            return None
 
     @staticmethod
     def _simulate_evaluation(variant: ConfigVariant) -> dict[str, Any]:

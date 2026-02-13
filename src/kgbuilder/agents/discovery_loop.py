@@ -129,6 +129,8 @@ class IterativeDiscoveryLoop:
         relation_extractor: Any | None = None,  # NEW: For Phase 5
         ontology_relations: list[Any] | None = None,  # NEW: For Phase 5
         context_provider: Any | None = None,  # Optional law graph context provider
+        static_validator: Any | None = None,
+        static_shapes_path: str | None = None,
     ) -> None:
         """Initialize discovery loop.
 
@@ -148,6 +150,9 @@ class IterativeDiscoveryLoop:
         self._relation_extractor = relation_extractor  # NEW
         self._ontology_relations = ontology_relations  # NEW
         self._context_provider = context_provider
+        self._static_validator = static_validator
+        self._static_shapes_path = static_shapes_path
+        self._ontology_service: Any | None = None
         self._findings: dict[tuple[str, str], ExtractedEntity] = {}
         self._provenance: dict[tuple[str, str], set[str]] = {}  # (label, type) -> source docs
         self._relations: list[Any] = []  # NEW: Store extracted relations
@@ -403,6 +408,26 @@ class IterativeDiscoveryLoop:
                         text=extraction_text,
                         ontology_classes=ontology_classes
                     )
+
+                    # Optional: run static (pre-commit) validation on extracted facts
+                    if self._static_validator and self._static_shapes_path:
+                        try:
+                            from pathlib import Path
+
+                            sv_res = self._static_validator.validate_entities_and_relations(
+                                Path(self._static_shapes_path), entities, self._relations, ontology_service=self._ontology_service
+                            )
+                            self._logger.info("static_validation_result", valid=sv_res.valid)
+                            if not sv_res.valid:
+                                self._logger.warning(
+                                    "static_validation_rejected_document",
+                                    doc_id=result.doc_id,
+                                    reason=sv_res.counterexample or sv_res.error,
+                                )
+                                # Skip adding findings/relations from this document
+                                continue
+                        except Exception as e:
+                            self._logger.warning("static_validation_error", error=str(e))
 
                     # 3. Update findings and provenance
                     # Dedup key: normalized (label, entity_type) — NOT entity.id

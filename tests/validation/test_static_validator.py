@@ -76,7 +76,6 @@ class TestStaticValidator:
         assert checks["jar"] is False
         assert checks["vampire"] is False
 
-    @pytest.mark.skip(reason="validate_static() not yet implemented")
     def test_validate_static_valid_actions(
         self, validator: StaticValidator, tmp_path: Path
     ) -> None:
@@ -84,15 +83,31 @@ class TestStaticValidator:
         shapes.write_text("# empty shapes")
         actions = tmp_path / "actions.json"
         actions.write_text("[]")
-        result = validator.validate_static(shapes, actions)
-        assert isinstance(result, StaticValidationResult)
+        # Ensure fake JAR exists so _invoke_jar doesn't raise
+        validator._config.jar_path.parent.mkdir(parents=True, exist_ok=True)
+        validator._config.jar_path.write_text("")
 
-    @pytest.mark.skip(reason="validate_static() not yet implemented")
+        with patch("subprocess.run") as pr:
+            pr.return_value = type("P", (), {"stdout": "SZS status satisfiable"})()
+            result = validator.validate_static(shapes, actions)
+            assert isinstance(result, StaticValidationResult)
+            assert result.valid is True
+
     def test_validate_static_returns_counterexample_on_invalid(
         self, validator: StaticValidator, tmp_path: Path
     ) -> None:
-        # When prover finds violation, counterexample should be populated
-        pass
+        shapes = tmp_path / "shapes.ttl"
+        shapes.write_text("# shapes")
+        actions = tmp_path / "actions.json"
+        actions.write_text("[]")
+        validator._config.jar_path.parent.mkdir(parents=True, exist_ok=True)
+        validator._config.jar_path.write_text("")
+
+        with patch("subprocess.run") as pr:
+            pr.return_value = type("P", (), {"stdout": "INVALID: counterexample found"})()
+            result = validator.validate_static(shapes, actions)
+            assert result.valid is False
+            assert "counterexample" in result.counterexample.lower() or result.error
 
     def test_write_config_properties(
         self, validator: StaticValidator, tmp_path: Path
@@ -102,3 +117,24 @@ class TestStaticValidator:
         content = path.read_text()
         assert "proverPath=" in content
         assert "tptpPrefix=fof" in content
+
+    def test_check_satisfiability_and_containment_with_mocked_prover(
+        self, validator: StaticValidator, tmp_path: Path
+    ) -> None:
+        # Prepare fake shapes files and ensure jar exists
+        a = tmp_path / "a.ttl"
+        b = tmp_path / "b.ttl"
+        a.write_text("# A")
+        b.write_text("# B")
+        validator._config.jar_path.parent.mkdir(parents=True, exist_ok=True)
+        validator._config.jar_path.write_text("")
+
+        with patch("subprocess.run") as pr:
+            pr.return_value = type("P", (), {"stdout": "SZS status satisfiable"})()
+            sat = validator.check_satisfiability(a)
+            assert sat.valid is True
+
+        with patch("subprocess.run") as pr:
+            pr.return_value = type("P", (), {"stdout": "VALID (contained)"})()
+            cont = validator.check_containment(a, b)
+            assert isinstance(cont, StaticValidationResult)
