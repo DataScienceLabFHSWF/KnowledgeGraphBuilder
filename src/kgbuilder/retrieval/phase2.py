@@ -11,7 +11,7 @@ See Planning/FUSIONRAG_INTEGRATION.md Section 2 for design.
 
 from __future__ import annotations
 
-import logging
+import structlog
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,7 +22,7 @@ from rank_bm25 import BM25Okapi
 from kgbuilder.core import get_base_url
 from sentence_transformers import CrossEncoder
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xmlns:law="http://kgbuilder.2060.io/ontology/law#"
+    xmlns:eli="http://data.europa.eu/eli/ontology#"
+    xmlns:lkif-norm="http://www.estrellaproject.org/lkif-core/norm.owl#"
+    xmlns:lkif-la="http://www.estrellaproject.org/lkif-core/legal-action.owl#"
+    xml:base="http://kgbuilder.2060.io/ontology/law">
+
+    <owl:Ontology rdf:about="http://kgbuilder.2060.io/ontology/law">
+        <rdfs:label xml:lang="en">KGBuilder Legal Ontology</rdfs:label>
+        <rdfs:label xml:lang="de">KGBuilder Rechtsontologie</rdfs:label>
+        <rdfs:comment xml:lang="en">Ontology for German nuclear-domain legal knowledge graph. Aligned to LKIF-Core and ELI vocabularies.</rdfs:comment>
+        <owl:versionInfo>1.0</owl:versionInfo>
+        <owl:imports rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl"/>
+        <owl:imports rdf:resource="http://www.estrellaproject.org/lkif-core/legal-action.owl"/>
+    </owl:Ontology>
+
+    <!-- ===== Classes ===== -->
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Gesetzbuch">
+        <rdfs:label xml:lang="de">Gesetzbuch</rdfs:label>
+        <rdfs:label xml:lang="en">Law Book</rdfs:label>
+        <rdfs:comment xml:lang="en">A German federal law (Bundesgesetz or Verordnung).</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://data.europa.eu/eli/ontology#LegalResource"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Bundesgesetz">
+        <rdfs:label xml:lang="de">Bundesgesetz</rdfs:label>
+        <rdfs:label xml:lang="en">Federal Law</rdfs:label>
+        <rdfs:comment xml:lang="en">A federal statute (e.g. AtG, StrlSchG).</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Statute"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Verordnung">
+        <rdfs:label xml:lang="de">Verordnung</rdfs:label>
+        <rdfs:label xml:lang="en">Ordinance</rdfs:label>
+        <rdfs:comment xml:lang="en">A regulation/ordinance (e.g. StrlSchV).</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Regulation"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Paragraf">
+        <rdfs:label xml:lang="de">Paragraf</rdfs:label>
+        <rdfs:label xml:lang="en">Paragraph</rdfs:label>
+        <rdfs:comment xml:lang="en">A single § or Artikel within a law.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://data.europa.eu/eli/ontology#LegalResourceSubdivision"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Absatz">
+        <rdfs:label xml:lang="de">Absatz</rdfs:label>
+        <rdfs:label xml:lang="en">Sub-paragraph</rdfs:label>
+        <rdfs:comment xml:lang="en">A numbered sub-paragraph within a §.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#LegalConcept">
+        <rdfs:label xml:lang="de">Rechtsbegriff</rdfs:label>
+        <rdfs:label xml:lang="en">Legal Concept</rdfs:label>
+        <rdfs:comment xml:lang="en">An abstract legal concept defined or referenced in law.</rdfs:comment>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Definition">
+        <rdfs:label xml:lang="de">Legaldefinition</rdfs:label>
+        <rdfs:label xml:lang="en">Legal Definition</rdfs:label>
+        <rdfs:comment xml:lang="en">An explicitly defined term (Begriffsbestimmung).</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalConcept"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Obligation">
+        <rdfs:label xml:lang="de">Pflicht</rdfs:label>
+        <rdfs:label xml:lang="en">Obligation</rdfs:label>
+        <rdfs:comment xml:lang="en">A legal duty or requirement.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalConcept"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Obligation"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Permission">
+        <rdfs:label xml:lang="de">Erlaubnis</rdfs:label>
+        <rdfs:label xml:lang="en">Permission</rdfs:label>
+        <rdfs:comment xml:lang="en">A legal permission or authorization.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalConcept"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Permission"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Prohibition">
+        <rdfs:label xml:lang="de">Verbot</rdfs:label>
+        <rdfs:label xml:lang="en">Prohibition</rdfs:label>
+        <rdfs:comment xml:lang="en">A legal prohibition.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalConcept"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/norm.owl#Prohibition"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#LegalActor">
+        <rdfs:label xml:lang="de">Rechtsakteur</rdfs:label>
+        <rdfs:label xml:lang="en">Legal Actor</rdfs:label>
+        <rdfs:comment xml:lang="en">An entity with legal standing.</rdfs:comment>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Behoerde">
+        <rdfs:label xml:lang="de">Behörde</rdfs:label>
+        <rdfs:label xml:lang="en">Authority</rdfs:label>
+        <rdfs:comment xml:lang="en">A public authority or regulatory body.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalActor"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/legal-action.owl#Public_Body"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#Betreiber">
+        <rdfs:label xml:lang="de">Betreiber</rdfs:label>
+        <rdfs:label xml:lang="en">Operator</rdfs:label>
+        <rdfs:comment xml:lang="en">An operator or licensee subject to legal obligations.</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalActor"/>
+        <owl:equivalentClass rdf:resource="http://www.estrellaproject.org/lkif-core/legal-action.owl#Legal_Person"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://kgbuilder.2060.io/ontology/law#LegalReference">
+        <rdfs:label xml:lang="de">Rechtsverweis</rdfs:label>
+        <rdfs:label xml:lang="en">Legal Reference</rdfs:label>
+        <rdfs:comment xml:lang="en">A cross-reference to another paragraph or law.</rdfs:comment>
+    </owl:Class>
+
+    <!-- ===== Object Properties ===== -->
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#teilVon">
+        <rdfs:label xml:lang="de">teil von</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph belongs to law.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:subPropertyOf rdf:resource="http://data.europa.eu/eli/ontology#is_part_of"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#referenziert">
+        <rdfs:label xml:lang="de">referenziert</rdfs:label>
+        <rdfs:comment xml:lang="en">Cross-reference between paragraphs.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:subPropertyOf rdf:resource="http://data.europa.eu/eli/ontology#cites"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#definiert">
+        <rdfs:label xml:lang="de">definiert</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph defines a legal term.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Definition"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#verpflichtet">
+        <rdfs:label xml:lang="de">verpflichtet</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph establishes an obligation.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Obligation"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#erlaubt">
+        <rdfs:label xml:lang="de">erlaubt</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph grants a permission.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Permission"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#verbietet">
+        <rdfs:label xml:lang="de">verbietet</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph establishes a prohibition.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Prohibition"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#zustaendig">
+        <rdfs:label xml:lang="de">zuständig für</rdfs:label>
+        <rdfs:comment xml:lang="en">Authority responsible for obligation.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Behoerde"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Obligation"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#betrifft">
+        <rdfs:label xml:lang="de">betrifft</rdfs:label>
+        <rdfs:comment xml:lang="en">Obligation applies to actor.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Obligation"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#LegalActor"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#aendert">
+        <rdfs:label xml:lang="de">ändert</rdfs:label>
+        <rdfs:comment xml:lang="en">Law amends another law.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:subPropertyOf rdf:resource="http://data.europa.eu/eli/ontology#amends"/>
+    </owl:ObjectProperty>
+    <owl:ObjectProperty rdf:about="http://kgbuilder.2060.io/ontology/law#aufgehobenDurch">
+        <rdfs:label xml:lang="de">aufgehoben durch</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph repealed by another.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+    </owl:ObjectProperty>
+
+    <!-- ===== Datatype Properties ===== -->
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#abkuerzung">
+        <rdfs:label xml:lang="de">Abkürzung</rdfs:label>
+        <rdfs:comment xml:lang="en">Official abbreviation (AtG, StrlSchV).</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#langtext">
+        <rdfs:label xml:lang="de">Langtext</rdfs:label>
+        <rdfs:comment xml:lang="en">Full title of the law.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#version">
+        <rdfs:label xml:lang="de">Version</rdfs:label>
+        <rdfs:comment xml:lang="en">Version identifier.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#letzteAenderung">
+        <rdfs:label xml:lang="de">Letzte Änderung</rdfs:label>
+        <rdfs:comment xml:lang="en">Date of last amendment.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Gesetzbuch"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    </owl:DatatypeProperty>
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#gesetzestext">
+        <rdfs:label xml:lang="de">Gesetzestext</rdfs:label>
+        <rdfs:comment xml:lang="en">Full paragraph text.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#nummer">
+        <rdfs:label xml:lang="de">Nummer</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph number (§ 7, Art. 3).</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    <owl:DatatypeProperty rdf:about="http://kgbuilder.2060.io/ontology/law#titel">
+        <rdfs:label xml:lang="de">Titel</rdfs:label>
+        <rdfs:comment xml:lang="en">Paragraph title.</rdfs:comment>
+        <rdfs:domain rdf:resource="http://kgbuilder.2060.io/ontology/law#Paragraf"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+</rdf:RDF>

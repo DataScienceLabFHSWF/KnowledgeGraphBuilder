@@ -12,14 +12,14 @@ Key features:
 
 from __future__ import annotations
 
-import logging
+import structlog
 from collections import defaultdict
 from typing import Any
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.entity import OntologyClassDef
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TieredExtractor:

@@ -7,7 +7,7 @@ See Planning/FUSIONRAG_INTEGRATION.md Section 1 for design.
 
 from __future__ import annotations
 
-import logging
+import structlog
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -17,7 +17,7 @@ import ollama
 
 from kgbuilder.core import get_base_url
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

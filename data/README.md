@@ -1,17 +1,17 @@
 # Data Directory
 
-**Status**: 🟢 Ready for processing
+**Status**: Ready — all documents processed by pipeline.
 
 ---
 
 ## Contents
 
 ### ontology/
-- **plan-ontology-v1.0.owl** – AI Planning Ontology (28 KB)
-- **download_ontology.py** – Script to update/download ontologies
+- **plan-ontology-v1.0.owl** — Nuclear decommissioning planning ontology (28 KB)
+- Loaded into Fuseki at `http://localhost:3030` via `scripts/load_ontology_to_fuseki.py`
 
 ### Decommissioning_Files/
-- **33 German PDFs** – Nuclear plant decommissioning documents (126 MB)
+- **33 German PDFs** — Nuclear plant decommissioning documents (126 MB)
   - Applications (Genehmigungsantrag)
   - Safety reports (Sicherheitsbericht)
   - Environmental assessments (UVP)
@@ -32,7 +32,7 @@ g.parse("data/ontology/plan-ontology-v1.0.owl", format="xml")
 ### Load Documents
 ```python
 from pathlib import Path
-from kgbuilder.document import DocumentLoaderFactory
+from kgbuilder.document.loaders import DocumentLoaderFactory
 
 loader = DocumentLoaderFactory.get_loader("pdf")
 docs = [loader.load(f) for f in Path("data/Decommissioning_Files").glob("*.pdf")]

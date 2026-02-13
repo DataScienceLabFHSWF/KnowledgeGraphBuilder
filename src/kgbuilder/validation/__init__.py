@@ -55,6 +55,18 @@ from kgbuilder.validation.rules_engine import (
     TransitiveRule,
 )
 from kgbuilder.validation.shacl_validator import SHACLValidator
+from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
+from kgbuilder.validation.static_validator import (
+    StaticValidator,
+    StaticValidatorConfig,
+    StaticValidationResult,
+)
+from kgbuilder.validation.action_converter import (
+    ActionConverter,
+    ActionSet,
+    ShapeAction,
+    PathAction,
+)
 from kgbuilder.validation.validators import (
     CompetencyQuestionValidator,
     OntologyValidator,
@@ -75,6 +87,14 @@ __all__ = [
     "ConflictType",
     "DuplicateSet",
     "SHACLValidator",
+    "SHACLShapeGenerator",
+    "StaticValidator",
+    "StaticValidatorConfig",
+    "StaticValidationResult",
+    "ActionConverter",
+    "ActionSet",
+    "ShapeAction",
+    "PathAction",
     "OntologyValidator",
     "CompetencyQuestionValidator",
     "RulesEngine",

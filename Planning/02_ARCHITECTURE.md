@@ -464,3 +464,117 @@ src/kgbuilder/
 | Enrichment time (Layer 2) | ~15min |
 | Persistence time (Layer 3) | ~5min |
 | Estimated domain coverage | 92% |
+
+---
+
+## 12. Domain Pluggability
+
+The pipeline is **ontology-agnostic**: `FullKGPipeline` reads whatever ontology is loaded
+in Fuseki and generates extraction prompts from it. This means adding a new knowledge
+domain does NOT require forking the pipeline — it requires providing domain-specific
+components and a config profile.
+
+### What the Pipeline Already Parameterizes
+
+`PipelineConfig` (in `scripts/full_kg_pipeline.py`) exposes all domain-specific settings:
+
+```python
+class PipelineConfig(BaseModel):
+    ontology_dataset: str      # Fuseki dataset name → separate ontology graph
+    ontology_path: str         # Path to the OWL file
+    document_dir: str          # Where source documents live
+    document_extensions: list  # File types to ingest (.pdf, .xml, ...)
+    vector_collection: str     # Qdrant collection → separate vector namespace
+    output_dir: str            # Results output directory
+    export_formats: list       # json-ld, cypher, turtle, ...
+    max_iterations: int        # Discovery loop iterations
+    ...
+```
+
+### Adding a New Domain
+
+```
+Step 1: Ontology
+   Create/merge OWL ontology → load into Fuseki dataset
+
+Step 2: Documents
+   Place source files in data/<domain>/ or implement a custom loader
+
+Step 3: Extractors (optional — LLM extractors already work generically)
+   Add domain-specific rules:
+     src/kgbuilder/extraction/<domain>_rules.py    — regex/gazetteers
+     src/kgbuilder/extraction/<domain>_llm.py      — specialized prompts
+     src/kgbuilder/extraction/<domain>_ensemble.py — rule + LLM merge
+
+Step 4: Profile
+   Create data/profiles/<domain>.json with PipelineConfig overrides
+
+Step 5: Run
+   python scripts/full_kg_pipeline.py --profile data/profiles/<domain>.json
+```
+
+### Example: Law Domain vs Decommissioning
+
+```
+                    ┌─────────────────────────────────────────────────┐
+                    │              FullKGPipeline                      │
+                    │  (shared: discovery, confidence, validation,     │
+                    │   assembly, export, versioning)                  │
+                    ├────────────────────┬────────────────────────────┤
+                    │ DECOMMISSIONING    │ GERMAN LAW                 │
+                    ├────────────────────┼────────────────────────────┤
+                    │ Ontology:          │ Ontology:                  │
+                    │  plan-ontology     │  law-ontology (LKIF+ELI)   │
+                    │  (Fuseki: "plan")  │  (Fuseki: "lawgraph")      │
+                    ├────────────────────┼────────────────────────────┤
+                    │ Documents:         │ Documents:                 │
+                    │  PDF loader        │  XML loader (law_xml.py)   │
+                    │  33 PDFs           │  ~6,800 BJNR*.xml files    │
+                    ├────────────────────┼────────────────────────────┤
+                    │ Rules:             │ Rules:                     │
+                    │  rules.py          │  legal_rules.py            │
+                    │  (facility codes,  │  (§-references, law IDs,   │
+                    │   isotopes, dates) │   abbreviations, dates)    │
+                    ├────────────────────┼────────────────────────────┤
+                    │ Special:           │ Special:                   │
+                    │  n/a               │  Phase A structural import │
+                    │                    │  (no LLM, XML → Neo4j)     │
+                    └────────────────────┴────────────────────────────┘
+```
+
+### Phase A: Law-Specific Structural Import
+
+German law XML has rich structure (`<norm>`, `<metadaten>`, `<textdaten>`) that can be
+imported deterministically without any LLM. `build_law_graph.py` runs this as Phase A
+before entering the standard pipeline (Phase B) for ontology-guided semantic extraction.
+
+This is the only part that is truly law-specific and cannot be expressed as a
+`PipelineConfig` swap. All other phases (discovery, extraction, confidence tuning,
+assembly, validation, export) work identically across domains.
+
+### Ontology Loading Flow
+
+```
+LKIF-Core (11 modules) ──┐
+                          ├─→ merge_legal_ontologies.py ──→ legal-foundations-merged.owl
+ELI (eli.owl)    ────────┘                                          │
+                                                                    ▼
+                                                build_law_ontology.py
+                                                    (adds domain classes)
+                                                          │
+                                                          ▼
+                                                law-ontology-v1.0.owl
+                                                          │
+                                                          ▼
+                                        load_ontology_to_fuseki.py
+                                            (POST to Fuseki "lawgraph")
+                                                          │
+                                                          ▼
+                                               FusekiOntologyService
+                                            (SPARQL → extraction prompts)
+```
+
+Fuseki's `load_ontology()` takes a single RDF string (auto-detects RDF/XML vs Turtle).
+LKIF-Core's 11 separate OWL modules with `owl:imports` must be merged first. The
+cherry-pick mode in `merge_legal_ontologies.py` extracts only ~30 classes/properties
+needed for our pipeline (out of hundreds in the full ontologies).

@@ -2,7 +2,7 @@
 
 ## Implementation Status, Next Steps & Nice-to-Haves
 
-**Last Updated**: February 6, 2026
+**Last Updated**: February 9, 2026
 
 ---
 
@@ -23,7 +23,7 @@
 | 9 | QA Evaluation | ✅ Done | ~1,300 | QA datasets, query executor, metrics (F1/accuracy/coverage) |
 | 10 | Experiment Framework | ✅ Done | ~3,300 | Manager, analyzer, plotter, reporter, checkpointing |
 | 11 | High-Performance Optimizations | ✅ Done | ~1,200 | Caching, Tiered Extraction, Parallelism |
-| 12 | Semantic Enhancement & Analytics | 📋 Planned | ~1,500 | OWL-RL inference, SKOS enrichment, embedding-based discovery, graph analytics |
+| 12 | Semantic Enhancement & Analytics | ✅ Done | ~1,500 | OWL-RL inference, SKOS enrichment, graph analytics, pipeline integration |
 
 ### Current State
 
@@ -39,15 +39,15 @@
 ### 2.1 Structured Generation Robustness
 
 **Priority**: 🔴 Critical  
-**Status**: Partially complete  
-**Effort**: 1-2h remaining
+**Status**: ✅ Complete  
+**Effort**: Done
 
 - [x] Add `max_retries` parameter with validation error feedback to LLM
 - [x] JSON recovery strategies (brace balancing, truncation, incomplete field removal)
 - [x] `model_validate_json()` for unified parsing + validation
+- [x] Add schema-specific few-shot examples to extraction prompts (entity.py + relation.py)
+- [x] Benchmark structured output success rate via `StructuredGenerationBenchmark`
 - [ ] Consider Ollama's native `format: "json"` parameter for guaranteed JSON output
-- [ ] Add schema-specific few-shot examples to extraction prompts
-- [ ] Benchmark structured output success rate (target: >95%)
 
 ### 2.2 Enrichment Pipeline Integration
 
@@ -125,16 +125,17 @@ Fully implemented checkpoint CLI and re-enrichment:
 ### 3.3 KG Versioning Service
 
 **Priority**: 🟡 Medium  
-**Effort**: 4-6h
+**Status**: ✅ Complete  
+**Effort**: Done
 
-- [ ] Implement `KGVersioningService`
-  - [ ] `create_snapshot(name, description) → version_id`
-  - [ ] `list_versions() → list[VersionMetadata]`
-  - [ ] `diff(v1, v2) → VersionDiff`
-  - [ ] `restore(version_id)`
-- [ ] Auto-version after each pipeline run
-- [ ] Track entity/relation additions, deletions, modifications
-- [ ] Version metadata: timestamp, trigger, document set hash
+- [x] Implement `KGVersioningService` in `src/kgbuilder/versioning/service.py`
+  - [x] `create_snapshot(name, description) → version_id`
+  - [x] `list_versions() → list[VersionMetadata]`
+  - [x] `diff(v1, v2) → VersionDiff`
+  - [x] `restore(version_id)`
+- [x] Auto-version after each pipeline run
+- [x] Track entity/relation additions, deletions, modifications
+- [x] Version metadata: timestamp, trigger, content hashing
 
 ### 3.4 Configuration Management Overhaul
 
@@ -219,16 +220,15 @@ Fully implemented checkpoint CLI and re-enrichment:
 
 ### 4.5 Multi-Agent QA System
 
+**Status**: ➡️ Moved to [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent)  
 **Effort**: 12-16h
 
-- [ ] Agent roles:
-  - [ ] QuestionAskingAgent — decomposes complex queries
-  - [ ] DeepResearchAgent — retrieves + synthesizes evidence
-  - [ ] KGBuilderAgent — constructs/updates graph on-the-fly
-  - [ ] ValidationAgent — checks answer quality
-  - [ ] QAAgent — generates final answers
-- [ ] Agent orchestration (LangGraph or custom DAG)
-- [ ] Full logging of agent actions and reasoning chains
+This is now a separate repository. See [Planning/C3_*.md](.) for blueprints.
+
+- [ ] Agent roles: QuestionParser, ContextAssembler, AnswerGenerator, Explainer
+- [ ] Multiple retrieval strategies: Vector, Graph, Hybrid FusionRAG
+- [ ] Ontology-informed query expansion
+- [ ] Full evaluation framework (accuracy, faithfulness, strategy comparison)
 
 ### 4.6 Graph UI & Exploration
 
@@ -251,60 +251,78 @@ Fully implemented checkpoint CLI and re-enrichment:
 
 ### 4.8 Structured Logging & Observability
 
-**Effort**: 3-4h
+**Effort**: 3-4h  
+**Status**: ✅ Complete
 
-- [ ] Migrate from stdlib `logging` to `structlog`
-- [ ] Structured JSON log output
-- [ ] Log every LLM call with prompt/response/tokens/latency
-- [ ] wandb integration for experiment metrics
-- [ ] Dashboard for pipeline health monitoring
+- [x] Migrate from stdlib `logging` to `structlog` (`logging_config.py`)
+- [x] Structured JSON log output
+- [x] Log every LLM call with prompt/response/tokens/latency (`LLMCallTracker`)
+- [x] wandb integration for experiment metrics
+- [x] Pipeline health monitoring (`PipelineHealthMonitor`)
 
-### 4.9 Phase 11+: Semantic Enhancement & Post-Construction Analytics
+### 4.9 Semantic Enhancement & Post-Construction Analytics
 
-**Rationale**: After baseline validation, enhance constructed KG with semantic closure and analytics capabilities using industry-standard tools.
+**Status**: ✅ Core complete (analytics pipeline integrated)  
+**Effort**: Remaining items are stretch goals
 
-**Effort**: 8-12h over 2-3 iterations
+#### 4.9.1 Inference Layer — ✅ Done
 
-#### 4.9.1 Inference Layer (KGL + OWL-RL)
+- [x] OWL-RL inference via `Neo4jInferenceEngine` (`analytics/inference.py`)
+- [x] SKOS enrichment (`analytics/skos.py`)
+- [x] Graph metrics (node/edge counts, typed coverage, centrality) (`analytics/metrics.py`)
+- [x] Analytics pipeline orchestrator (`analytics/pipeline.py`)
+- [x] Integrated into `full_kg_pipeline.py` with `--skip-analytics` flag
 
-- [ ] Integrate KGL's OWL-RL inference to compute transitive closure (e.g., `ancestorOf`, `subClassOf`, `broader`)
-- [ ] SKOS hierarchical expansion (`skos:narrower`, `skos:broader` relationships)
-- [ ] Automatic axiomatic triple generation for defined properties
-- [ ] Conflict detection via `owl:differentFrom` and `owl:sameAs` consolidation
-- [ ] Benchmark: measure KG growth (typical: 20-40% triple inflation from transitive closure)
+#### 4.9.2–4.9.5 — Remaining Stretch Goals
 
-#### 4.9.2 Synonym & Entity Linking (Embeddings)
+- [ ] Embedding-based synonym discovery & entity linking
+- [ ] Community detection (Leiden/iGraph)
+- [ ] Data quality dashboard
+- [ ] Parquet export & incremental snapshots
 
-- [ ] Word2Vec training on entity descriptions (gensim)
-- [ ] Compute similarity matrix for all entities
-- [ ] Identify missed merges: entities with `sim > 0.85` but not linked
-- [ ] Levenshtein distance for variant detection (e.g., "Uranium", "uranium", "U-235")
-- [ ] Generate suggestions for human-in-the-loop curation
+### 4.10 Law Graph — Legal Document Knowledge Graph
 
-#### 4.9.3 Community Detection & Clustering
+**Status**: 💡 Proposed  
+**Effort**: 6-10h (mostly ontology & data prep; pipeline code should work as-is)
 
-- [ ] iGraph `leiden` algorithm for community structure
-- [ ] Identify dense entity clusters (potential missing relations)
-- [ ] NetworkX centrality measures (degree, betweenness, closeness)
-- [ ] Visualization of cluster hierarchies via PyVis
-- [ ] Reports on most important entities per community
+Build a **Legal Knowledge Graph** from regulatory documents (e.g. Atomschutzgesetz,
+Strahlenschutzverordnung, nuclear regulatory guidelines). The existing KGBuilder
+pipeline is ontology-agnostic — a legal ontology + legal document corpus should
+produce a law graph without code changes.
 
-#### 4.9.4 KG Measurement & Diagnostics
+#### Approach
 
-- [ ] Triple count, node count, edge count growth over iterations
-- [ ] Predicate frequency distribution (power-law analysis)
-- [ ] Degree distribution (hubs, orphans)
-- [ ] Schema coverage: % of entities that are typed vs. untyped
-- [ ] Consistency metrics: % of relations that satisfy domain/range constraints  
-- [ ] Data quality dashboard (invalid predicates, missing types, orphan entities)
+1. **Legal Ontology**: Define or adopt an ontology for legal concepts
+   (Law → Chapter → Section → Paragraph, LegalReference, Obligation, Definition, etc.)
+2. **Document Ingestion**: Ingest law PDFs/HTML via existing loaders
+3. **Extraction**: Reuse `entity.py` / `relation.py` with the legal ontology —
+   extraction prompts are already ontology-templated
+4. **Graph Structure**: Nodes = Laws, Paragraphs, Definitions, Obligations;
+   Edges = `hasParagraph`, `references`, `amends`, `defines`, `obligates`
+5. **Embedding**: Embed paragraph-level chunks into Qdrant (separate collection
+   or tagged by `graph_type`)
 
-#### 4.9.5 Efficient Serialization & Versioning
+#### Integration with FusionRAG (GraphQAAgent)
 
-- [ ] Parquet export for KG snapshots (10x smaller than JSON-LD)
-- [ ] Incremental snapshots: only store deltas from previous iteration
-- [ ] Time-travel capability: restore KG to any previous iteration
-- [ ] S3/cloud storage integration for snapshot archival
-- [ ] Compression strategies: RDF triple compression (brotli/zstd)
+- Add a **law retrieval step** in the FusionRAG pipeline: when a question
+  mentions a law or paragraph reference, retrieve the actual paragraph text
+  from the law graph/collection as additional context
+- Could use a lightweight classifier or regex to detect legal references in
+  queries (e.g. "§ 7 AtG", "Paragraph 12 StrlSchV")
+- Enriches domain QA with precise regulatory grounding
+
+#### Implementation Notes
+
+- **No code rewriting required** — the pipeline already templates extraction
+  prompts from the ontology; swap ontology + documents → different graph
+- May need a CLI flag or config option to select the target ontology/collection
+  (e.g. `--profile legal` vs `--profile nuclear-decommissioning`)
+- Consider separate Neo4j database or node labels to keep law graph distinct
+- [ ] Curate or find a suitable legal ontology (ELI, Akoma Ntoso, or custom)
+- [ ] Collect target legal documents (AtG, StrlSchV, regulatory guidelines)
+- [ ] Run pipeline with legal ontology, validate extracted graph
+- [ ] Add `graph_type` / profile mechanism to config
+- [ ] Integrate law retrieval step into GraphQAAgent FusionRAG
 
 ---
 
@@ -324,27 +342,23 @@ Fully implemented checkpoint CLI and re-enrichment:
 
 ## 6. Milestone Targets
 
-### Milestone A: Publication-Ready Pipeline (2-3 weeks)
-- [ ] Complete enrichment pipeline wiring (§2.2)
-- [ ] QA dataset curation (§3.1)
-- [ ] Baseline QA metrics computed
-- [ ] RAG comparison (classic vs hybrid vs KG-only)
-- [ ] Experiment report with convergence analysis
+### Milestone A: Publication-Ready Pipeline — ✅ Achieved
+- [x] Complete enrichment pipeline wiring (§2.2)
+- [x] Structured generation robustness (§2.1)
+- [x] KG versioning (§3.3)
+- [x] Structured logging & observability (§4.8)
+- [x] Semantic enhancement & analytics (§4.9)
+- [ ] QA dataset curation (§3.1) → moved to [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent)
+- [ ] RAG comparison → moved to [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent)
 
-### Milestone B: Full Feature Parity (4-6 weeks)
-- [ ] KG versioning (§3.3)
-- [ ] FusionRAG (§4.1)
-- [ ] Ablation studies (§4.4)
-- [ ] Comprehensive test suite (75%+ coverage)
+### Milestone B: Sibling Repos (next)
+- [ ] Scaffold [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent) (blueprints: `Planning/C3_*.md`)
+- [ ] Scaffold [OntologyExtender](https://github.com/DataScienceLabFHSWF/OntologyExtender) (blueprints: `Planning/C1_*.md`)
+- [ ] FusionRAG retrieval comparison (C3.3 + C3.5)
+- [ ] HITL ontology extension workflow (C1)
 
-### Milestone C: Production Quality (8-10 weeks)
-- [ ] Multi-agent QA system (§4.5)
-- [ ] Graph UI (§4.6)
+### Milestone C: Production Quality
 - [ ] CI/CD (§4.7)
-- [ ] Documentation & SDK (§4.3)
-### Milestone D: Semantic Enhancement & Analytics (Phase 11+, 6-8 weeks)
-- [ ] Semantic inference layer (OWL-RL, SKOS)
-- [ ] Synonym discovery & entity linking via embeddings
-- [ ] Community detection and graph analytics
-- [ ] Measurement & diagnostics dashboard
-- [ ] Efficient KG versioning and snapshots
+- [ ] Graph UI (§4.6)
+- [ ] Comprehensive test suite (75%+ coverage)
+- [ ] End-to-end evaluation across all three repos

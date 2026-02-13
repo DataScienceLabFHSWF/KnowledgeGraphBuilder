@@ -21,7 +21,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from pydantic import ValidationError
 
-from kgbuilder.core.models import ExtractedEntity, Evidence
+from kgbuilder.core.models import ExtractedEntity, Evidence, generate_entity_id
 from kgbuilder.core.protocols import LLMProvider
 from kgbuilder.extraction.schemas import EntityExtractionOutput, EntityItem
 
@@ -248,10 +248,29 @@ IMPORTANT:
 - Domain focus: prioritize domain-relevant entities
 - Quality over quantity: accuracy matters more than coverage
 
+RESPONSE FORMAT:
+Return ONLY valid JSON matching the EntityExtractionOutput schema.
+Critical: Respond with raw JSON, no markdown, no explanations.
+
+EXAMPLE OUTPUT STRUCTURE (adapt to your domain):
+{{
+  "entities": [
+    {{
+      "id": "ent_001",
+      "label": "Example Name",
+      "entity_type": "TypeFromAbove",
+      "confidence": 0.95,
+      "start_char": 42,
+      "end_char": 56,
+      "context": "...surrounding context with 50 chars before/after..."
+    }}
+  ]
+}}
+
 TEXT TO ANALYZE:
 {text}
 
-Extract all entities you can identify with confidence >= 0.5."""
+Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."""
 
         logger.debug(f"Generated prompt ({len(prompt)} chars)")
         return prompt
@@ -395,9 +414,9 @@ Extract all entities you can identify with confidence >= 0.5."""
             # Create description from context if available
             description = item.context if item.context else f"Entity of type {item.entity_type}"
 
-            # Create ExtractedEntity domain object
+            # Create ExtractedEntity domain object with content-based ID
             entity = ExtractedEntity(
-                id=item.id or f"ent_{uuid.uuid4().hex[:8]}",
+                id=generate_entity_id(item.label, item.entity_type),
                 label=item.label,
                 entity_type=item.entity_type,
                 description=description,

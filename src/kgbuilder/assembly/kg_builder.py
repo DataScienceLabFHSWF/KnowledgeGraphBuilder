@@ -42,6 +42,9 @@ class KGBuilderConfig:
     batch_size: int = 1000  # Batch operation size
     auto_retry: bool = True  # Retry failed operations
     max_retries: int = 3
+    # Static validation
+    enable_static_validation: bool = False
+    static_shapes_path: str | None = None
 
 
 @dataclass
@@ -82,6 +85,7 @@ class KGBuilder:
         primary_store: GraphStore,
         secondary_store: GraphStore | None = None,
         config: KGBuilderConfig | None = None,
+        static_validator: object | None = None,
     ) -> None:
         """Initialize KG builder.
 
@@ -93,12 +97,14 @@ class KGBuilder:
         self._primary = primary_store
         self._secondary = secondary_store
         self._config = config or KGBuilderConfig()
+        self._static_validator = static_validator
 
         logger.info(
             "kg_builder_initialized",
             primary_store=type(primary_store).__name__,
             secondary_store=type(secondary_store).__name__ if secondary_store else None,
             sync=self._config.sync_stores,
+            static_validation_enabled=self._config.enable_static_validation,
         )
 
     def build(
@@ -121,6 +127,27 @@ class KGBuilder:
         )
 
         try:
+            # Optional: static validation (pre-commit)
+            if self._config.enable_static_validation and self._static_validator:
+                try:
+                    shapes_path_str = self._config.static_shapes_path
+                    if not shapes_path_str:
+                        raise ValueError("static_shapes_path must be configured when static validation is enabled")
+                    from pathlib import Path
+
+                    shapes_path = Path(shapes_path_str)
+                    sv_result = self._static_validator.validate_entities_and_relations(
+                        shapes_path, entities, relations or []
+                    )
+                    logger.info("static_validation_result", valid=sv_result.valid)
+                    if not sv_result.valid:
+                        msg = f"Static validation failed: {sv_result.counterexample or sv_result.error}"
+                        logger.warning("static_validation_rejected", reason=msg)
+                        result.warnings.append(msg)
+                        return result
+                except Exception as e:
+                    logger.warning("static_validation_error", error=str(e))
+
             # 1. Create nodes in primary store (in batches)
             logger.info("build_nodes_starting", count=len(entities))
             node_ids = self._batch_operation(

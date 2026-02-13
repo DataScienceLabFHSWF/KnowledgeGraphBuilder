@@ -271,14 +271,91 @@ class FusekiOntologyService:
             logger.warning("all_relations_load_failed", error=str(e))
             return []
 
-    def get_class_hierarchy(self, class_name: str) -> dict[str, Any]:
-        """Get hierarchy information for a class.
+    def get_class_hierarchy(self) -> list[tuple[str, str]]:
+        """Get all subClassOf relationships in the ontology.
         
-        Args:
-            class_name: Class name or URI
-            
         Returns:
-            Dict with 'parents', 'children', 'depth'
+            List of (child_label, parent_label) tuples
         """
-        # TODO: Implement full hierarchy traversal
-        return {"parents": [], "children": [], "depth": 0}
+        try:
+            sparql = """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            SELECT DISTINCT ?child ?childLabel ?parent ?parentLabel
+            WHERE {
+                ?child rdfs:subClassOf ?parent .
+                FILTER(isURI(?child) && isURI(?parent))
+                OPTIONAL { ?child rdfs:label ?childLabel . }
+                OPTIONAL { ?parent rdfs:label ?parentLabel . }
+            }
+            """
+            res = self.store.query_sparql(sparql)
+            hierarchy = []
+            for binding in res.get("results", {}).get("bindings", []):
+                child = binding.get("childLabel", {}).get("value") or binding.get("child", {}).get("value").split("#")[-1]
+                parent = binding.get("parentLabel", {}).get("value") or binding.get("parent", {}).get("value").split("#")[-1]
+                hierarchy.append((child, parent))
+            return hierarchy
+        except Exception as e:
+            logger.warning("hierarchy_load_failed", error=str(e))
+            return []
+
+    def get_special_properties(self) -> dict[str, list[str]]:
+        """Get properties with special OWL characteristics.
+        
+        Returns:
+            Dict mapping characteristic (transitive, symmetric, inverse) to property lists
+        """
+        try:
+            characteristics = {
+                "transitive": "owl:TransitiveProperty",
+                "symmetric": "owl:SymmetricProperty",
+                "functional": "owl:FunctionalProperty",
+            }
+            
+            results = {}
+            for key, owl_type in characteristics.items():
+                sparql = f"""
+                PREFIX owl: <http://www.w3.org/2002/07/owl#>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                SELECT DISTINCT ?prop ?label
+                WHERE {{
+                    ?prop a {owl_type} .
+                    OPTIONAL {{ ?prop rdfs:label ?label . }}
+                }}
+                """
+                res = self.store.query_sparql(sparql)
+                props = []
+                for binding in res.get("results", {}).get("bindings", []):
+                    # Prefer label, fallback to URI fragment
+                    label = binding.get("label", {}).get("value")
+                    if not label:
+                        uri = binding.get("prop", {}).get("value", "")
+                        label = uri.split("#")[-1].split("/")[-1]
+                    if label:
+                        props.append(label)
+                results[key] = props
+                
+            # Inverse properties are different
+            sparql = """
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT DISTINCT ?p1 ?p1Label ?p2 ?p2Label
+            WHERE {
+                ?p1 owl:inverseOf ?p2 .
+                OPTIONAL { ?p1 rdfs:label ?p1Label . }
+                OPTIONAL { ?p2 rdfs:label ?p2Label . }
+            }
+            """
+            res = self.store.query_sparql(sparql)
+            inverses = []
+            for b in res.get("results", {}).get("bindings", []):
+                l1 = b.get("p1Label", {}).get("value") or b.get("p1", {}).get("value").split("#")[-1]
+                l2 = b.get("p2Label", {}).get("value") or b.get("p2", {}).get("value").split("#")[-1]
+                inverses.append((l1, l2))
+            results["inverse"] = inverses
+            
+            return results
+        except Exception as e:
+            logger.warning("special_properties_load_failed", error=str(e))
+            return {"transitive": [], "symmetric": [], "functional": [], "inverse": []}

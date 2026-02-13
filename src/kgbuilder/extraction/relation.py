@@ -243,18 +243,42 @@ ENTITIES MENTIONED:
 VALID RELATIONSHIPS:
 {relations_section}
 
+EXTRACTION GUIDELINES:
+1. Assign unique IDs (rel_XXX format)
+2. Identify source and target entity IDs from the list above
+3. Determine relationship type from valid relationships
+4. Estimate confidence (0.0-1.0) based on textual evidence
+5. Ensure domain and range constraints are satisfied (critical!)
+
+CONFIDENCE SCORING:
+- 0.9-1.0: Explicit mention of relationship in text
+- 0.7-0.9: Strong contextual evidence
+- 0.5-0.7: Implied or inferred relationship with ambiguity
+- <0.5: Skip (uncertain)
+
+RESPONSE FORMAT:
+Return ONLY valid JSON matching the RelationExtractionOutput schema.
+
+EXAMPLE OUTPUT:
+{{
+  "relations": [
+    {{
+      "id": "rel_001",
+      "source_entity_id": "ent_001",
+      "target_entity_id": "ent_002",
+      "predicate": "RelationTypeFromAbove",
+      "confidence": 0.92,
+      "evidence": "Text snippet supporting this relationship..."
+    }}
+  ]
+}}
+
 TEXT TO ANALYZE:
 {text}
 
-For each relationship found:
-1. Assign a unique ID (rel_XXX format)
-2. Identify source and target entity IDs from the list above
-3. Determine the relationship type from valid relationships
-4. Estimate confidence (0.0-1.0)
-5. Ensure domain and range constraints are satisfied
-
-Extract all valid relationships. Only include relationships between entities in the provided list.
-Respect domain/range constraints from the relationship definitions."""
+Extract all valid relationships between entities. Return ONLY JSON.
+Only include relationships between entities in the provided list.
+Respect domain/range constraints strictly."""
 
     def _format_entities_for_prompt(
         self,

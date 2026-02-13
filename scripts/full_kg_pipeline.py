@@ -39,7 +39,7 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kgbuilder.core.models import Document, ExtractedEntity, ExtractedRelation, Chunk
-from kgbuilder.document.loaders import PDFLoader, DOCXLoader
+from kgbuilder.document.loaders import PDFLoader, DOCXLoader, LawXMLLoader
 from kgbuilder.document.chunking.strategies import FixedSizeChunker
 from kgbuilder.embedding.ollama import OllamaProvider
 from kgbuilder.extraction.entity import (
@@ -53,6 +53,7 @@ from kgbuilder.extraction.relation import (
     OntologyRelationDef,
 )
 from kgbuilder.enrichment import SemanticEnrichmentPipeline, EnrichedEntity, EnrichedRelation
+from kgbuilder.pipeline.confidence_tuning import ConfidenceTuningPipeline, ConfidenceTuningResult
 from kgbuilder.pipeline.checkpoint_cli import enrich_from_checkpoint
 from kgbuilder.storage.neo4j_store import Neo4jGraphStore
 from kgbuilder.storage.protocol import Node, Edge
@@ -62,6 +63,9 @@ from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.assembly.kg_builder import KGBuilder
 from kgbuilder.validation.rules_engine import RulesEngine
+from kgbuilder.analytics.pipeline import AnalyticsPipeline
+from kgbuilder.versioning import KGVersioningService
+from kgbuilder.logging_config import setup_logging, LLMCallTracker, PipelineHealthMonitor
 from kgbuilder.validation.consistency_checker import ConsistencyChecker
 from kgbuilder.experiment.checkpoint import CheckpointManager
 
@@ -147,8 +151,20 @@ class PipelineConfig(BaseModel):
     # Pipeline
     smoke_test: bool = False
     skip_discovery: bool = False
+    skip_confidence_tuning: bool = False
     skip_enrichment: bool = False
+    skip_analytics: bool = False
     skip_validation: bool = False
+
+    # Law Graph integration (optional)
+    law_graph_enabled: bool = Field(
+        default_factory=lambda: os.environ.get("LAW_GRAPH_ENABLED", "false").lower() == "true",
+        description="Enable law graph retrieval to augment entity extraction"
+    )
+    law_graph_collection: str = Field(
+        default_factory=lambda: os.environ.get("LAW_GRAPH_COLLECTION", "lawgraph")
+    )
+    law_graph_max_results: int = 3
     enrich_only: bool = Field(
         default=False,
         description="Load checkpoint and run enrichment only (skip discovery)"
@@ -182,6 +198,7 @@ class PipelineResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     wandb_run_url: str | None = None
+    version_id: str | None = None  # KG version ID from versioning service
     execution_time_seconds: float = 0.0
 
 
@@ -240,6 +257,35 @@ class FullKGPipeline:
         self.versioning_service = KGVersioningService(
             storage_dir=self.config.version_dir
         )
+        
+        # Inference Engine
+        from kgbuilder.analytics.inference import Neo4jInferenceEngine
+        self.inference_engine = Neo4jInferenceEngine(
+            graph_store=self.graph_store,
+            ontology_service=self.ontology_service
+        )
+
+        # Law Graph Retriever (optional)
+        self.law_retriever = None
+        if self.config.law_graph_enabled:
+            try:
+                from kgbuilder.storage.law_retrieval import LawGraphRetriever
+                law_qdrant = QdrantStore(
+                    url=self.config.qdrant_url,
+                    collection_name=self.config.law_graph_collection,
+                )
+                self.law_retriever = LawGraphRetriever(
+                    neo4j_store=self.graph_store,
+                    qdrant_store=law_qdrant,
+                    embedding_provider=None,  # set after LLM init
+                    max_results=self.config.law_graph_max_results,
+                )
+                logger.info(
+                    "law_graph_retriever_enabled",
+                    collection=self.config.law_graph_collection,
+                )
+            except Exception as e:
+                logger.warning("law_graph_init_failed", error=str(e))
 
         logger.info("storage_services_initialized")
 
@@ -299,8 +345,34 @@ class FullKGPipeline:
             ontology_classes={},
         )
 
+        # Confidence tuning pipeline (Phase 5.1-5.6)
+        self.confidence_tuning_pipeline = ConfidenceTuningPipeline(
+            llm_provider=self.llm,
+            enable_calibration=True,
+            enable_consensus_voting=False,  # Only if needed, expensive
+            quality_threshold=self.config.confidence_threshold,
+        )
+
         # Checkpoint manager
         self.checkpoint_manager = CheckpointManager(self.config.output_dir / "checkpoints")
+
+        # Analytics pipeline (Phase 12: Semantic Enhancement & Analytics)
+        self.analytics_pipeline = AnalyticsPipeline(
+            graph_store=self.graph_store,
+            ontology_service=self.ontology_service,
+            enable_inference=True,
+            enable_skos=True,
+        )
+
+        # Versioning service (KG snapshots and rollback)
+        self.versioning_service = KGVersioningService(
+            version_dir=self.config.version_dir,
+            graph_store=self.graph_store,
+        )
+
+        # Wire embedding provider into law retriever (needs to happen after LLM init)
+        if self.law_retriever is not None:
+            self.law_retriever.embedding_provider = self.embedding_provider
 
         logger.info("llm_services_initialized")
 
@@ -360,6 +432,32 @@ class FullKGPipeline:
                     })
             else:
                 logger.warning("skipping_discovery", reason="config_skip_discovery=true")
+                
+                # 3.1. Direct extraction (when discovery is skipped)
+                logger.info("pipeline_step", step="direct_extraction")
+                if self.wandb_run:
+                    self.wandb_run.log({"status": "direct_extraction_started"})
+                self._run_direct_extraction()
+                if self.wandb_run:
+                    self.wandb_run.log({
+                        "direct_extraction_complete": 1,
+                        "entities_extracted": len(getattr(self, 'discovered_entities', [])),
+                        "relations_extracted": len(getattr(self, 'discovered_relations', []))
+                    })
+
+            # 3.5. Confidence Tuning (Phase 5.1-5.6, if not skipped)
+            if not self.config.skip_confidence_tuning and hasattr(self, 'discovered_entities'):
+                logger.info("pipeline_step", step="confidence_tuning")
+                if self.wandb_run:
+                    self.wandb_run.log({"status": "confidence_tuning_started"})
+                self._run_confidence_tuning()
+                if self.wandb_run:
+                    self.wandb_run.log({
+                        "confidence_tuning_complete": 1,
+                        "entities_after_tuning": len(self.discovered_entities),
+                    })
+            else:
+                logger.warning("skipping_confidence_tuning", reason="config_skip_confidence_tuning=true")
 
             # 4. Enrichment (if not skipped)
             if not self.config.skip_enrichment:
@@ -375,9 +473,16 @@ class FullKGPipeline:
             if self.wandb_run:
                 self.wandb_run.log({"status": "kg_assembly_started"})
             self._build_kg()
+            
+            # 5.5 Semantic Analytics (Phase 12: Inference + Metrics)
+            logger.info("pipeline_step", step="analytics")
+            if self.wandb_run:
+                self.wandb_run.log({"status": "analytics_started"})
+            self._run_analytics()
             if self.wandb_run:
                 self.wandb_run.log({
                     "kg_build_complete": 1,
+                    "analytics_complete": 1,
                     "nodes_created": self.result.kg_nodes,
                     "edges_created": self.result.kg_edges
                 })
@@ -497,6 +602,7 @@ class FullKGPipeline:
             loaders = {
                 ".pdf": PDFLoader(),
                 ".docx": DOCXLoader(),
+                ".xml": LawXMLLoader(),
             }
 
             doc_paths = []
@@ -511,8 +617,12 @@ class FullKGPipeline:
                 loader = loaders.get(path.suffix)
                 if loader:
                     try:
-                        doc = loader.load(path)
-                        documents.append(doc)
+                        loaded = loader.load(path)
+                        # Handle both single Document and list[Document] returns
+                        if isinstance(loaded, list):
+                            documents.extend(loaded)
+                        else:
+                            documents.append(loaded)
                     except Exception as e:
                         logger.warning(
                             "document_load_failed", path=str(path), error=str(e)
@@ -607,6 +717,15 @@ class FullKGPipeline:
 
             retriever = VectorRetriever(self.vector_store, self.embedding_provider)
 
+            # Build law context provider if law graph is enabled
+            law_context_fn = None
+            if self.law_retriever is not None:
+                def _law_context_fn(text: str) -> str:
+                    contexts = self.law_retriever.retrieve_for_text(text)
+                    return self.law_retriever.format_as_prompt_context(contexts)
+                law_context_fn = _law_context_fn
+                logger.info("law_graph_context_enabled_for_discovery")
+
             discovery_loop = IterativeDiscoveryLoop(
                 retriever=retriever,
                 extractor=self.entity_extractor,
@@ -614,6 +733,7 @@ class FullKGPipeline:
                 ontology_classes=self.ontology_classes if hasattr(self, 'ontology_classes') else None,
                 relation_extractor=self.relation_extractor,
                 ontology_relations=self.ontology_relations if hasattr(self, 'ontology_relations') else None,
+                context_provider=law_context_fn,
             )
 
             # Load initial questions if provided
@@ -663,6 +783,108 @@ class FullKGPipeline:
         except Exception as e:
             logger.error("discovery_failed", error=str(e))
             self.result.errors.append(f"Discovery failed: {str(e)}")
+            raise
+
+    def _run_direct_extraction(self) -> None:
+        """Extract entities and relations directly from all documents (no iterative discovery)."""
+        try:
+            logger.info("direct_extraction_start", document_count=len(self.result.documents))
+            
+            # Extract entities and relations from all documents at once
+            all_entities: list[ExtractedEntity] = []
+            all_relations: list[ExtractedRelation] = []
+            
+            for doc in self.result.documents:
+                try:
+                    # Extract entities
+                    doc_entities = self.entity_extractor.extract(doc)
+                    all_entities.extend(doc_entities)
+                    
+                    # Extract relations  
+                    doc_relations = self.relation_extractor.extract(doc, all_entities)
+                    all_relations.extend(doc_relations)
+                    
+                    logger.debug("document_processed", 
+                               doc_id=doc.id, 
+                               entities=len(doc_entities), 
+                               relations=len(doc_relations))
+                               
+                except Exception as e:
+                    logger.warning("document_extraction_failed", 
+                                 doc_id=doc.id, 
+                                 error=str(e))
+                    continue
+            
+            # Store results
+            self.discovered_entities = all_entities
+            self.discovered_relations = all_relations
+            
+            # Update result metrics
+            self.result.discovered_entities = len(all_entities)
+            self.result.discovered_relations = len(all_relations)
+            
+            logger.info("direct_extraction_complete", 
+                       entities=len(all_entities), 
+                       relations=len(all_relations))
+
+        except Exception as e:
+            logger.error("direct_extraction_failed", error=str(e))
+            self.result.errors.append(f"Direct extraction failed: {str(e)}")
+            raise
+
+    def _run_confidence_tuning(self) -> None:
+        """Run confidence tuning on discovered entities and relations."""
+        try:
+            if not hasattr(self, 'discovered_entities') or not self.discovered_entities:
+                logger.warning("no_entities_for_confidence_tuning")
+                return
+
+            logger.info("confidence_tuning_start", entity_count=len(self.discovered_entities))
+
+            # Run confidence tuning pipeline
+            tuned_entities, tuned_relations, tuning_result = self.confidence_tuning_pipeline.tune(
+                entities=self.discovered_entities,
+                relations=self.discovered_relations if hasattr(self, 'discovered_relations') else [],
+            )
+
+            # Update discovered entities with tuned versions
+            self.discovered_entities = tuned_entities
+            if hasattr(self, 'discovered_relations'):
+                self.discovered_relations = tuned_relations
+
+            # Log tuning results
+            logger.info(
+                "confidence_tuning_complete",
+                input_entities=tuning_result.total_entities_input,
+                output_entities=tuning_result.total_entities_output,
+                filtered=tuning_result.entities_filtered,
+                avg_confidence_before=f"{tuning_result.avg_confidence_before:.2f}",
+                avg_confidence_after=f"{tuning_result.avg_confidence_after:.2f}",
+                coreference_clusters=tuning_result.coreference_clusters_merged,
+                calibration_applied=tuning_result.calibration_applied,
+                consensus_votes=tuning_result.consensus_votes_requested,
+                time_sec=f"{tuning_result.processing_time_sec:.1f}",
+            )
+
+            # Log to wandb if enabled
+            if self.wandb_run:
+                self.wandb_run.log({
+                    "confidence_tuning": {
+                        "input_entities": tuning_result.total_entities_input,
+                        "output_entities": tuning_result.total_entities_output,
+                        "entities_filtered": tuning_result.entities_filtered,
+                        "avg_confidence_before": tuning_result.avg_confidence_before,
+                        "avg_confidence_after": tuning_result.avg_confidence_after,
+                        "coreference_clusters_merged": tuning_result.coreference_clusters_merged,
+                        "calibration_applied": tuning_result.calibration_applied,
+                        "consensus_votes_requested": tuning_result.consensus_votes_requested,
+                        "processing_time_sec": tuning_result.processing_time_sec,
+                    }
+                })
+
+        except Exception as e:
+            logger.error("confidence_tuning_failed", error=str(e))
+            self.result.errors.append(f"Confidence tuning failed: {str(e)}")
             raise
 
     def _build_kg(self) -> None:
@@ -848,6 +1070,59 @@ class FullKGPipeline:
             self.result.errors.append(f"Checkpoint enrichment failed: {str(e)}")
             raise
 
+    def _run_analytics(self) -> None:
+        """Run semantic analytics pipeline (Phase 12).
+        
+        Includes:
+        - OWL-RL inference (symmetry, inversion, transitivity, class hierarchy)
+        - SKOS enrichment (when ontology queries available)
+        - Graph metrics (diagnostics and measurement)
+        """
+        if self.config.skip_analytics:
+            logger.warning("skipping_analytics", reason="config_skip_analytics=true")
+            return
+        
+        try:
+            logger.info("analytics_start")
+            analytics_result = self.analytics_pipeline.run()
+            
+            # Log results
+            if analytics_result.inference_enabled:
+                logger.info(
+                    "inference_completed",
+                    stats=analytics_result.inference_stats,
+                    duration=analytics_result.total_duration_seconds,
+                )
+            
+            # Report metrics improvements
+            if analytics_result.metrics_before and analytics_result.metrics_after:
+                logger.info(
+                    "analytics_metrics",
+                    nodes_before=analytics_result.metrics_before.total_nodes,
+                    nodes_after=analytics_result.metrics_after.total_nodes,
+                    edges_before=analytics_result.metrics_before.total_edges,
+                    edges_after=analytics_result.metrics_after.total_edges,
+                    typed_pct_before=analytics_result.metrics_before.typed_percentage,
+                    typed_pct_after=analytics_result.metrics_after.typed_percentage,
+                )
+            
+            # Log to wandb
+            if self.wandb_run:
+                self.wandb_run.log({
+                    "analytics_complete": 1,
+                    "inference_stats": analytics_result.inference_stats,
+                    "analytics_duration": analytics_result.total_duration_seconds,
+                })
+            
+            if analytics_result.status != "success":
+                logger.warning("analytics_completed_with_issues", status=analytics_result.status)
+                if analytics_result.error_message:
+                    self.result.warnings.append(f"Analytics phase: {analytics_result.error_message}")
+            
+        except Exception as e:
+            logger.error("analytics_failed", error=str(e))
+            self.result.warnings.append(f"Analytics phase failed: {str(e)}")
+
     def _validate_kg(self) -> None:
         """Run comprehensive KG validation."""
         try:
@@ -857,7 +1132,10 @@ class FullKGPipeline:
 
             # Run rules engine (semantic validation)
             try:
-                rules = RulesEngine()
+                if self.ontology_service:
+                    rules = RulesEngine.from_ontology_service(self.ontology_service)
+                else:
+                    rules = RulesEngine()
                 rules_result = rules.execute_rules(self.graph_store)
                 validation_results["rules"] = {
                     "passed": rules_result.passed if hasattr(rules_result, 'passed') else True,
@@ -957,23 +1235,33 @@ class FullKGPipeline:
         """Create a versioned snapshot of the Knowledge Graph."""
         try:
             logger.info("creating_version_snapshot")
-            description = f"Pipeline run at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
-            # Additional metadata for the version
-            custom_metadata = {
-                "max_iterations": self.config.max_iterations,
-                "top_k_docs": self.config.top_k_docs,
-                "generate_follow_ups": self.config.generate_follow_ups,
-                "smoke_test": self.config.smoke_test
-            }
-            
-            vid = self.versioning_service.create_snapshot(
-                store=self.graph_store,
-                description=description,
-                custom_metadata=custom_metadata,
-                tags=["pipeline_run", f"iter_{self.config.max_iterations}"]
+            # Generate version name and description
+            timestamp = datetime.now()
+            version_name = f"Pipeline run {timestamp.strftime('%Y%m%d_%H%M%S')}"
+            description = (
+                f"KG built from {self.result.documents_loaded} documents, "
+                f"{self.result.discovered_entities} entities, "
+                f"{self.result.discovered_relations} relations. "
+                f"Max iterations: {self.config.max_iterations}"
             )
-            logger.info("version_snapshot_created", version_id=vid)
+            
+            # Create snapshot with versioning service
+            metadata = self.versioning_service.create_snapshot(
+                name=version_name,
+                description=description,
+                trigger="pipeline_run",
+                pipeline_id=f"run_{timestamp.strftime('%Y%m%d_%H%M%S')}",
+                export_formats=["json-ld"],  # Export formats
+            )
+            
+            logger.info(
+                "version_snapshot_created",
+                version_id=metadata.version_id,
+                entities=metadata.entity_count,
+                relations=metadata.relation_count,
+            )
+            self.result.version_id = metadata.version_id
             
         except Exception as e:
             logger.error("version_snapshot_failed", error=str(e))
@@ -984,6 +1272,9 @@ def main() -> int:
     """Main entry point."""
     from dotenv import load_dotenv
     load_dotenv()
+    
+    # Initialize structured logging
+    setup_logging(log_dir=Path("/tmp"), log_level="INFO", enable_json=True)
 
     parser = argparse.ArgumentParser(
         description="Full KG construction pipeline"
@@ -1067,6 +1358,16 @@ def main() -> int:
         help="Skip enrichment phase",
     )
     parser.add_argument(
+        "--skip-confidence-tuning",
+        action="store_true",
+        help="Skip confidence tuning phase (Phase 5.1-5.6)",
+    )
+    parser.add_argument(
+        "--skip-analytics",
+        action="store_true",
+        help="Skip analytics phase (Phase 12: inference, SKOS, metrics)",
+    )
+    parser.add_argument(
         "--enrich-only",
         action="store_true",
         help="Load checkpoint and run enrichment only (skip discovery)",
@@ -1116,6 +1417,8 @@ def main() -> int:
             max_iterations=args.max_iterations,
             skip_validation=args.skip_validation,
             skip_discovery=args.skip_discovery,
+            skip_confidence_tuning=args.skip_confidence_tuning,
+            skip_analytics=args.skip_analytics,
             skip_enrichment=args.skip_enrichment,
             enrich_only=args.enrich_only,
             checkpoint_path=args.checkpoint,

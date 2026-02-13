@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence, generate_entity_id
 from kgbuilder.extraction.entity import OntologyClassDef
 
 logger = logging.getLogger(__name__)
@@ -309,9 +309,9 @@ class RuleBasedExtractor:
                             confidence=pattern.confidence,
                         )
 
-                        # Create Entity
+                        # Create Entity with content-based ID
                         entity = ExtractedEntity(
-                            id=f"ent_rule_{len(entities):04d}",
+                            id=generate_entity_id(matched_text, entity_type),
                             label=matched_text,
                             entity_type=entity_type,
                             description=f"Extracted by pattern: {pattern.label}",

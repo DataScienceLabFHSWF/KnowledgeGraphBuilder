@@ -5,6 +5,13 @@ This release focused on **system stability**, **performance optimization**, and 
 
 ## Key Improvements
 
+### SHACL2FOL action serialization fix ✅
+**Issue**: `ActionSet` serialized "update" action sets without an explicit `operation` field on `add` actions, causing downstream tools to see only `remove` semantics.
+**Fix**: Ensure `ActionSet.to_json_list()` emits the `operation` field for every action when the ActionSet represents an `update` (remove + add).
+
+**Files**: `src/kgbuilder/validation/action_converter.py`, `tests/validation/test_action_converter.py`
+
+
 ### 1. HTTP Timeout Resolution ✅
 **Issue**: HTTPConnectionPool read timeouts (120s) causing extraction failures on Docker Ollama  
 **Root Cause**: Default timeout was too short for docker overhead + large context  
