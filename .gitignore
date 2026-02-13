@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+# NOTE: lib/ binaries are downloaded at setup time (see scripts/setup_shacl2fol.sh)
 .Python
 build/
 develop-eggs/
@@ -277,3 +278,11 @@ wandb/
 presentations/
 #nohup
 nohup.out
+
+# SHACL2FOL runtime artifacts
+config.properties
+output.tptp
+*.tptp
+
+# Experiment output (generated at runtime)
+experiment_output/

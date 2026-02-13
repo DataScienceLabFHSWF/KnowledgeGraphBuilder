@@ -63,6 +63,7 @@ from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.assembly.kg_builder import KGBuilder
 from kgbuilder.validation.rules_engine import RulesEngine
+from kgbuilder.validation.scorer import KGQualityScorer
 from kgbuilder.analytics.pipeline import AnalyticsPipeline
 from kgbuilder.versioning import KGVersioningService
 from kgbuilder.logging_config import setup_logging, LLMCallTracker, PipelineHealthMonitor
@@ -1156,6 +1157,36 @@ class FullKGPipeline:
                 logger.warning("consistency_check_failed", error=str(e))
                 validation_results["consistency"] = {"error": str(e)}
 
+            # Run KG quality scoring (pySHACL + SHACL2FOL)
+            try:
+                owl_path = self.config.ontology_path
+                scorer = KGQualityScorer(
+                    ontology_owl_path=owl_path,
+                    sample_limit=500,
+                )
+                report = scorer.score_neo4j_store(self.graph_store)
+                validation_results["quality"] = {
+                    "combined_score": report.combined_score,
+                    "consistency": report.consistency,
+                    "acceptance_rate": report.acceptance_rate,
+                    "class_coverage": report.class_coverage,
+                    "shacl_score": report.shacl_score,
+                    "violations": report.violations,
+                    "shacl_report": report.shacl_report_path,
+                }
+                logger.info(
+                    "quality_scoring_complete",
+                    combined_score=report.combined_score,
+                    consistency=report.consistency,
+                    acceptance=report.acceptance_rate,
+                    coverage=report.class_coverage,
+                    shacl=report.shacl_score,
+                    violations=report.violations,
+                )
+            except Exception as e:
+                logger.warning("quality_scoring_failed", error=str(e))
+                validation_results["quality"] = {"error": str(e)}
+
             self.result.validation_results = validation_results
             logger.info("validation_complete", results=validation_results)
 
@@ -1468,6 +1499,19 @@ def main() -> int:
     print(f"  Nodes in Neo4j: {result.kg_nodes}")
     print(f"  Edges in Neo4j: {result.kg_edges}")
     print()
+
+    quality = result.validation_results.get("quality", {})
+    if quality and "error" not in quality:
+        print("QUALITY (pySHACL + SHACL2FOL):")
+        print(f"  Combined score:   {quality.get('combined_score', 'n/a')}")
+        print(f"  Consistency:      {quality.get('consistency', 'n/a')}")
+        print(f"  Acceptance rate:  {quality.get('acceptance_rate', 'n/a')}")
+        print(f"  Class coverage:   {quality.get('class_coverage', 'n/a')}")
+        print(f"  SHACL score:      {quality.get('shacl_score', 'n/a')}")
+        print(f"  Violations:       {quality.get('violations', 'n/a')}")
+        if quality.get('shacl_report'):
+            print(f"  Report:           {quality['shacl_report']}")
+        print()
 
     if result.errors:
         print("ERRORS:")

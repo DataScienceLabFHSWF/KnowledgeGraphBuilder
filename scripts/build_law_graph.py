@@ -135,6 +135,7 @@ class LawGraphResult:
     edges_stored: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    quality: dict[str, Any] = field(default_factory=dict)
     execution_time_seconds: float = 0.0
 
 
@@ -233,6 +234,9 @@ class LawGraphPipeline:
             # 4. Store in Neo4j
             if not self.config.dry_run:
                 self._store_graph(all_entities, all_relations)
+
+                # 4b. Quality scoring (pySHACL + SHACL2FOL)
+                self._score_quality()
 
             # 5. Export results
             self._export_results(all_entities, all_relations, laws)
@@ -484,6 +488,45 @@ class LawGraphPipeline:
         )
 
     # ------------------------------------------------------------------
+    # Step 4b: Quality scoring
+    # ------------------------------------------------------------------
+
+    def _score_quality(self) -> None:
+        """Run KG quality scoring (pySHACL + SHACL2FOL) after graph store."""
+        try:
+            from kgbuilder.validation.scorer import KGQualityScorer
+
+            owl_path = self.config.ontology_path
+            scorer = KGQualityScorer(
+                ontology_owl_path=owl_path if owl_path.exists() else None,
+                sample_limit=500,
+            )
+            neo4j = self._get_neo4j()
+            report = scorer.score_neo4j_store(neo4j)
+
+            logger.info(
+                "quality_scoring_complete",
+                combined_score=report.combined_score,
+                consistency=report.consistency,
+                acceptance=report.acceptance_rate,
+                coverage=report.class_coverage,
+                shacl=report.shacl_score,
+                violations=report.violations,
+            )
+            self.result.quality = {
+                "combined_score": report.combined_score,
+                "consistency": report.consistency,
+                "acceptance_rate": report.acceptance_rate,
+                "class_coverage": report.class_coverage,
+                "shacl_score": report.shacl_score,
+                "violations": report.violations,
+                "shacl_report": report.shacl_report_path,
+            }
+        except Exception as e:
+            logger.warning("quality_scoring_failed", error=str(e))
+            self.result.warnings.append(f"Quality scoring failed: {e}")
+
+    # ------------------------------------------------------------------
     # Step 5: Export results
     # ------------------------------------------------------------------
 
@@ -668,6 +711,16 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Nodes in Neo4j:    {result.nodes_stored}")
     print(f"  Edges in Neo4j:    {result.edges_stored}")
     print(f"  Time:              {result.execution_time_seconds:.1f}s")
+    if result.quality:
+        q = result.quality
+        print()
+        print("QUALITY (pySHACL + SHACL2FOL):")
+        print(f"  Combined score:   {q.get('combined_score', 'n/a')}")
+        print(f"  Consistency:      {q.get('consistency', 'n/a')}")
+        print(f"  Acceptance rate:  {q.get('acceptance_rate', 'n/a')}")
+        print(f"  Class coverage:   {q.get('class_coverage', 'n/a')}")
+        print(f"  SHACL score:      {q.get('shacl_score', 'n/a')}")
+        print(f"  Violations:       {q.get('violations', 'n/a')}")
     if result.errors:
         print(f"  Errors:            {len(result.errors)}")
         for err in result.errors:

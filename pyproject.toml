@@ -54,9 +54,9 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/KnowledgeGraphBuilder"
-Documentation = "https://github.com/yourusername/KnowledgeGraphBuilder/tree/main/Planning"
-Repository = "https://github.com/yourusername/KnowledgeGraphBuilder"
+Homepage = "https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder"
+Documentation = "https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder/tree/main/Planning"
+Repository = "https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder"
 
 [tool.setuptools]
 packages = ["kgbuilder"]
@@ -66,9 +66,6 @@ packages = ["kgbuilder"]
 
 [project.scripts]
 kgbuilder-cli = "kgbuilder.cli:main"
-setup-data = "scripts.ingest_data:setup_data"
-extract-kg = "scripts.extract_kg:main"
-serve = "scripts.serve:main"
 
 [tool.black]
 line-length = 100
