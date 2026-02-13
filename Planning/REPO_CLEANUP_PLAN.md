@@ -245,9 +245,9 @@ The README was rewritten recently and is in good shape. Minor updates:
 
 | Action | Detail |
 |--------|--------|
-| Add SHACL2FOL status note | Clarify it's optional / best-effort |
-| Add quickstart for law graph | Or link to `QUICKSTART_LAW_GRAPH.md` |
-| Update Documentation table | Remove archived docs, add `REPO_CLEANUP_PLAN.md` once actions complete |
+| Add SHACL2FOL status note | [x] Clarified optional status |
+| Add quickstart for law graph | [x] Linked `QUICKSTART_LAW_GRAPH.md` |
+| Update Documentation table | [x] Removed archived docs, added `REPO_CLEANUP_PLAN.md` |
 
 **Effort**: 10 min
 

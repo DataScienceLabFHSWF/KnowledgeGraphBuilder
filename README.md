@@ -63,6 +63,9 @@ python scripts/full_kg_pipeline.py --max-iterations 1
 
 # With law graph context augmentation
 LAW_GRAPH_ENABLED=true python scripts/full_kg_pipeline.py --max-iterations 1
+
+# For law graph specific setup, see:
+# QUICKSTART_LAW_GRAPH.md
 ```
 
 See `python scripts/full_kg_pipeline.py --help` for all CLI options.
@@ -122,8 +125,8 @@ Every KG build is scored automatically.  The scorer generates SHACL shapes
 from the OWL ontology, runs pySHACL against the Neo4j graph, and computes a
 weighted quality score combining:
 
-- **Consistency** (SHACL2FOL satisfiability)
-- **Acceptance** (sampled action validation)
+- **Consistency** (SHACL2FOL satisfiability - optional)
+- **Acceptance** (sampled action validation - optional)
 - **Class coverage** (ontology classes present in the graph)
 - **SHACL conformance** (pySHACL violation count)
 
@@ -175,8 +178,9 @@ See [Planning/VALIDATION_PLAN.md](Planning/VALIDATION_PLAN.md) for details.
 | [Planning/03_INTERFACES.md](Planning/03_INTERFACES.md) | Protocol definitions and interface contracts |
 | [Planning/VALIDATION_PLAN.md](Planning/VALIDATION_PLAN.md) | SHACL validation and scoring plan |
 | [Planning/LANGEXTRACT_EVAL.md](Planning/LANGEXTRACT_EVAL.md) | Evaluation of Google LangExtract |
-| [Planning/LAW_GRAPH_PLAN.md](Planning/LAW_GRAPH_PLAN.md) | Law graph construction plan |
-| [Planning/LAW_ONTOLOGY_SOURCES.md](Planning/LAW_ONTOLOGY_SOURCES.md) | Legal ontology citations (LKIF-Core, ELI) |
+| [Planning/ACADEMIC_OVERVIEW.md](Planning/01_ACADEMIC_OVERVIEW.md) | Academic framing (Link to 01) |
+| [Planning/REPO_CLEANUP_PLAN.md](Planning/REPO_CLEANUP_PLAN.md) | Project organization & cleanup plan |
+| [QUICKSTART_LAW_GRAPH.md](QUICKSTART_LAW_GRAPH.md) | Quickstart for German Law Graph |
 | [data/README.md](data/README.md) | Data directory layout and sources |
 
 ---
