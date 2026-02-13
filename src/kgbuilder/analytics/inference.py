@@ -7,14 +7,14 @@ directly in the graph to improve query performance and discoverability.
 
 from __future__ import annotations
 
-import logging
+import structlog
 from datetime import datetime
 from typing import Any
 
 from kgbuilder.storage.neo4j_store import Neo4jGraphStore
 from kgbuilder.storage.ontology import FusekiOntologyService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class Neo4jInferenceEngine:

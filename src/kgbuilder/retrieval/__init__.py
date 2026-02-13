@@ -21,14 +21,14 @@ from kgbuilder.retrieval.phase2 import (
     RerankedResult,
 )
 
-import logging
+import structlog
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 __all__ = [
     "RetrievalResult",

@@ -1132,7 +1132,10 @@ class FullKGPipeline:
 
             # Run rules engine (semantic validation)
             try:
-                rules = RulesEngine()
+                if self.ontology_service:
+                    rules = RulesEngine.from_ontology_service(self.ontology_service)
+                else:
+                    rules = RulesEngine()
                 rules_result = rules.execute_rules(self.graph_store)
                 validation_results["rules"] = {
                     "passed": rules_result.passed if hasattr(rules_result, 'passed') else True,

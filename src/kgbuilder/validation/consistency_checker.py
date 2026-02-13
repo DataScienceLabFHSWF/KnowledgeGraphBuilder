@@ -166,9 +166,13 @@ class ConsistencyChecker:
                             and other_value is not None
                         ):
                             conflict = Conflict(
+                                entity_id=entity_id,
                                 conflict_type=ConflictType.VALUE_CONFLICT,
-                                involved_entities=[entity_id, other_node.id],
                                 description=f"Property '{prop_key}' has conflicting values: {prop_value} vs {other_value}",
+                                involved_facts=[
+                                    (entity_id, prop_key, str(prop_value)),
+                                    (other_node.id, prop_key, str(other_value)),
+                                ],
                             )
                             conflicts.append(conflict)
 
@@ -287,8 +291,8 @@ class ConsistencyChecker:
                                         type1 == incompat2 and type2 == incompat1
                                     ):
                                         conflict = Conflict(
+                                            entity_id=node.id,
                                             conflict_type=ConflictType.TYPE_CONFLICT,
-                                            involved_entities=[node.id],
                                             description=f"Node {node.id} has incompatible types: {type1} and {type2}",
                                         )
                                         conflicts.append(conflict)
@@ -332,8 +336,8 @@ class ConsistencyChecker:
 
                         if len(unique_values) > 1:
                             conflict = Conflict(
+                                entity_id=node.id,
                                 conflict_type=ConflictType.VALUE_CONFLICT,
-                                involved_entities=[node.id],
                                 description=f"Property '{prop_key}' on {node.id} has conflicting values: {unique_values}",
                             )
                             conflicts.append(conflict)
@@ -380,8 +384,8 @@ class ConsistencyChecker:
                         # Check if property has multiple values
                         if isinstance(prop_value, list) and len(prop_value) > 1:
                             conflict = Conflict(
+                                entity_id=node.id,
                                 conflict_type=ConflictType.CARDINALITY_CONFLICT,
-                                involved_entities=[node.id],
                                 description=f"Functional property '{func_prop}' on {node.id} has {len(prop_value)} values",
                             )
                             conflicts.append(conflict)

@@ -6,15 +6,16 @@ tasks to execute after KG assembly for quality improvement and diagnostics.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from datetime import datetime
+
+import structlog
 
 from kgbuilder.analytics.inference import Neo4jInferenceEngine
 from kgbuilder.analytics.metrics import GraphMetrics, GraphMetricsSnapshot
 from kgbuilder.analytics.skos import SKOSEnricher
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

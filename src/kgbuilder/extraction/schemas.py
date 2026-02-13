@@ -17,6 +17,8 @@ class EntityExtractionOutput(BaseModel):
     Matches ExtractedEntity structure for seamless integration.
     """
 
+    model_config = {"populate_by_name": True}
+
     entities: list[EntityItem] = Field(
         description="List of extracted entities from text"
     )
@@ -42,10 +44,13 @@ class EntityExtractionOutput(BaseModel):
 class EntityItem(BaseModel):
     """Individual extracted entity."""
 
+    model_config = {"populate_by_name": True}
+
     id: str = Field(description="Unique entity identifier")
     label: str = Field(description="Entity text/label from source")
     entity_type: str = Field(
-        description="Entity type from ontology (e.g., Facility, Organization, Operation)"
+        alias="type",
+        description="Entity type from ontology (e.g., Facility, Organization, Operation)",
     )
     confidence: float = Field(
         ge=0.0, le=1.0, description="Confidence score (0.0-1.0)"
@@ -60,8 +65,11 @@ class EntityItem(BaseModel):
 class RelationExtractionOutput(BaseModel):
     """Schema for relation extraction JSON output."""
 
+    model_config = {"populate_by_name": True}
+
     relations: list[RelationItem] = Field(
-        description="List of extracted relations between entities"
+        alias="relationships",
+        description="List of extracted relations between entities",
     )
 
     class Config:
@@ -85,11 +93,14 @@ class RelationExtractionOutput(BaseModel):
 class RelationItem(BaseModel):
     """Individual extracted relation."""
 
+    model_config = {"populate_by_name": True}
+
     id: str = Field(description="Unique relation identifier")
     source_id: str = Field(description="ID of source entity")
     source_label: str = Field(description="Label of source entity")
     relation_type: str = Field(
-        description="Relation type from ontology (e.g., requires, involves, documents)"
+        alias="type",
+        description="Relation type from ontology (e.g., requires, involves, documents)",
     )
     target_id: str = Field(description="ID of target entity")
     target_label: str = Field(description="Label of target entity")

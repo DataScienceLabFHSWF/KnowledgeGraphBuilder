@@ -450,6 +450,86 @@ class RulesEngine:
         self.rules.append(rule)
         logger.debug("rule_added", rule_name=rule.name)
 
+    @classmethod
+    def from_ontology_service(
+        cls, ontology_service: Any, stop_on_error: bool = False
+    ) -> RulesEngine:
+        """Create RulesEngine with rules derived from an ontology service.
+
+        Queries the ontology for OWL property characteristics
+        (transitive, symmetric, functional, inverse) and creates
+        corresponding semantic rules automatically.
+
+        Args:
+            ontology_service: FusekiOntologyService (or compatible) with
+                ``get_special_properties()`` method.
+            stop_on_error: Stop execution if a rule raises exception.
+
+        Returns:
+            RulesEngine pre-populated with ontology-derived rules.
+        """
+        rules: list[SemanticRule] = []
+
+        try:
+            special = ontology_service.get_special_properties()
+
+            # Transitive properties
+            for prop in special.get("transitive", []):
+                rules.append(
+                    TransitiveRule(
+                        name=f"{prop}-transitive",
+                        description=f"Enforce transitive property: {prop}",
+                        property_uri=prop,
+                    )
+                )
+
+            # Symmetric properties (modelled as self-inverse)
+            for prop in special.get("symmetric", []):
+                rules.append(
+                    InversePropertyRule(
+                        name=f"{prop}-symmetric",
+                        description=f"Enforce symmetric property: {prop}",
+                        property_uri=prop,
+                        inverse_uri=prop,
+                    )
+                )
+
+            # Functional properties
+            for prop in special.get("functional", []):
+                rules.append(
+                    FunctionalPropertyRule(
+                        name=f"{prop}-functional",
+                        description=f"Enforce functional property: {prop}",
+                        property_uri=prop,
+                    )
+                )
+
+            # Inverse property pairs
+            for pair in special.get("inverse", []):
+                if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                    rules.append(
+                        InversePropertyRule(
+                            name=f"{pair[0]}-inverse-{pair[1]}",
+                            description=f"Enforce inverse: {pair[0]} ↔ {pair[1]}",
+                            property_uri=pair[0],
+                            inverse_uri=pair[1],
+                        )
+                    )
+
+            logger.info(
+                "rules_derived_from_ontology",
+                transitive=len(special.get("transitive", [])),
+                symmetric=len(special.get("symmetric", [])),
+                functional=len(special.get("functional", [])),
+                inverse=len(special.get("inverse", [])),
+                total_rules=len(rules),
+            )
+
+        except Exception as e:
+            logger.warning("ontology_rule_derivation_failed", error=str(e))
+
+        return cls(rules=rules, stop_on_error=stop_on_error)
+
     def execute_rules(self, store: GraphStore) -> ValidationResult:
         """Execute all rules against the knowledge graph.
 
