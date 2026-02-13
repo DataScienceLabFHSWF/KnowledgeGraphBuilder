@@ -42,48 +42,61 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class ShapeAction:
-    """A SHACL2FOL ShapeAction: connects two shape-typed nodes.
+    """A SHACL2FOL ShapeAction: adds/removes ``x predicate y`` for matching shapes.
 
-    Attributes:
-        subject_shape: URI of the SHACL shape for the subject node.
-        object_shape: URI of the SHACL shape for the object node.
-        operation: 'add'|'remove'|'update' describing the intended update.
+    SHACL2FOL JSON format::
+
+        {"type": "ShapeAction", "isAdd": true,
+         "predicate": "http://...",
+         "subjectShape": "@prefix sh: ... :s a sh:NodeShape ; sh:class :Foo .",
+         "objectShape": "@prefix sh: ... :s a sh:NodeShape ; sh:class :Bar ."}
+
+    ``subjectShape`` and ``objectShape`` are inline Turtle strings defining
+    single named SHACL shapes.
     """
 
+    predicate: str
     subject_shape: str
     object_shape: str
-    operation: str = "add"
+    is_add: bool = True
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to SHACL2FOL JSON format."""
-        d = {
+        return {
             "type": "ShapeAction",
+            "isAdd": self.is_add,
+            "predicate": self.predicate,
             "subjectShape": self.subject_shape,
             "objectShape": self.object_shape,
         }
-        if self.operation and self.operation != "add":
-            d["operation"] = self.operation
-        return d
 
 
 @dataclass
 class PathAction:
-    """A SHACL2FOL PathAction: instantiates a property path.
+    """A SHACL2FOL PathAction: adds/removes ``x predicate y`` along a path.
 
-    Attributes:
-        path: URI of the property path being added.
-        operation: 'add'|'remove'|'update' describing the intended update.
+    SHACL2FOL JSON format::
+
+        {"type": "PathAction", "isAdd": true,
+         "predicate": "http://...",
+         "path": "<http://...>"}
+
+    ``path`` is a SHACL property path expression (angle-bracket IRI or
+    Turtle path syntax).
     """
 
+    predicate: str
     path: str
-    operation: str = "add"
+    is_add: bool = True
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to SHACL2FOL JSON format."""
-        d = {"type": "PathAction", "path": self.path}
-        if self.operation and self.operation != "add":
-            d["operation"] = self.operation
-        return d
+        return {
+            "type": "PathAction",
+            "isAdd": self.is_add,
+            "predicate": self.predicate,
+            "path": self.path,
+        }
 
 
 @dataclass
@@ -100,32 +113,13 @@ class ActionSet:
     path_actions: list[PathAction] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_json_list(self) -> list[dict[str, str]]:
-        """Serialize all actions to SHACL2FOL JSON array format.
-
-        When this ActionSet represents an "update" (merged remove+add) we
-        explicitly include the `operation` field for *all* actions so the
-        serialized form unambiguously conveys both the `remove` and `add`
-        semantics (the individual action serializers omit `operation` for
-        the common `add` case).
-        """
-        actions: list[dict[str, str]] = []
-
-        # Build paired (obj, dict) so we can inject operation when this
-        # ActionSet encodes an `update` (remove+add) and callers expect both
-        # semantics to appear in the JSON representation.
+    def to_json_list(self) -> list[dict[str, Any]]:
+        """Serialize all actions to SHACL2FOL JSON array format."""
+        actions: list[dict[str, Any]] = []
         for a in self.shape_actions:
-            d = a.to_dict()
-            if self.metadata.get("operation") == "update" and "operation" not in d:
-                d["operation"] = a.operation
-            actions.append(d)
-
+            actions.append(a.to_dict())
         for a in self.path_actions:
-            d = a.to_dict()
-            if self.metadata.get("operation") == "update" and "operation" not in d:
-                d["operation"] = a.operation
-            actions.append(d)
-
+            actions.append(a.to_dict())
         return actions
 
     @property
@@ -170,98 +164,119 @@ class ActionConverter:
         self._ontology_service = ontology_service
 
     # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    _TURTLE_PREFIXES = (
+        "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\\n"
+        "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\\n"
+        "@prefix sh: <http://www.w3.org/ns/shacl#> .\\n"
+    )
+
+    def _inline_shape(self, class_uri: str) -> str:
+        """Build an inline Turtle shape string for a single class.
+
+        SHACL2FOL requires ``subjectShape`` / ``objectShape`` to be valid
+        Turtle containing exactly one named shape.
+        """
+        return (
+            f"{self._TURTLE_PREFIXES}"
+            f"<{self._shapes_ns}actionShape> a sh:NodeShape ;\\n"
+            f"  sh:class <{class_uri}> .\\n"
+        )
+
+    _RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def from_entities(self, entities: list[Any], operation: str = "add") -> ActionSet:
         """Convert extracted entities to SHACL2FOL actions.
 
-        Each entity type maps to a ``ShapeAction`` asserting the node
-        conforms to the corresponding NodeShape.
-
-        Args:
-            entities: List of entity-like objects with `entity_type`.
-            operation: One of 'add', 'remove', or 'update' describing the
-                intended update operation (defaults to 'add').
+        Each entity type maps to a ``PathAction`` adding an ``rdf:type``
+        edge whose path is the identity path on ``rdf:type``.
         """
+        is_add = operation != "remove"
         if operation == "update":
-            # update -> emit remove + add
             remove_set = self.from_entities(entities, operation="remove")
             add_set = self.from_entities(entities, operation="add")
-            merged = ActionSet(
+            return ActionSet(
                 shape_actions=remove_set.shape_actions + add_set.shape_actions,
                 path_actions=remove_set.path_actions + add_set.path_actions,
-                metadata={"merged_from": [remove_set.metadata.get("generated_from"), add_set.metadata.get("generated_from")], "operation": "update"},
+                metadata={"operation": "update"},
             )
-            return merged
 
         action_set = ActionSet()
+        seen: set[str] = set()
         for ent in entities:
-            # Expect attribute `entity_type` on entity model
             ent_type = getattr(ent, "entity_type", None) or getattr(ent, "type", None)
-            if not ent_type:
+            if not ent_type or ent_type in seen:
                 continue
-            shape_uri = f"{self._shapes_ns}{ent_type}Shape"
-            action_set.shape_actions.append(ShapeAction(subject_shape=shape_uri, object_shape=shape_uri, operation=operation))
+            seen.add(ent_type)
+            class_uri = f"{self._ont_ns}{ent_type}"
+            action_set.path_actions.append(
+                PathAction(
+                    predicate=self._RDF_TYPE,
+                    path=f"<{self._RDF_TYPE}>",
+                    is_add=is_add,
+                )
+            )
         action_set.metadata["generated_from"] = "entities"
-        action_set.metadata["operation"] = operation
         return action_set
 
     def from_relations(self, relations: list[Any], operation: str = "add") -> ActionSet:
         """Convert extracted relations to SHACL2FOL actions.
 
-        Each relation maps to a ``PathAction`` for the predicate path and a
-        ``ShapeAction`` linking the source/target shapes when type info is
-        available.
-
-        Args:
-            relations: List of relation-like objects.
-            operation: One of 'add', 'remove', or 'update' describing the
-                intended update operation (defaults to 'add').
+        Each relation maps to a ``PathAction`` for the property predicate.
         """
+        is_add = operation != "remove"
         if operation == "update":
-            # Emit remove + add for relations
             remove_set = self.from_relations(relations, operation="remove")
             add_set = self.from_relations(relations, operation="add")
-            merged = ActionSet(
+            return ActionSet(
                 shape_actions=remove_set.shape_actions + add_set.shape_actions,
                 path_actions=remove_set.path_actions + add_set.path_actions,
-                metadata={"merged_from": [remove_set.metadata.get("generated_from"), add_set.metadata.get("generated_from")], "operation": "update"},
+                metadata={"operation": "update"},
             )
-            return merged
 
         action_set = ActionSet()
+        seen: set[str] = set()
         for rel in relations:
             rel_type = getattr(rel, "relation_type", None) or getattr(rel, "predicate", None) or getattr(rel, "type", None)
-            if rel_type:
-                path_uri = f"{self._ont_ns}{rel_type}"
-                action_set.path_actions.append(PathAction(path=path_uri, operation=operation))
+            if not rel_type or rel_type in seen:
+                continue
+            seen.add(rel_type)
+            pred_uri = f"{self._ont_ns}{rel_type}"
+            action_set.path_actions.append(
+                PathAction(
+                    predicate=pred_uri,
+                    path=f"<{pred_uri}>",
+                    is_add=is_add,
+                )
+            )
 
-                # Expand inverse actions when ontology provides inverse declarations
-                try:
-                    if self._ontology_service:
-                        special = self._ontology_service.get_special_properties() or {}
-                        for inv in special.get("inverse", []) or []:
-                            if isinstance(inv, tuple) and len(inv) == 2:
-                                a, b = inv
-                                if rel_type == a:
-                                    inv_path = f"{self._ont_ns}{b}"
-                                    action_set.path_actions.append(PathAction(path=inv_path, operation=operation))
-                                elif rel_type == b:
-                                    inv_path = f"{self._ont_ns}{a}"
-                                    action_set.path_actions.append(PathAction(path=inv_path, operation=operation))
-                except Exception:
-                    pass
+            # Expand inverse actions when ontology provides inverse declarations
+            try:
+                if self._ontology_service:
+                    special = self._ontology_service.get_special_properties() or {}
+                    for inv in special.get("inverse", []) or []:
+                        if isinstance(inv, tuple) and len(inv) == 2:
+                            a, b = inv
+                            inv_type = None
+                            if rel_type == a:
+                                inv_type = b
+                            elif rel_type == b:
+                                inv_type = a
+                            if inv_type and inv_type not in seen:
+                                inv_uri = f"{self._ont_ns}{inv_type}"
+                                action_set.path_actions.append(
+                                    PathAction(predicate=inv_uri, path=f"<{inv_uri}>", is_add=is_add)
+                                )
+            except Exception:
+                pass
 
-            # Try to link shapes if source/target types are present
-            src_type = getattr(rel, "source_type", None) or getattr(rel, "source_class", None)
-            tgt_type = getattr(rel, "target_type", None) or getattr(rel, "target_class", None)
-            if src_type and tgt_type:
-                subj_shape = f"{self._shapes_ns}{src_type}Shape"
-                obj_shape = f"{self._shapes_ns}{tgt_type}Shape"
-                action_set.shape_actions.append(ShapeAction(subject_shape=subj_shape, object_shape=obj_shape, operation=operation))
         action_set.metadata["generated_from"] = "relations"
-        action_set.metadata["operation"] = operation
         return action_set
 
     def from_entities_and_relations(

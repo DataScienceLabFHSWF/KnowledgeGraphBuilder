@@ -269,10 +269,13 @@ class StaticValidator:
             Path to the written config file.
         """
         config_path = work_dir / "config.properties"
+        tptp_out = work_dir / "output.tptp"
         content = (
             f"proverPath={self._config.vampire_path.resolve()}\n"
             f"tptpPrefix={self._config.tptp_prefix}\n"
             f"encodeUNA={'true' if self._config.encode_una else 'false'}\n"
+            f"tptpOutputFile={tptp_out}\n"
+            f"proverArguments=\n"
         )
         config_path.write_text(content)
         return config_path
@@ -317,25 +320,45 @@ class StaticValidator:
             raise RuntimeError(f"SHACL2FOL invocation timed out: {e}") from e
 
     def _parse_output(self, stdout: str, mode: str) -> StaticValidationResult:
-        """Parse SHACL2FOL stdout into a structured StaticValidationResult."""
+        """Parse SHACL2FOL stdout into a structured StaticValidationResult.
+
+        SHACL2FOL output patterns:
+          - Satisfiability: ``Is satisfiable? true`` / ``Is satisfiable? false``
+          - Action validation: ``Is validation of the shape graph maintained
+            after performing the actions? true`` / ``... false``
+          - Memory/time stats: ``Memory (KB) NNN`` / ``Time (s) N.NNN``
+        """
         out = StaticValidationResult(mode=mode, raw_output=stdout)
-        text = (stdout or "").lower()
-        # Simple heuristics: look for VALID/INVALID or szs-style status
-        if "valid" in text and "invalid" not in text:
+        text = stdout or ""
+        text_lower = text.lower()
+
+        # --- Satisfiability mode ---
+        if "is satisfiable?" in text_lower:
+            out.valid = "is satisfiable? true" in text_lower
+        # --- Action validation mode ---
+        elif "maintained after performing the actions?" in text_lower:
+            out.valid = "after performing the actions? true" in text_lower
+        # --- Fallback: SZS status from Vampire ---
+        elif "szs status satisfiable" in text_lower:
             out.valid = True
-        elif "invalid" in text:
-            out.valid = False
-        elif "szs status satisfiable" in text or "satisfiable" in text:
-            out.valid = True
-        elif "unsatisfiable" in text or "szs status unsatisfiable" in text:
+        elif "szs status unsatisfiable" in text_lower:
             out.valid = False
         else:
-            # Unknown — conservatively mark as invalid and include raw output
             out.valid = False
             out.error = "Could not parse prover output"
 
-        # Attempt to capture a counterexample snippet
-        if "counterexample" in text or "model" in text:
-            out.counterexample = stdout.strip()[:200]
+        # Extract timing/memory stats
+        import re
+        m_time = re.search(r"Time \(s\)\s+([\d.]+)", text)
+        if m_time:
+            out.duration_ms = float(m_time.group(1)) * 1000
+        m_mem = re.search(r"Memory \(KB\)\s+(\d+)", text)
+        if m_mem:
+            out.counterexample = ""  # reset — will be filled below if invalid
+
+        # Capture counterexample / model snippet only when invalid
+        if not out.valid:
+            if "counterexample" in text_lower or "no model has been found" in text_lower:
+                out.counterexample = text.strip()[:500]
 
         return out

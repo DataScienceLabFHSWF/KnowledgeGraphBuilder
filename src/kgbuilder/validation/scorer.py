@@ -146,6 +146,7 @@ class KGQualityScorer:
         self._sample_limit = sample_limit
         # Generated lazily when first needed
         self._shapes_graph: rdflib.Graph | None = None
+        self._shapes_file: Path | None = None  # on-disk path for SHACL2FOL
         self._ontology_class_count: int | None = None
 
     # ------------------------------------------------------------------
@@ -154,6 +155,10 @@ class KGQualityScorer:
 
     def _ensure_shapes_graph(self, shapes_path: Path | None = None) -> rdflib.Graph | None:
         """Return a SHACL shapes graph, generating from OWL if necessary.
+
+        When shapes are generated from OWL, the graph is persisted to
+        ``output/validation_reports/shapes.ttl`` so that SHACL2FOL (which
+        requires a file path) can read it.
 
         Returns ``None`` when no shapes source is available (instead of
         raising) so callers can degrade gracefully.
@@ -167,6 +172,7 @@ class KGQualityScorer:
             g.parse(str(shapes_path))
             if len(g) > 0:
                 self._shapes_graph = g
+                self._shapes_file = shapes_path
                 logger.info("shapes_loaded_from_file", path=str(shapes_path), triples=len(g))
                 return g
 
@@ -177,11 +183,18 @@ class KGQualityScorer:
             g = gen.generate()
             self._shapes_graph = g
             self._ontology_class_count = len(svc.get_all_classes())
+
+            # Persist to disk so SHACL2FOL can use it
+            self.REPORT_DIR.mkdir(parents=True, exist_ok=True)
+            ttl_path = self.REPORT_DIR / "shapes.ttl"
+            g.serialize(destination=str(ttl_path), format="turtle")
+            self._shapes_file = ttl_path
             logger.info(
                 "shapes_generated_from_owl",
                 owl=str(self._owl_path),
                 triples=len(g),
                 classes=self._ontology_class_count,
+                persisted=str(ttl_path),
             )
             return g
 
@@ -394,12 +407,15 @@ class KGQualityScorer:
         # 1) Shapes graph (generate from OWL if needed)
         shapes_graph = self._ensure_shapes_graph(shapes)
 
+        # Use persisted shapes file (auto-generated or user-provided)
+        effective_shapes = shapes if (shapes and shapes.exists()) else self._shapes_file
+
         # 2) SHACL2FOL satisfiability (best-effort)
         consistency = 0.0
         sat_details: dict[str, Any] = {}
-        if shapes and shapes.exists():
+        if effective_shapes and effective_shapes.exists():
             try:
-                sat = self._sv.check_satisfiability(shapes)
+                sat = self._sv.check_satisfiability(effective_shapes)
                 consistency = 1.0 if sat.valid else 0.0
                 sat_details = sat.__dict__
             except Exception as exc:
@@ -421,17 +437,19 @@ class KGQualityScorer:
 
         acceptance = 0.0
         sv_details: dict[str, Any] = {}
-        if (entities or relations) and shapes and shapes.exists():
+        if (entities or relations) and effective_shapes and effective_shapes.exists():
             try:
-                sv_res = self._sv.validate_entities_and_relations(shapes, entities, relations)
+                sv_res = self._sv.validate_entities_and_relations(
+                    effective_shapes, entities, relations,
+                )
                 acceptance = 1.0 if sv_res.valid else 0.0
                 sv_details = sv_res.__dict__
             except Exception as exc:
                 logger.warning("static_validation_failed", error=str(exc))
         elif entities or relations:
-            # Shapes generated from OWL but not persisted – skip SHACL2FOL
+            # No shapes file at all – skip SHACL2FOL
             acceptance = 1.0
-            sv_details = {"skipped": True}
+            sv_details = {"skipped": True, "reason": "no shapes file"}
         else:
             logger.warning("no_sampled_actions", store=type(store).__name__)
 

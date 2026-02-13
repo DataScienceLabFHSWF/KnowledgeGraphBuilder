@@ -98,9 +98,23 @@ class SHACLShapeGenerator:
             classes = []
 
         for cls in classes:
-            class_label = str(cls)
+            # Handle both list[str] (Fuseki) and list[dict] (_FileOntologyService)
+            if isinstance(cls, dict):
+                class_label = cls.get("label", cls.get("uri", ""))
+                class_uri_str = cls.get("uri")
+            else:
+                class_label = str(cls)
+                class_uri_str = None
+
+            if not class_label:
+                continue
+
             shape_uri = URIRef(f"{self._namespace}{class_label}Shape")
-            class_uri = URIRef(f"{self._ontology_ns}{class_label}")
+            # Use the full OWL URI when available; otherwise build from namespace
+            if class_uri_str:
+                class_uri = URIRef(class_uri_str)
+            else:
+                class_uri = URIRef(f"{self._ontology_ns}{class_label}")
 
             g.add((shape_uri, RDF.type, SH.NodeShape))
             g.add((shape_uri, SH.targetClass, class_uri))

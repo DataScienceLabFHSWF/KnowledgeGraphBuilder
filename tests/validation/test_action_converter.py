@@ -21,28 +21,50 @@ class TestShapeAction:
 
     def test_to_dict_format(self) -> None:
         action = ShapeAction(
-            subject_shape="http://ex.org/FacilityShape",
-            object_shape="http://ex.org/OrganizationShape",
+            predicate="http://ex.org/hasPart",
+            subject_shape="@prefix sh: ... :s a sh:NodeShape ; sh:class <http://ex.org/Facility> .",
+            object_shape="@prefix sh: ... :s a sh:NodeShape ; sh:class <http://ex.org/Organization> .",
         )
         d = action.to_dict()
         assert d["type"] == "ShapeAction"
-        assert d["subjectShape"] == "http://ex.org/FacilityShape"
-        assert d["objectShape"] == "http://ex.org/OrganizationShape"
+        assert d["isAdd"] is True
+        assert d["predicate"] == "http://ex.org/hasPart"
+        assert "Facility" in d["subjectShape"]
+        assert "Organization" in d["objectShape"]
+
+    def test_is_add_false(self) -> None:
+        action = ShapeAction(
+            predicate="http://ex.org/hasPart",
+            subject_shape="...",
+            object_shape="...",
+            is_add=False,
+        )
+        d = action.to_dict()
+        assert d["isAdd"] is False
 
 
 class TestPathAction:
     """Test PathAction dataclass."""
 
     def test_to_dict_format(self) -> None:
-        action = PathAction(path="http://ex.org/requires")
+        action = PathAction(
+            predicate="http://ex.org/requires",
+            path="<http://ex.org/requires>",
+        )
         d = action.to_dict()
         assert d["type"] == "PathAction"
-        assert d["path"] == "http://ex.org/requires"
+        assert d["isAdd"] is True
+        assert d["predicate"] == "http://ex.org/requires"
+        assert d["path"] == "<http://ex.org/requires>"
 
-    def test_operation_is_serialized_when_not_add(self) -> None:
-        action = PathAction(path="http://ex.org/requires", operation="remove")
+    def test_is_add_false(self) -> None:
+        action = PathAction(
+            predicate="http://ex.org/requires",
+            path="<http://ex.org/requires>",
+            is_add=False,
+        )
         d = action.to_dict()
-        assert d["operation"] == "remove"
+        assert d["isAdd"] is False
 
 
 class TestActionSet:
@@ -56,10 +78,14 @@ class TestActionSet:
     def test_mixed_actions(self) -> None:
         action_set = ActionSet(
             shape_actions=[
-                ShapeAction("http://ex.org/A", "http://ex.org/B"),
+                ShapeAction(
+                    predicate="http://ex.org/p",
+                    subject_shape="...",
+                    object_shape="...",
+                ),
             ],
             path_actions=[
-                PathAction("http://ex.org/prop"),
+                PathAction(predicate="http://ex.org/prop", path="<http://ex.org/prop>"),
             ],
         )
         assert action_set.total_actions == 2
@@ -88,8 +114,8 @@ class TestActionConverter:
     def test_write_json_creates_file(self, tmp_path: Path) -> None:
         converter = ActionConverter()
         action_set = ActionSet(
-            shape_actions=[
-                ShapeAction("http://ex.org/A", "http://ex.org/B"),
+            path_actions=[
+                PathAction(predicate="http://ex.org/p", path="<http://ex.org/p>"),
             ],
         )
         path = converter.write_json(action_set, tmp_path / "actions.json")
@@ -98,67 +124,55 @@ class TestActionConverter:
         with open(path) as f:
             data = json.load(f)
         assert len(data) == 1
-        assert data[0]["type"] == "ShapeAction"
+        assert data[0]["type"] == "PathAction"
 
     def test_read_json_round_trip(self, tmp_path: Path) -> None:
         converter = ActionConverter()
         action_set = ActionSet(
             shape_actions=[
-                ShapeAction("http://ex.org/A", "http://ex.org/B"),
+                ShapeAction(
+                    predicate="http://ex.org/p",
+                    subject_shape="...",
+                    object_shape="...",
+                ),
             ],
             path_actions=[
-                PathAction("http://ex.org/prop"),
+                PathAction(predicate="http://ex.org/prop", path="<http://ex.org/prop>"),
             ],
         )
         path = converter.write_json(action_set, tmp_path / "actions.json")
         loaded = ActionConverter.read_json(path)
         assert len(loaded) == 2
 
-    def test_actions_support_operation_semantics(self) -> None:
-        converter = ActionConverter()
-        # Entities with remove operation
-        ent = MagicMock()
-        ent.entity_type = "Facility"
-        actions = converter.from_entities([ent], operation="remove")
-        assert actions.metadata.get("operation") == "remove"
-        assert actions.shape_actions[0].operation == "remove"
-        json_list = actions.to_json_list()
-        assert any(a.get("operation") == "remove" for a in json_list)
-
-        # Relations with update operation produce both remove+add entries
-        rel = MagicMock()
-        rel.relation_type = "requires"
-        rel.source_type = "Facility"
-        rel.target_type = "Document"
-        actions = converter.from_relations([rel], operation="update")
-        # update produces a single ActionSet but contains both remove/add semantics
-        ops = {a.get("operation") for a in actions.to_json_list() if a.get("operation")}
-        assert "remove" in ops and "add" in ops
-
-    def test_from_relations_expands_inverse_using_ontology(self) -> None:
-        # Mock ontology service that declares inverse pair (requires, requiredBy)
-        mock_onto = MagicMock()
-        mock_onto.get_special_properties.return_value = {"inverse": [("requires", "requiredBy")]} 
-        converter = ActionConverter(ontology_service=mock_onto)
-        rel = MagicMock()
-        rel.relation_type = "requires"
-        rel.source_type = "Facility"
-        rel.target_type = "Document"
-        actions = converter.from_relations([rel])
-        paths = [p.path for p in actions.path_actions]
-        assert any(p.endswith("requires") for p in paths)
-        assert any(p.endswith("requiredBy") for p in paths)
-
-    def test_from_entities_creates_shape_actions(self) -> None:
+    def test_from_entities_creates_path_actions(self) -> None:
         converter = ActionConverter()
         entity = MagicMock()
         entity.entity_type = "Facility"
-        entity.label = "KKW Emsland"
         actions = converter.from_entities([entity])
         assert actions.total_actions == 1
-        assert actions.shape_actions[0].subject_shape.endswith("FacilityShape")
+        assert len(actions.path_actions) == 1
+        assert actions.path_actions[0].predicate.endswith("type")
+        assert actions.path_actions[0].is_add is True
 
-    def test_from_relations_creates_path_and_shape_actions(self) -> None:
+    def test_from_entities_deduplicates_by_type(self) -> None:
+        converter = ActionConverter()
+        e1 = MagicMock()
+        e1.entity_type = "Facility"
+        e2 = MagicMock()
+        e2.entity_type = "Facility"
+        actions = converter.from_entities([e1, e2])
+        assert actions.total_actions == 1
+
+    def test_from_entities_remove_sets_is_add_false(self) -> None:
+        converter = ActionConverter()
+        entity = MagicMock()
+        entity.entity_type = "Facility"
+        actions = converter.from_entities([entity], operation="remove")
+        assert actions.path_actions[0].is_add is False
+        d = actions.path_actions[0].to_dict()
+        assert d["isAdd"] is False
+
+    def test_from_relations_creates_path_actions(self) -> None:
         converter = ActionConverter()
         relation = MagicMock()
         relation.relation_type = "requires"
@@ -166,25 +180,31 @@ class TestActionConverter:
         relation.target_type = "Document"
         actions = converter.from_relations([relation])
         assert len(actions.path_actions) == 1
-        assert len(actions.shape_actions) == 1
-        assert actions.path_actions[0].path.endswith("requires")
+        assert "requires" in actions.path_actions[0].predicate
+        assert actions.path_actions[0].is_add is True
 
-    def test_update_serialization_includes_operation_field(self) -> None:
-        """When an ActionSet encodes an `update` (remove+add), the JSON
-        serialization must include an explicit `operation` value for every
-        action so downstream tools can see both `remove` and `add`."""
-        converter = ActionConverter()
-
+    def test_from_relations_expands_inverse_using_ontology(self) -> None:
+        mock_onto = MagicMock()
+        mock_onto.get_special_properties.return_value = {
+            "inverse": [("requires", "requiredBy")],
+        }
+        converter = ActionConverter(ontology_service=mock_onto)
         rel = MagicMock()
         rel.relation_type = "requires"
         rel.source_type = "Facility"
         rel.target_type = "Document"
+        actions = converter.from_relations([rel])
+        predicates = [p.predicate for p in actions.path_actions]
+        assert any(p.endswith("requires") for p in predicates)
+        assert any(p.endswith("requiredBy") for p in predicates)
 
-        # Build an ActionSet that represents an update (merged remove+add)
-        actions = converter.from_relations([rel], operation="update")
+    def test_update_produces_remove_and_add(self) -> None:
+        """Update operation should produce both is_add=False and is_add=True actions."""
+        converter = ActionConverter()
+        entity = MagicMock()
+        entity.entity_type = "Facility"
+        actions = converter.from_entities([entity], operation="update")
         json_list = actions.to_json_list()
-
-        # All serialized actions must include an explicit `operation` field
-        assert all("operation" in a for a in json_list)
-        ops = {a.get("operation") for a in json_list}
-        assert "remove" in ops and "add" in ops
+        is_add_values = {a["isAdd"] for a in json_list}
+        assert True in is_add_values
+        assert False in is_add_values
