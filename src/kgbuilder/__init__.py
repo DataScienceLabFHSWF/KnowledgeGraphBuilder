@@ -88,19 +88,13 @@ except Exception:
 
 try:
     from kgbuilder.validation import (
-        CompetencyQuestionValidator,
-        OntologyValidator,
         SHACLValidator,
         ValidationViolation,
-        Validator,
     )
 
     _optional_symbols.update(
         {
-            "CompetencyQuestionValidator": CompetencyQuestionValidator,
-            "OntologyValidator": OntologyValidator,
             "SHACLValidator": SHACLValidator,
-            "Validator": Validator,
             "ValidationViolation": ValidationViolation,
         }
     )

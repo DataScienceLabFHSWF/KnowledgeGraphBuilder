@@ -35,7 +35,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
@@ -162,7 +162,7 @@ class KGAssembler:
             ... else:
             ...     print(f"Errors: {result.errors}")
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(tz=timezone.utc)
         result = KGAssemblyResult()
 
         logger.info(
@@ -226,7 +226,7 @@ class KGAssembler:
         result.statistics = self._store.get_statistics()
 
         # Calculate assembly time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(tz=timezone.utc)
         result.assembly_time_sec = (end_time - start_time).total_seconds()
 
         logger.info(
@@ -272,7 +272,7 @@ class KGAssembler:
 
         # Build metadata dict
         metadata: dict[str, Any] = {
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
         }
 
         # Add provenance (merge history)
@@ -312,7 +312,7 @@ class KGAssembler:
             target_id=relation.target_entity_id,
             edge_type=relation.predicate,
             properties=properties,
-            metadata={"created_at": datetime.utcnow().isoformat()},
+            metadata={"created_at": datetime.now(tz=timezone.utc).isoformat()},
         )
 
 

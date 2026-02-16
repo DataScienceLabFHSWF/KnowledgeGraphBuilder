@@ -115,7 +115,12 @@ class RuleBasedRelationExtractor:
                             continue
 
                         if re.search(pattern.regex_between, between_text):
-                            rel_id = f"rel_rule_{len(relations):04d}"
+                            from kgbuilder.core.models import generate_relation_id
+
+                            rel_id = generate_relation_id(
+                                ent1.id, ent2.id, pattern.edge_type,
+                                seq=len(relations),
+                            )
                             relations.append(
                                 ExtractedRelation(
                                     id=rel_id,

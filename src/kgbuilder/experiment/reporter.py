@@ -93,8 +93,18 @@ class ExperimentReporter:
         summary = report.summary
         lines.append(f"- **Total Variants:** {summary.get('total_variants', 'N/A')}")
         lines.append(f"- **Total Runs:** {summary.get('total_runs', 'N/A')}")
-        lines.append(f"- **Total Duration:** {summary.get('total_duration_hours', 'N/A'):.2f}h")
-        lines.append(f"- **Average Run Duration:** {summary.get('avg_run_duration_min', 'N/A'):.2f}min")
+        total_hours = summary.get('total_duration_hours')
+        if isinstance(total_hours, (int, float)):
+            lines.append(f"- **Total Duration:** {total_hours:.2f}h")
+        else:
+            lines.append(f"- **Total Duration:** {total_hours or 'N/A'}")
+
+        avg_min = summary.get('avg_run_duration_min')
+        if isinstance(avg_min, (int, float)):
+            lines.append(f"- **Average Run Duration:** {avg_min:.2f}min")
+        else:
+            lines.append(f"- **Average Run Duration:** {avg_min or 'N/A'}")
+
         lines.append(f"- **Completed Successfully:** {summary.get('completed_runs', 0)}/{summary.get('total_runs', 0)}")
         lines.append("")
 
@@ -384,15 +394,23 @@ class ExperimentReporter:
         html_parts.append('<div class="summary-box">')
         html_parts.append(f"<p><strong>Total Variants:</strong> {summary.get('total_variants', 'N/A')}</p>")
         html_parts.append(f"<p><strong>Total Runs:</strong> {summary.get('total_runs', 'N/A')}</p>")
+
+        _dur_h = summary.get('total_duration_hours', 'N/A')
         html_parts.append(
-            f"<p><strong>Total Duration:</strong> {summary.get('total_duration_hours', 'N/A'):.2f}h</p>"
+            f"<p><strong>Total Duration:</strong> {_dur_h:.2f}h</p>"
+            if isinstance(_dur_h, (int, float))
+            else f"<p><strong>Total Duration:</strong> {_dur_h}h</p>"
         )
+        _avg_m = summary.get('avg_run_duration_min', 'N/A')
         html_parts.append(
-            f"<p><strong>Average Run Duration:</strong> {summary.get('avg_run_duration_min', 'N/A'):.2f}min</p>"
+            f"<p><strong>Average Run Duration:</strong> {_avg_m:.2f}min</p>"
+            if isinstance(_avg_m, (int, float))
+            else f"<p><strong>Average Run Duration:</strong> {_avg_m}min</p>"
         )
+        _sr = summary.get('success_rate', 0)
         html_parts.append(
             f"<p><strong>Success Rate:</strong> {summary.get('completed_runs', 0)}/{summary.get('total_runs', 0)} "
-            f"({summary.get('success_rate', 0):.1%})</p>"
+            + (f"({_sr:.1%})</p>" if isinstance(_sr, (int, float)) else f"({_sr})</p>")
         )
 
         # Best variant

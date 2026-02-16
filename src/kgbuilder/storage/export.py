@@ -35,7 +35,7 @@ from __future__ import annotations
 import json
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -156,7 +156,7 @@ class KGExporter:
         """
         data = {
             "metadata": {
-                "exported_at": datetime.utcnow().isoformat(),
+                "exported_at": datetime.now(tz=timezone.utc).isoformat(),
                 "format": "kgbuilder-json",
                 "version": "1.0",
             },
@@ -266,7 +266,7 @@ class KGExporter:
             "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .",
             "",
             "# Knowledge Graph exported by KGBuilder",
-            f"# Exported: {datetime.utcnow().isoformat()}",
+            f"# Exported: {datetime.now(tz=timezone.utc).isoformat()}",
             "",
         ]
 
@@ -329,7 +329,7 @@ class KGExporter:
         """
         lines = [
             "// Knowledge Graph Cypher Export",
-            f"// Generated: {datetime.utcnow().isoformat()}",
+            f"// Generated: {datetime.now(tz=timezone.utc).isoformat()}",
             "// Import with: cat kg.cypher | cypher-shell",
             "",
             "// Clear existing data (optional - uncomment if needed)",

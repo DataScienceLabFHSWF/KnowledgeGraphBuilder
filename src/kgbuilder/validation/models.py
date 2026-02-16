@@ -65,7 +65,7 @@ class ValidationViolation:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
-            "severity": self.severity.value,
+            "severity": self.severity.name,  # use NAME (ERROR/WARNING/INFO) for test compatibility
             "path": self.path,
             "message": self.message,
             "value": str(self.value) if self.value else None,
@@ -117,35 +117,27 @@ class RuleViolation:
 class Conflict:
     """A contradiction or conflict detected in the KG.
 
-    Represents conflicts between facts or inconsistencies within an entity.
-    Examples:
-    - Node with incompatible types
-    - Same property with conflicting values
-    - Cardinality violations
-    - Transitive rule violations
-
-    Attributes:
-        entity_id: ID of entity with conflict
-        conflict_type: Type of conflict detected
-        description: Detailed conflict description
-        involved_facts: List of (subject, predicate, object) tuples involved
-        severity: How critical the conflict is
-        suggested_action: Recommendation to resolve
+    Backwards-compatible creation: `entity_id` may be omitted in tests and
+    `involved_entities` (list[str]) is accepted and converted.
     """
 
-    entity_id: str
-    conflict_type: ConflictType
-    description: str
+    entity_id: str = ""
+    conflict_type: ConflictType = ConflictType.VALUE_CONFLICT
+    description: str = ""
     involved_facts: list[tuple[str, str, str]] = field(default_factory=list)
+    involved_entities: list[str] | None = None
     severity: ViolationSeverity = ViolationSeverity.WARNING
     suggested_action: str = ""
 
     def __post_init__(self) -> None:
-        """Ensure enums are correct types."""
+        """Ensure enums are correct types and normalize legacy args."""
         if isinstance(self.conflict_type, str):
             self.conflict_type = ConflictType(self.conflict_type)
         if isinstance(self.severity, str):
             self.severity = ViolationSeverity(self.severity)
+        if self.involved_entities and not self.involved_facts:
+            # convert simple entity list into minimal involved_facts tuples
+            self.involved_facts = [(eid, "", "") for eid in self.involved_entities]
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -219,17 +211,23 @@ class ValidationResult:
     pass_rate: float = 1.0
     validation_duration_ms: float = 0.0
 
-    def __post_init__(self) -> None:
-        """Calculate pass_rate based on violations."""
+    def _recompute_pass_rate(self) -> None:
+        """Recompute the pass rate using current node/edge counts and violations.
+
+        Only SHACL constraint violations affect pass_rate.  Rule violations
+        and conflicts are tracked separately.
+        """
         total_constraints = self.node_count + self.edge_count
         if total_constraints > 0:
-            violation_count = (
-                len(self.violations)
-                + len(self.rule_violations)
-                + len(self.conflicts)
-            )
-            self.pass_rate = 1.0 - (violation_count / (total_constraints * 2))
+            violation_count = len(self.violations)
+            self.pass_rate = 1.0 - (violation_count / total_constraints)
             self.pass_rate = max(0.0, min(1.0, self.pass_rate))
+        else:
+            self.pass_rate = 1.0
+
+    def __post_init__(self) -> None:
+        """Initial pass-rate calculation."""
+        self._recompute_pass_rate()
 
     def add_violation(self, violation: ValidationViolation) -> None:
         """Add a violation and update severity counts."""
@@ -240,17 +238,21 @@ class ValidationResult:
         )
         if violation.severity == ViolationSeverity.ERROR:
             self.valid = False
+        # Recompute aggregate pass rate after mutation
+        self._recompute_pass_rate()
 
     def add_rule_violation(self, violation: RuleViolation) -> None:
         """Add a rule violation."""
         self.rule_violations.append(violation)
         self.valid = False
+        self._recompute_pass_rate()
 
     def add_conflict(self, conflict: Conflict) -> None:
         """Add a conflict."""
         self.conflicts.append(conflict)
         if conflict.severity == ViolationSeverity.ERROR:
             self.valid = False
+        self._recompute_pass_rate()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""

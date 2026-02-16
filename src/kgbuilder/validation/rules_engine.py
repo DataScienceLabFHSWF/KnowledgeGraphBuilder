@@ -38,10 +38,13 @@ class SemanticRule(ABC):
         name: Unique rule identifier
         description: Human-readable description
         enabled: Whether rule is active
+
+    Backwards-compatibility: `name` and `description` are optional so rule
+    subclasses can be instantiated with positional configuration args only.
     """
 
-    name: str
-    description: str
+    name: str = ""
+    description: str = ""
     enabled: bool = True
 
     @abstractmethod

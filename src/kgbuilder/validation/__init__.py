@@ -67,14 +67,7 @@ from kgbuilder.validation.static_validator import (
     StaticValidator,
     StaticValidatorConfig,
 )
-from kgbuilder.validation.validators import (
-    CompetencyQuestionValidator,
-    OntologyValidator,
-    Validator,
-)
-
 __all__ = [
-    "Validator",
     "ValidationResult",
     "ValidationViolation",
     "ViolationSeverity",
@@ -91,8 +84,6 @@ __all__ = [
     "ActionSet",
     "ShapeAction",
     "PathAction",
-    "OntologyValidator",
-    "CompetencyQuestionValidator",
     "RulesEngine",
     "SemanticRule",
     "InversePropertyRule",

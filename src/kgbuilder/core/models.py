@@ -107,6 +107,35 @@ def generate_entity_id(label: str, entity_type: str) -> str:
     return f"ent_{hashlib.sha256(key.encode()).hexdigest()[:12]}"
 
 
+def generate_relation_id(
+    source_id: str, target_id: str, predicate: str, seq: int = 0,
+) -> str:
+    """Generate a deterministic, content-based relation ID.
+
+    Uses a hash of the normalised source, target, predicate, and a
+    sequence counter so that the same triple discovered in different
+    chunks gets the same ID, while parallel edges between the same
+    pair (different predicates or multiple evidence spans) remain
+    distinguishable.
+
+    Args:
+        source_id: Source entity ID.
+        target_id: Target entity ID.
+        predicate: Relation type / predicate name.
+        seq: Disambiguation counter for duplicate (src, tgt, pred) triples.
+
+    Returns:
+        Deterministic ID in format ``{predicate}_{12-char-hex}``.
+    """
+    import hashlib
+
+    key = f"{source_id}::{target_id}::{predicate.lower().strip()}::{seq}"
+    digest = hashlib.sha256(key.encode()).hexdigest()[:12]
+    # Sanitise predicate for use as prefix (remove spaces, limit length)
+    prefix = predicate.replace(" ", "_")[:30]
+    return f"{prefix}_{digest}"
+
+
 @dataclass
 class ExtractedEntity:
     """An extracted entity from text."""

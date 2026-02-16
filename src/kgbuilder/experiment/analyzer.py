@@ -20,29 +20,58 @@ logger = structlog.get_logger(__name__)
 class ConvergenceAnalysis:
     """Convergence analysis for a single variant.
 
-    Attributes:
-        variant_name: Name of the variant
-        metric_name: Name of metric being analyzed (e.g., "accuracy")
-        values: Metric values over iterations/runs
-        mean: Mean metric value
-        std_dev: Standard deviation
-        min_val: Minimum value
-        max_val: Maximum value
-        improvement: Improvement from first to last value
-        improvement_rate: Improvement rate per iteration
-        has_plateau: Whether convergence has plateaued
+    Backwards-compatible: tests may instantiate with `values=` only. We
+    therefore provide defaults for `variant_name` and `metric_name` and
+    expose both per-step `improvement_rate` (list) and an `avg_improvement_rate`.
     """
 
-    variant_name: str
-    metric_name: str
+    variant_name: str = "baseline"
+    metric_name: str = "metric"
     values: list[float] = field(default_factory=list)
     mean: float = 0.0
     std_dev: float = 0.0
     min_val: float = 0.0
     max_val: float = 0.0
     improvement: float = 0.0
-    improvement_rate: float = 0.0
+    improvement_rate: list[float] = field(default_factory=list)
+    avg_improvement_rate: float = 0.0
     has_plateau: bool = False
+
+    def __post_init__(self) -> None:
+        """Compute derived statistics when `values` are provided.
+
+        This keeps `ConvergenceAnalysis(values=...)` convenient for tests and
+        for ad-hoc usage outside the ExperimentAnalyzer pipeline.
+        """
+        if self.values:
+            n = len(self.values)
+            self.mean = sum(self.values) / n
+            self.min_val = min(self.values)
+            self.max_val = max(self.values)
+            if n > 1:
+                variance = sum((v - self.mean) ** 2 for v in self.values) / n
+                self.std_dev = variance ** 0.5
+                self.improvement = self.values[-1] - self.values[0]
+                self.improvement_rate = [
+                    self.values[i + 1] - self.values[i] for i in range(n - 1)
+                ]
+                self.avg_improvement_rate = (
+                    self.improvement / (n - 1) if n > 1 else 0.0
+                )
+                relative_diff = abs(self.values[-1] - self.values[-2]) / max(
+                    self.values[-2], 1e-9
+                )
+                self.has_plateau = relative_diff < 0.01
+
+    @property
+    def final_value(self) -> float:
+        """Return the final (last) metric value or 0.0 if empty."""
+        return float(self.values[-1]) if self.values else 0.0
+
+    @property
+    def plateaued(self) -> bool:
+        """Alias for `has_plateau` used by legacy tests."""
+        return self.has_plateau
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -55,7 +84,8 @@ class ConvergenceAnalysis:
             "min": round(self.min_val, 4),
             "max": round(self.max_val, 4),
             "improvement": round(self.improvement, 4),
-            "improvement_rate": round(self.improvement_rate, 4),
+            "improvement_rate": [round(v, 4) for v in self.improvement_rate],
+            "avg_improvement_rate": round(self.avg_improvement_rate, 4),
             "has_plateau": self.has_plateau,
         }
 
@@ -64,23 +94,46 @@ class ConvergenceAnalysis:
 class ComparativeAnalysis:
     """Comparative analysis across variants.
 
-    Attributes:
-        metric_name: Metric being compared
-        variant_metrics: Dict of variant_name -> metric value
-        best_variant: Name of best performing variant
-        worst_variant: Name of worst performing variant
-        ranking: List of variants ranked by metric
-        mean_diff: Mean difference across variants
-        winner_margin: Margin between best and 2nd best
+    Backwards-compatible: tests may call `ComparativeAnalysis(metrics=...)`.
+    We accept an optional `metrics` alias and expose `ranking` as a dict for
+    easy consumption by tests.
     """
 
-    metric_name: str
+    metric_name: str = "metric"
     variant_metrics: dict[str, float] = field(default_factory=dict)
+    metrics: dict[str, float] | None = None
     best_variant: str = ""
+    best_score: float = 0.0
     worst_variant: str = ""
-    ranking: list[tuple[str, float]] = field(default_factory=list)
+    ranking: dict[str, float] = field(default_factory=dict)
     mean_diff: float = 0.0
     winner_margin: float = 0.0
+    best_margin: float = 0.0
+    margins: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Accept `metrics=` as alias for variant_metrics (test compatibility)
+        if self.metrics:
+            self.variant_metrics = dict(self.metrics)
+
+        # Compute ranking and best/worst
+        if self.variant_metrics:
+            sorted_items = sorted(
+                self.variant_metrics.items(), key=lambda kv: kv[1], reverse=True
+            )
+            self.ranking = {k: v for k, v in sorted_items}
+            self.best_variant, self.best_score = sorted_items[0]
+            self.worst_variant = sorted_items[-1][0]
+            worst_score = sorted_items[-1][1]
+            values = [v for _, v in sorted_items]
+            self.mean_diff = (sum(values) / len(values)) if values else 0.0
+            self.winner_margin = (
+                values[0] - values[1] if len(values) > 1 else 0.0
+            )
+            # best_margin = best - worst
+            self.best_margin = round(self.best_score - worst_score, 10)
+            # margins = distance of each variant from the best
+            self.margins = {k: round(self.best_score - v, 10) for k, v in self.variant_metrics.items()}
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -90,10 +143,9 @@ class ComparativeAnalysis:
                 k: round(v, 4) for k, v in self.variant_metrics.items()
             },
             "best_variant": self.best_variant,
+            "best_score": round(self.best_score, 4),
             "worst_variant": self.worst_variant,
-            "ranking": [
-                (name, round(score, 4)) for name, score in self.ranking
-            ],
+            "ranking": [(name, round(score, 4)) for name, score in self.ranking.items()],
             "mean_difference": round(self.mean_diff, 4),
             "winner_margin": round(self.winner_margin, 4),
         }
@@ -102,21 +154,25 @@ class ComparativeAnalysis:
 class ExperimentAnalyzer:
     """Analyze experiment results for convergence and performance.
 
-    Provides comprehensive analysis of experiments including convergence
-    tracking, comparative analysis, and statistical insights.
+    Backward-compatible: accepts either an ``ExperimentResults`` instance or
+    a plain list of ``ExperimentRun`` objects.
     """
 
-    def __init__(self, results: ExperimentResults) -> None:
+    def __init__(self, results: ExperimentResults | list[ExperimentRun]) -> None:
         """Initialize analyzer.
 
         Args:
-            results: ExperimentResults to analyze
+            results: ExperimentResults or list of ExperimentRun to analyze.
         """
-        self.results = results
+        if isinstance(results, list):
+            self.runs: list[ExperimentRun] = results
+            self.results = ExperimentResults(runs=results)
+        else:
+            self.results = results
+            self.runs = results.runs
         logger.info(
             "analyzer_initialized",
-            num_runs=len(results.runs),
-            num_variants=len(results.config.variants),
+            num_runs=len(self.runs),
         )
 
     def analyze_convergence(
@@ -133,9 +189,9 @@ class ExperimentAnalyzer:
         convergence = {}
 
         # Group runs by variant
-        by_variant = {}
+        by_variant: dict[str, list[ExperimentRun]] = {}
         for run in self.results.runs:
-            variant_name = run.variant.name
+            variant_name = run.variant.name if run.variant else (run.variant_name or "unknown")
             if variant_name not in by_variant:
                 by_variant[variant_name] = []
             by_variant[variant_name].append(run)
@@ -202,11 +258,15 @@ class ExperimentAnalyzer:
         # Improvement
         if len(values) > 1:
             analysis.improvement = values[-1] - values[0]
-            analysis.improvement_rate = analysis.improvement / (len(values) - 1)
+            # per-step improvement series and average
+            analysis.improvement_rate = [
+                values[i + 1] - values[i] for i in range(len(values) - 1)
+            ]
+            analysis.avg_improvement_rate = analysis.improvement / (len(values) - 1)
 
         # Plateau detection (last 2 values within 1% of each other)
         if len(values) >= 2:
-            relative_diff = abs(values[-1] - values[-2]) / values[-2]
+            relative_diff = abs(values[-1] - values[-2]) / max(values[-2], 1e-9)
             analysis.has_plateau = relative_diff < 0.01
 
         return analysis
@@ -303,14 +363,11 @@ class ExperimentAnalyzer:
         }
 
     def get_summary(self) -> dict[str, Any]:
-        """Get comprehensive summary of experiment results.
-
-        Returns:
-            Dictionary with summary statistics
-        """
+        """Get comprehensive summary of experiment results."""
+        config = self.results.config
         return {
-            "experiment_name": self.results.config.name,
-            "num_variants": len(self.results.config.variants),
+            "experiment_name": config.name if config else "unknown",
+            "num_variants": len(config.variants) if config else 0,
             "statistics": self.aggregate_statistics(),
             "aggregate_metrics": self.results.aggregate_metrics,
             "best_variant": self._get_best_variant(),

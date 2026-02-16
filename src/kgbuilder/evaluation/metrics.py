@@ -66,6 +66,7 @@ class EvaluationMetrics:
     recall: float = 0.0
     f1_score: float = 0.0
     coverage: float = 0.0
+    completeness: float = 0.0
     faithfulness: float = 0.0
     relevance: float = 0.0
     correctness: float = 0.0
@@ -86,6 +87,7 @@ class EvaluationMetrics:
             "recall": round(self.recall, 4),
             "f1_score": round(self.f1_score, 4),
             "coverage": round(self.coverage, 4),
+            "completeness": round(self.completeness, 4),
             "faithfulness": round(self.faithfulness, 4),
             "relevance": round(self.relevance, 4),
             "correctness": round(self.correctness, 4),

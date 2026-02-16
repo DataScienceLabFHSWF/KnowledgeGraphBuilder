@@ -261,12 +261,39 @@ class KGVersioningService:
             version_to=version_to_meta.version_id,
         )
 
-        # Simple diff: compare entity/relation counts
-        # TODO: For detailed diffing, compare actual entity/relation sets
-        diff.entities_added = max(0, version_to_meta.entity_count - version_from_meta.entity_count)
-        diff.entities_deleted = max(0, version_from_meta.entity_count - version_to_meta.entity_count)
-        diff.relations_added = max(0, version_to_meta.relation_count - version_from_meta.relation_count)
-        diff.relations_deleted = max(0, version_from_meta.relation_count - version_to_meta.relation_count)
+        # Try set-based diff if snapshots contain entity manifests
+        from_manifest = self._load_manifest(version_from_meta)
+        to_manifest = self._load_manifest(version_to_meta)
+
+        if from_manifest is not None and to_manifest is not None:
+            from_entities = set(from_manifest.get("entity_ids", []))
+            to_entities = set(to_manifest.get("entity_ids", []))
+            from_relations = set(from_manifest.get("relation_ids", []))
+            to_relations = set(to_manifest.get("relation_ids", []))
+
+            diff.new_entity_ids = sorted(to_entities - from_entities)
+            diff.removed_entity_ids = sorted(from_entities - to_entities)
+            diff.new_relation_ids = sorted(to_relations - from_relations)
+            diff.removed_relation_ids = sorted(from_relations - to_relations)
+
+            diff.entities_added = len(diff.new_entity_ids)
+            diff.entities_deleted = len(diff.removed_entity_ids)
+            diff.relations_added = len(diff.new_relation_ids)
+            diff.relations_deleted = len(diff.removed_relation_ids)
+        else:
+            # Fallback: count-based diff from metadata
+            diff.entities_added = max(
+                0, version_to_meta.entity_count - version_from_meta.entity_count
+            )
+            diff.entities_deleted = max(
+                0, version_from_meta.entity_count - version_to_meta.entity_count
+            )
+            diff.relations_added = max(
+                0, version_to_meta.relation_count - version_from_meta.relation_count
+            )
+            diff.relations_deleted = max(
+                0, version_from_meta.relation_count - version_to_meta.relation_count
+            )
 
         diff.compute_summary()
 
@@ -304,11 +331,61 @@ class KGVersioningService:
         )
 
         try:
-            # TODO: Implement actual restore logic
-            # - Load exported KG data from snapshot_path
-            # - Clear current graph
-            # - Rebuild from snapshot
-            logger.info(f"kg_restored version_id={version_id}")
+            snapshot_dir = metadata.snapshot_path
+            cypher_file = snapshot_dir / "export.cypher"
+            jsonld_file = snapshot_dir / "export.jsonld"
+
+            # Determine which file to restore from
+            restore_file: Path | None = None
+            if cypher_file.exists():
+                restore_file = cypher_file
+            elif jsonld_file.exists():
+                restore_file = jsonld_file
+            else:
+                # Look for any export file in the snapshot directory
+                exports = list(snapshot_dir.glob("export.*"))
+                if exports:
+                    restore_file = exports[0]
+
+            if restore_file is None:
+                logger.error(
+                    "restore_failed_no_export",
+                    version_id=version_id,
+                    snapshot_path=str(snapshot_dir),
+                )
+                return False
+
+            # Clear current graph
+            try:
+                with self.graph_store._driver.session() as session:
+                    session.run("MATCH (n) DETACH DELETE n")
+                logger.info("graph_cleared_for_restore", version_id=version_id)
+            except Exception as e:
+                logger.error(f"restore_clear_failed: {e}")
+                return False
+
+            # Restore from Cypher file
+            if restore_file.suffix == ".cypher":
+                statements = restore_file.read_text().strip().split(";\n")
+                with self.graph_store._driver.session() as session:
+                    for stmt in statements:
+                        stmt = stmt.strip()
+                        if stmt:
+                            session.run(stmt)
+            else:
+                # JSON-LD / JSON restore: read entities and relations
+                data = json.loads(restore_file.read_text())
+                entities = data if isinstance(data, list) else data.get("entities", [])
+                with self.graph_store._driver.session() as session:
+                    for entity in entities:
+                        props = {k: v for k, v in entity.items() if k != "@type"}
+                        label = entity.get("@type", "Entity")
+                        session.run(
+                            f"CREATE (n:{label}) SET n = $props",
+                            props=props,
+                        )
+
+            logger.info("kg_restored", version_id=version_id)
             return True
         except Exception as e:
             logger.error(f"restore_failed {version_id}: {e}")
@@ -389,8 +466,101 @@ class KGVersioningService:
             target_dir: Directory to save export
             metadata: Version metadata for reference
         """
-        # Placeholder: would call actual export methods
-        logger.debug(f"export_kg format={format_type} target={target_dir}")
+        logger.debug("export_kg", format=format_type, target=str(target_dir))
+
+        try:
+            if format_type == "cypher":
+                self._export_cypher(target_dir)
+            elif format_type in ("json-ld", "jsonld"):
+                self._export_jsonld(target_dir)
+            else:
+                logger.warning("unsupported_export_format", format=format_type)
+                return
+
+            # Always write an entity manifest for set-based diffing
+            self._write_manifest(target_dir)
+        except Exception as e:
+            logger.error(f"export_kg_failed format={format_type}: {e}")
+
+    def _export_cypher(self, target_dir: Path) -> None:
+        """Export graph as Cypher CREATE statements."""
+        statements: list[str] = []
+        try:
+            with self.graph_store._driver.session() as session:
+                # Export nodes
+                nodes = session.run(
+                    "MATCH (n:Entity) RETURN n, labels(n) AS labels"
+                )
+                for record in nodes:
+                    node = record["n"]
+                    labels = ":".join(record["labels"])
+                    props = dict(node)
+                    props_str = json.dumps(props)
+                    statements.append(f"CREATE (:{labels} {props_str})")
+
+                # Export relationships
+                rels = session.run(
+                    "MATCH (a)-[r]->(b) "
+                    "RETURN a.id AS src, type(r) AS rel, properties(r) AS props, b.id AS tgt"
+                )
+                for record in rels:
+                    props_str = json.dumps(record["props"]) if record["props"] else ""
+                    statements.append(
+                        f"MATCH (a {{id: '{record['src']}'}}), (b {{id: '{record['tgt']}'}}) "
+                        f"CREATE (a)-[:{record['rel']} {props_str}]->(b)"
+                    )
+        except Exception as e:
+            logger.warning(f"cypher_export_partial: {e}")
+
+        outfile = target_dir / "export.cypher"
+        outfile.write_text(";\n".join(statements))
+
+    def _export_jsonld(self, target_dir: Path) -> None:
+        """Export graph as JSON-LD."""
+        entities: list[dict[str, Any]] = []
+        try:
+            with self.graph_store._driver.session() as session:
+                nodes = session.run(
+                    "MATCH (n:Entity) RETURN n, labels(n) AS labels"
+                )
+                for record in nodes:
+                    entity = dict(record["n"])
+                    entity["@type"] = record["labels"][0] if record["labels"] else "Entity"
+                    entities.append(entity)
+        except Exception as e:
+            logger.warning(f"jsonld_export_partial: {e}")
+
+        outfile = target_dir / "export.jsonld"
+        outfile.write_text(json.dumps({"entities": entities}, indent=2, default=str))
+
+    def _write_manifest(self, target_dir: Path) -> None:
+        """Write entity/relation ID manifest for set-based diffing."""
+        manifest: dict[str, list[str]] = {"entity_ids": [], "relation_ids": []}
+        try:
+            with self.graph_store._driver.session() as session:
+                ent_result = session.run("MATCH (e:Entity) RETURN collect(e.id) AS ids")
+                manifest["entity_ids"] = sorted(ent_result.single()["ids"] or [])
+
+                rel_result = session.run(
+                    "MATCH ()-[r]->() RETURN collect(DISTINCT type(r)) AS ids"
+                )
+                manifest["relation_ids"] = sorted(rel_result.single()["ids"] or [])
+        except Exception as e:
+            logger.warning(f"manifest_write_partial: {e}")
+
+        (target_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    def _load_manifest(self, metadata: VersionMetadata) -> dict[str, list[str]] | None:
+        """Load entity/relation manifest from a snapshot directory."""
+        if not metadata.snapshot_path:
+            return None
+        manifest_path = metadata.snapshot_path / "manifest.json"
+        if not manifest_path.exists():
+            return None
+        try:
+            return json.loads(manifest_path.read_text())
+        except Exception:
+            return None
 
     def _load_versions(self) -> None:
         """Load version metadata from disk."""

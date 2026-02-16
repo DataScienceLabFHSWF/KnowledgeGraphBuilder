@@ -186,6 +186,8 @@ class LegalRuleBasedExtractor:
         Returns:
             List of extracted relations with evidence.
         """
+        from kgbuilder.core.models import generate_relation_id
+
         relations: list[ExtractedRelation] = []
         rel_counter = 0
 
@@ -197,9 +199,10 @@ class LegalRuleBasedExtractor:
         # referenziert: source paragraph → each LegalReference
         for ref_ent in by_type.get("LegalReference", []):
             rel_counter += 1
+            src_id = paragraph_id or "source"
             relations.append(ExtractedRelation(
-                id=f"law_rel_{rel_counter:04d}",
-                source_entity_id=paragraph_id or "source",
+                id=generate_relation_id(src_id, ref_ent.id, "referenziert", rel_counter),
+                source_entity_id=src_id,
                 target_entity_id=ref_ent.id,
                 predicate="referenziert",
                 confidence=self.confidence_base,
@@ -209,9 +212,10 @@ class LegalRuleBasedExtractor:
         # definiert: source paragraph → each Definition
         for def_ent in by_type.get("Definition", []):
             rel_counter += 1
+            src_id = paragraph_id or "source"
             relations.append(ExtractedRelation(
-                id=f"law_rel_{rel_counter:04d}",
-                source_entity_id=paragraph_id or "source",
+                id=generate_relation_id(src_id, def_ent.id, "definiert", rel_counter),
+                source_entity_id=src_id,
                 target_entity_id=def_ent.id,
                 predicate="definiert",
                 confidence=self.confidence_base,
@@ -225,7 +229,9 @@ class LegalRuleBasedExtractor:
             for obl_ent in obligations:
                 rel_counter += 1
                 relations.append(ExtractedRelation(
-                    id=f"law_rel_{rel_counter:04d}",
+                    id=generate_relation_id(
+                        auth_ent.id, obl_ent.id, "zustaendig", rel_counter,
+                    ),
                     source_entity_id=auth_ent.id,
                     target_entity_id=obl_ent.id,
                     predicate="zustaendig",
@@ -241,7 +247,9 @@ class LegalRuleBasedExtractor:
             for actor_ent in betreiber:
                 rel_counter += 1
                 relations.append(ExtractedRelation(
-                    id=f"law_rel_{rel_counter:04d}",
+                    id=generate_relation_id(
+                        obl_ent.id, actor_ent.id, "betrifft", rel_counter,
+                    ),
                     source_entity_id=obl_ent.id,
                     target_entity_id=actor_ent.id,
                     predicate="betrifft",

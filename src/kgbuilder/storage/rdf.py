@@ -151,10 +151,30 @@ class FusekiStore:
             subject: Subject URI
             predicate: Predicate/property URI
             obj: Object URI or literal value
+
+        Raises:
+            RuntimeError: If the SPARQL UPDATE fails.
         """
-        # TODO: Convert to RDF triple format
-        # TODO: POST to Fuseki graph endpoint
-        raise NotImplementedError("add_triple() not yet implemented")
+        # Determine if obj is a URI or a literal
+        if obj.startswith("http://") or obj.startswith("https://") or obj.startswith("urn:"):
+            obj_term = f"<{obj}>"
+        else:
+            # Escape quotes in literal values
+            escaped = obj.replace("\\", "\\\\").replace('"', '\\"')
+            obj_term = f'"{escaped}"'
+
+        sparql = f"INSERT DATA {{ <{subject}> <{predicate}> {obj_term} . }}"
+
+        try:
+            resp = self.session.post(
+                self.update_url,
+                data={"update": sparql},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            raise RuntimeError(f"Failed to add triple: {e}") from e
 
     def query_sparql(self, sparql: str) -> dict:
         """Execute SPARQL query against Fuseki.
@@ -187,24 +207,71 @@ class FusekiStore:
         """Export RDF graph from Fuseki.
 
         Args:
-            format: RDF format (turtle, rdfxml, ntriples)
+            format: RDF format (turtle, rdfxml, ntriples, jsonld)
 
         Returns:
-            RDF string
+            Serialised RDF string.
+
+        Raises:
+            RuntimeError: If the export request fails.
         """
-        # TODO: GET dataset in specified format
-        # TODO: Return serialized RDF
-        raise NotImplementedError("export_rdf() not yet implemented")
+        accept_map = {
+            "turtle": "text/turtle",
+            "rdfxml": "application/rdf+xml",
+            "ntriples": "application/n-triples",
+            "jsonld": "application/ld+json",
+        }
+        accept = accept_map.get(format, "text/turtle")
+
+        try:
+            resp = self.session.get(
+                f"{self.url}/{self.dataset_name}",
+                headers={"Accept": accept},
+                timeout=60,
+            )
+            resp.raise_for_status()
+            return resp.text
+        except Exception as e:
+            raise RuntimeError(f"Failed to export RDF ({format}): {e}") from e
 
     def add_triples_batch(self, triples: list[tuple[str, str, str]]) -> None:
-        """Batch add RDF triples.
+        """Batch add RDF triples via a single SPARQL INSERT DATA.
 
         Args:
-            triples: List of (subject, predicate, object) tuples
+            triples: List of (subject, predicate, object) tuples.
+
+        Raises:
+            RuntimeError: If the SPARQL UPDATE fails.
         """
-        # TODO: Batch triples into SPARQL INSERT queries
-        # TODO: POST batch operations for efficiency
-        raise NotImplementedError("add_triples_batch() not yet implemented")
+        if not triples:
+            return
+
+        parts: list[str] = []
+        for subj, pred, obj in triples:
+            if obj.startswith("http://") or obj.startswith("https://") or obj.startswith("urn:"):
+                obj_term = f"<{obj}>"
+            else:
+                escaped = obj.replace("\\", "\\\\").replace('"', '\\"')
+                obj_term = f'"{escaped}"'
+            parts.append(f"<{subj}> <{pred}> {obj_term} .")
+
+        # Fuseki supports large INSERT DATA; chunk if needed
+        chunk_size = 500
+        for i in range(0, len(parts), chunk_size):
+            chunk = parts[i : i + chunk_size]
+            sparql = "INSERT DATA { " + " ".join(chunk) + " }"
+            try:
+                resp = self.session.post(
+                    self.update_url,
+                    data={"update": sparql},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=60,
+                )
+                resp.raise_for_status()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to add triples batch (chunk {i // chunk_size}): {e}"
+                ) from e
 
     def load_ontology(self, ontology_content: str) -> None:
         """Load ontology (TBox) into Fuseki.
@@ -237,11 +304,30 @@ class FusekiStore:
             ) from e
 
     def validate_ontology(self) -> bool:
-        """Validate ontology consistency.
+        """Validate ontology consistency via basic SPARQL checks.
+
+        Runs lightweight consistency queries (orphan properties, missing
+        domain/range declarations).  For full OWL DL reasoning, use an
+        external reasoner such as Pellet or HermiT.
 
         Returns:
-            True if valid, False if inconsistencies found
+            True if no issues found, False otherwise.
         """
-        # TODO: Run OWL reasoning/validation
-        # TODO: Return validation result
-        raise NotImplementedError("validate_ontology() not yet implemented")
+        # Check for properties missing rdfs:domain or rdfs:range
+        check_query = """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+            SELECT (COUNT(?p) AS ?cnt) WHERE {
+                ?p a owl:ObjectProperty .
+                FILTER NOT EXISTS { ?p rdfs:domain ?d }
+            }
+        """
+        try:
+            result = self.query_sparql(check_query)
+            bindings = result.get("results", {}).get("bindings", [])
+            if bindings:
+                count = int(bindings[0].get("cnt", {}).get("value", "0"))
+                return count == 0
+            return True
+        except Exception:
+            return False

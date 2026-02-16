@@ -151,7 +151,7 @@ class ReportGenerator:
             "",
             "## Summary",
             "",
-            f"- **Valid**: {'[OK] Yes' if result.valid else '[FAIL] No'}",
+            f"- **Valid**: {'✓ Yes' if result.valid else '✗ No'}",
             f"- **Pass Rate**: {round(result.pass_rate * 100, 1)}%",
             f"- **Nodes**: {result.node_count}",
             f"- **Edges**: {result.edge_count}",
@@ -177,6 +177,9 @@ class ReportGenerator:
                 md_lines.append(f"| {severity} | `{path}` | {message} |")
 
             md_lines.append("")
+        else:
+            # Explicit helpful message when there are no violations
+            md_lines.extend(["\nNo violations found\n"])
 
         # Rule Violations
         if result.rule_violations:

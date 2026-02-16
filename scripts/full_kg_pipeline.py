@@ -95,7 +95,10 @@ from kgbuilder.validation import (
     ReportGenerator,
     ValidationResult,
 )
-from kgbuilder.validation.validators import CompetencyQuestionValidator
+
+# CompetencyQuestionValidator was removed (dead stub). CQ validation
+# is not yet re-implemented — see Planning/BACKLOG.md B-004.
+CompetencyQuestionValidator = None  # type: ignore[assignment]
 
 # =============================================================================
 # CLI ARGUMENT PARSING
@@ -193,6 +196,21 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         default="./validation_reports",
         help="Directory to save validation reports (JSON/Markdown/HTML)"
+    )
+
+    # Cross-domain linking
+    parser.add_argument(
+        "--link-laws",
+        action="store_true",
+        default=True,
+        help="Run cross-domain law-linking after assembly (Phase 6.5)"
+    )
+
+    parser.add_argument(
+        "--no-link-laws",
+        action="store_false",
+        dest="link_laws",
+        help="Skip cross-domain law-linking"
     )
 
     # Logging
@@ -796,6 +814,50 @@ def main() -> None:
         print()
 
         # =====================================================================
+        # PHASE 6.5: CROSS-DOMAIN LAW LINKING
+        # =====================================================================
+
+        law_links_created = 0
+
+        if args.link_laws:
+            print("PHASE 6.5: Cross-Domain Law Linking")
+            print("-" * 80)
+
+            try:
+                from kgbuilder.linking import KGLawLinker
+
+                linker = KGLawLinker(
+                    neo4j_uri=NEO4J_URI,
+                    neo4j_user=NEO4J_USER,
+                    neo4j_password=NEO4J_PASSWORD,
+                    database="neo4j",
+                )
+
+                link_result = linker.create_links(dry_run=False)
+
+                law_links_created = link_result["total_links_created"]
+                link_stats = link_result["stats"]
+
+                logger.info(
+                    "law_linking_complete",
+                    entities_processed=link_result["total_entities_processed"],
+                    links_created=law_links_created,
+                    stats=link_stats,
+                )
+                print("[OK] Cross-domain law linking complete")
+                print(f"  - Entities processed: {link_result['total_entities_processed']}")
+                print(f"  - Links created: {law_links_created}")
+                if link_stats:
+                    for reason, count in link_stats.items():
+                        print(f"    {reason}: {count}")
+
+            except Exception as e:
+                logger.warning("law_linking_failed", error=str(e))
+                print(f"[WARN] Law linking encountered error: {e}")
+
+            print()
+
+        # =====================================================================
         # PHASE 7: VALIDATION & QUALITY ASSESSMENT
         # =====================================================================
 
@@ -863,56 +925,60 @@ def main() -> None:
             print("PHASE 8: Competency Question Coverage Check (Stopping Criterion)")
             print("-" * 80)
 
-            try:
-                logger.info("competency_question_check_starting")
+            if CompetencyQuestionValidator is None:
+                print("  [SKIP] CompetencyQuestionValidator not yet implemented")
+                logger.warning("competency_question_check_skipped", reason="validator_not_implemented")
+            else:
+                try:
+                    logger.info("competency_question_check_starting")
 
-                # Check which questions are answered by the KG
-                cq_validator = CompetencyQuestionValidator(
-                    ontology_service=ontology_service,
-                    graph_store=neo4j_store
-                )
+                    # Check which questions are answered by the KG
+                    cq_validator = CompetencyQuestionValidator(
+                        ontology_service=ontology_service,
+                        graph_store=neo4j_store
+                    )
 
-                # Use the questions generated in Phase 2
-                cq_results = cq_validator.validate_questions(all_questions)
+                    # Use the questions generated in Phase 2
+                    cq_results = cq_validator.validate_questions(all_questions)
 
-                answerable_count = sum(1 for result in cq_results if result["answerable"])
-                cq_coverage = answerable_count / max(len(all_questions), 1) if all_questions else 0.0
+                    answerable_count = sum(1 for result in cq_results if result["answerable"])
+                    cq_coverage = answerable_count / max(len(all_questions), 1) if all_questions else 0.0
 
-                logger.info(
-                    "competency_questions_checked",
-                    total=len(all_questions),
-                    answerable=answerable_count,
-                    coverage=cq_coverage
-                )
+                    logger.info(
+                        "competency_questions_checked",
+                        total=len(all_questions),
+                        answerable=answerable_count,
+                        coverage=cq_coverage
+                    )
 
-                print("[OK] Competency Question Coverage Analysis")
-                print(f"  - Total questions: {len(all_questions)}")
-                print(f"  - Answerable: {answerable_count}")
-                print(f"  - Coverage: {cq_coverage:.1%}")
-                print(f"  - Threshold: {args.cq_coverage_threshold:.1%}")
+                    print("[OK] Competency Question Coverage Analysis")
+                    print(f"  - Total questions: {len(all_questions)}")
+                    print(f"  - Answerable: {answerable_count}")
+                    print(f"  - Coverage: {cq_coverage:.1%}")
+                    print(f"  - Threshold: {args.cq_coverage_threshold:.1%}")
 
-                # Check if we meet the stopping criterion
-                if cq_coverage >= args.cq_coverage_threshold:
-                    print("  [OK] STOPPING CRITERION MET - Coverage above threshold")
-                    cq_validation_passed = True
-                else:
-                    print("  [FAIL] STOPPING CRITERION NOT MET - Coverage below threshold")
-                    print(f"     Need {int((args.cq_coverage_threshold - cq_coverage) * len(all_questions))} more questions answered")
+                    # Check if we meet the stopping criterion
+                    if cq_coverage >= args.cq_coverage_threshold:
+                        print("  [OK] STOPPING CRITERION MET - Coverage above threshold")
+                        cq_validation_passed = True
+                    else:
+                        print("  [FAIL] STOPPING CRITERION NOT MET - Coverage below threshold")
+                        print(f"     Need {int((args.cq_coverage_threshold - cq_coverage) * len(all_questions))} more questions answered")
+                        cq_validation_passed = False
+
+                    # List unanswered questions for guidance
+                    unanswerable = [q for q, result in zip(all_questions, cq_results) if not result["answerable"]]
+                    if unanswerable:
+                        print("\n  Unanswered questions to address:")
+                        for q in unanswerable[:5]:
+                            print(f"    - {q}")
+                        if len(unanswerable) > 5:
+                            print(f"    ... and {len(unanswerable) - 5} more")
+
+                except Exception as e:
+                    logger.warning("competency_question_check_failed", error=str(e))
+                    print(f"[WARN] Competency question check failed: {e}")
                     cq_validation_passed = False
-
-                # List unanswered questions for guidance
-                unanswerable = [q for q, result in zip(all_questions, cq_results) if not result["answerable"]]
-                if unanswerable:
-                    print("\n  Unanswered questions to address:")
-                    for q in unanswerable[:5]:
-                        print(f"    - {q}")
-                    if len(unanswerable) > 5:
-                        print(f"    ... and {len(unanswerable) - 5} more")
-
-            except Exception as e:
-                logger.warning("competency_question_check_failed", error=str(e))
-                print(f"[WARN] Competency question check failed: {e}")
-                cq_validation_passed = False
 
             print()
 
@@ -946,6 +1012,10 @@ def main() -> None:
         print(f"  Nodes created:         {assembly_result.nodes_created}")
         print(f"  Relationships created: {assembly_result.relationships_created}")
         print(f"  Assembly errors:       {len(assembly_result.errors)}")
+
+        if args.link_laws:
+            print("\nCross-Domain Linking:")
+            print(f"  Law links created:     {law_links_created}")
 
         if args.validate:
             print("\nValidation:")

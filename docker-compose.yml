@@ -34,6 +34,7 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant
+    restart: unless-stopped
     volumes:
       - ./data/qdrant:/qdrant/storage
     ports:
@@ -44,6 +45,7 @@ services:
   neo4j:
     image: neo4j:5.19.0
     container_name: neo4j
+    restart: unless-stopped
     environment:
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
       - NEO4J_AUTH=neo4j/changeme
@@ -58,6 +60,7 @@ services:
   fuseki:
     image: stain/jena-fuseki:latest
     container_name: fuseki
+    restart: unless-stopped
     ports:
       - "3030:3030"
     volumes:

@@ -31,7 +31,7 @@ class KGBuilderParams:
 
     model: str = "qwen3:8b"
     max_iterations: int = 2
-    similarity_threshold: float = 0.85
+    similarity_threshold: float = 0.8
     confidence_threshold: float = 0.6
     classes_limit: int | None = None
     questions_per_class: int = 3
@@ -53,7 +53,7 @@ class KGBuilderParams:
         return KGBuilderParams(
             model=data.get("model", "qwen3:8b"),
             max_iterations=data.get("max_iterations", 2),
-            similarity_threshold=data.get("similarity_threshold", 0.85),
+            similarity_threshold=data.get("similarity_threshold", 0.8),
             confidence_threshold=data.get("confidence_threshold", 0.6),
             classes_limit=data.get("classes_limit"),
             questions_per_class=data.get("questions_per_class", 3),
@@ -103,19 +103,31 @@ class ConfigVariant:
 class EvaluationConfig:
     """QA evaluation configuration for experiments.
 
-    Attributes:
-        qa_dataset_path: Path to QA dataset JSON file
-        metrics: Metrics to compute
-        similarity_threshold: Answer similarity threshold for correctness
-        max_results: Maximum results to evaluate per question
+    Backward-compatible: accepts legacy kwargs ``dataset_path``,
+    ``compute_metrics``, ``confidence_threshold`` in addition to the
+    canonical field names.
     """
 
-    qa_dataset_path: str
+    qa_dataset_path: str = ""
     metrics: list[str] = field(
         default_factory=lambda: ["accuracy", "f1_score", "coverage", "completeness"]
     )
     similarity_threshold: float = 0.8
     max_results: int = 10
+
+    # Legacy aliases (not persisted)
+    dataset_path: Any = field(default=None, repr=False)
+    compute_metrics: list[str] | None = field(default=None, repr=False)
+    confidence_threshold: float | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        """Normalize legacy kwargs."""
+        if self.dataset_path is not None and not self.qa_dataset_path:
+            self.qa_dataset_path = str(self.dataset_path)
+        if self.compute_metrics is not None:
+            self.metrics = list(self.compute_metrics)
+        if self.confidence_threshold is not None:
+            self.similarity_threshold = self.confidence_threshold
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -130,7 +142,7 @@ class EvaluationConfig:
     def from_dict(data: dict[str, Any]) -> EvaluationConfig:
         """Create from dictionary."""
         return EvaluationConfig(
-            qa_dataset_path=data["qa_dataset_path"],
+            qa_dataset_path=data.get("qa_dataset_path", ""),
             metrics=data.get(
                 "metrics",
                 ["accuracy", "f1_score", "coverage", "completeness"],
@@ -160,14 +172,21 @@ class ExperimentConfig:
     """
 
     name: str
-    description: str
-    output_dir: str
-    variants: list[ConfigVariant]
-    evaluation: EvaluationConfig
+    description: str = ""
+    output_dir: str = "output"
+    variants: list[ConfigVariant] = field(default_factory=list)
+    evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     num_runs: int = 1
     parallel_jobs: int = 1
     seed: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Legacy alias
+    parallel_workers: int | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        """Normalize legacy kwargs."""
+        if self.parallel_workers is not None:
+            self.parallel_jobs = self.parallel_workers
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -196,7 +215,7 @@ class ExperimentConfig:
         return ExperimentConfig(
             name=data["name"],
             description=data.get("description", ""),
-            output_dir=data["output_dir"],
+            output_dir=data.get("output_dir", "output"),
             variants=variants,
             evaluation=eval_config,
             num_runs=data.get("num_runs", 1),
@@ -268,6 +287,18 @@ class ExperimentConfig:
             json.dump(self.to_dict(), f, indent=2)
 
         logger.info("experiment_config_saved", filepath=str(filepath))
+
+    # Alias for test compatibility
+    save = save_json
+
+    def to_json(self) -> str:
+        """Convert config to JSON string."""
+        return json.dumps(self.to_dict(), indent=2, default=str)
+
+    @staticmethod
+    def load(filepath: str | Path) -> ExperimentConfig:
+        """Load from JSON file (alias for from_json)."""
+        return ExperimentConfig.from_json(filepath)
 
     def save_yaml(self, filepath: str | Path) -> None:
         """Save to YAML file.

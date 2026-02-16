@@ -168,8 +168,14 @@ class LLMRelationExtractor:
                         continue
 
                     # Convert to ExtractedRelation with evidence
+                    from kgbuilder.core.models import generate_relation_id
+
                     extracted = ExtractedRelation(
-                        id=rel_item.id,
+                        id=generate_relation_id(
+                            source_entity.id,
+                            target_entity.id,
+                            rel_item.relation_type,
+                        ),
                         source_entity_id=source_entity.id,
                         target_entity_id=target_entity.id,
                         predicate=rel_item.relation_type,

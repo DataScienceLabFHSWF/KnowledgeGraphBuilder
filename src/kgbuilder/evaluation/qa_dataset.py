@@ -99,7 +99,8 @@ class QADataset:
         if not self.questions:
             logger.warning("empty_dataset", name=self.name)
 
-    def load(self, path: Path) -> QADataset:
+    @classmethod
+    def load(cls, path: Path) -> QADataset:
         """Load dataset from file.
 
         Supports JSON and CSV formats. Returns new dataset instance.
@@ -121,9 +122,9 @@ class QADataset:
 
         try:
             if path.suffix == ".json":
-                return self._load_json(path)
+                return cls._load_json(path)
             elif path.suffix == ".csv":
-                return self._load_csv(path)
+                return cls._load_csv(path)
             else:
                 raise ValueError(f"Unsupported format: {path.suffix}")
 
@@ -131,7 +132,8 @@ class QADataset:
             logger.error("dataset_load_failed", path=str(path), error=str(e))
             raise
 
-    def _load_json(self, path: Path) -> QADataset:
+    @staticmethod
+    def _load_json(path: Path) -> QADataset:
         """Load dataset from JSON file."""
         with open(path) as f:
             data = json.load(f)
@@ -149,7 +151,8 @@ class QADataset:
         logger.info("dataset_loaded_json", path=str(path), question_count=len(questions))
         return dataset
 
-    def _load_csv(self, path: Path) -> QADataset:
+    @staticmethod
+    def _load_csv(path: Path) -> QADataset:
         """Load dataset from CSV file.
 
         Expected CSV columns: id, question, expected_answers, query_type, difficulty
@@ -289,6 +292,7 @@ class QADataset:
             "avg_difficulty": round(avg_difficulty, 2),
             "query_types": type_counts,
             "difficulty_distribution": difficulty_counts,
+            "difficulties": difficulty_counts,
             "avg_answers_per_question": round(
                 sum(len(q.expected_answers) for q in self.questions) / len(self.questions),
                 2,
@@ -380,16 +384,19 @@ class QADataset:
         )
 
     def split_train_test(
-        self, train_ratio: float = 0.8
+        self, train_ratio: float = 0.8, split_ratio: float | None = None,
     ) -> tuple[QADataset, QADataset]:
         """Split dataset into train and test sets.
 
         Args:
             train_ratio: Ratio for training set (0.0-1.0)
+            split_ratio: Legacy alias for train_ratio
 
         Returns:
             Tuple of (train_dataset, test_dataset)
         """
+        if split_ratio is not None:
+            train_ratio = split_ratio
         split_idx = int(len(self.questions) * train_ratio)
         train_questions = self.questions[:split_idx]
         test_questions = self.questions[split_idx:]

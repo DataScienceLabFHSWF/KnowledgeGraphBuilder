@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Protocol, runtime_checkable
 
 import structlog
@@ -65,15 +65,15 @@ class Node:
     """
 
     id: str
-    label: str
     node_type: str
+    label: str = ""
     properties: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Set default metadata if not provided."""
         if "created_at" not in self.metadata:
-            self.metadata["created_at"] = datetime.utcnow().isoformat()
+            self.metadata["created_at"] = datetime.now(tz=timezone.utc).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -126,13 +126,16 @@ class Edge:
     source_id: str
     target_id: str
     edge_type: str
+    # backward-compatible optional fields used by tests/fixtures
+    source_node_type: str | None = None
+    target_node_type: str | None = None
     properties: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Set default metadata if not provided."""
         if "created_at" not in self.metadata:
-            self.metadata["created_at"] = datetime.utcnow().isoformat()
+            self.metadata["created_at"] = datetime.now(tz=timezone.utc).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -141,6 +144,8 @@ class Edge:
             "source_id": self.source_id,
             "target_id": self.target_id,
             "type": self.edge_type,
+            "source_node_type": self.source_node_type,
+            "target_node_type": self.target_node_type,
             "properties": self.properties,
             "metadata": self.metadata,
         }
@@ -153,6 +158,8 @@ class Edge:
             source_id=data["source_id"],
             target_id=data["target_id"],
             edge_type=data.get("type", data.get("edge_type", "RELATED_TO")),
+            source_node_type=data.get("source_node_type") or data.get("source_node_type"),
+            target_node_type=data.get("target_node_type") or data.get("target_node_type"),
             properties=data.get("properties", {}),
             metadata=data.get("metadata", {}),
         )
@@ -632,7 +639,7 @@ class InMemoryGraphStore:
         """
         return {
             "metadata": {
-                "exported_at": datetime.utcnow().isoformat(),
+                "exported_at": datetime.now(tz=timezone.utc).isoformat(),
                 "node_count": len(self._nodes),
                 "edge_count": len(self._edges),
             },

@@ -1,0 +1,11 @@
+{
+  "doc_id": "doc_001",
+  "text": "§ 1 AtG regelt die Zuständigkeit der Behörde X.",
+  "entities": [
+    {"id": "e1", "start": 0, "end": 3, "text": "§ 1", "label": "Paragraf"},
+    {"id": "e2", "start": 26, "end": 35, "text": "Behörde X", "label": "Behoerde"}
+  ],
+  "relations": [
+    {"subject_id": "e1", "predicate": "referenziert", "object_id": "e2"}
+  ]
+}
