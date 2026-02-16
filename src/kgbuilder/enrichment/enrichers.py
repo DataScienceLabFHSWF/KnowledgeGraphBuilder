@@ -14,10 +14,9 @@ import logging
 from typing import Any
 
 import numpy as np
-from pydantic import BaseModel
 
-from kgbuilder.core.protocols import LLMProvider, EmbeddingProvider
-from kgbuilder.enrichment.protocols import Enricher, EnrichedEntity, EnrichedRelation
+from kgbuilder.core.protocols import EmbeddingProvider, LLMProvider
+from kgbuilder.enrichment.protocols import EnrichedEntity, EnrichedRelation, Enricher
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ class DescriptionEnricher(Enricher):
                 )
                 description = self.llm.generate(prompt, temperature=0.5)
                 entity.description = description.strip()
-                logger.debug(f"✓ Generated description for {entity.label}")
+                logger.debug(f"[OK] Generated description for {entity.label}")
             except Exception as e:
                 logger.warning(f"Failed to generate description for {entity.label}: {e}")
 
@@ -84,7 +83,7 @@ class DescriptionEnricher(Enricher):
                 )
                 description = self.llm.generate(prompt, temperature=0.5)
                 relation.description = description.strip()
-                logger.debug(f"✓ Generated description for {relation.predicate}")
+                logger.debug(f"[OK] Generated description for {relation.predicate}")
             except Exception as e:
                 logger.warning(f"Failed to generate description for {relation.predicate}: {e}")
 
@@ -123,7 +122,7 @@ class EmbeddingEnricher(Enricher):
 
                 embedding = self.embedding_provider.embed_text(text)
                 entity.embedding = embedding.tolist() if isinstance(embedding, np.ndarray) else embedding
-                logger.debug(f"✓ Generated embedding for {entity.label}")
+                logger.debug(f"[OK] Generated embedding for {entity.label}")
             except Exception as e:
                 logger.warning(f"Failed to generate embedding for {entity.label}: {e}")
 
@@ -149,7 +148,7 @@ class EmbeddingEnricher(Enricher):
 
                 embedding = self.embedding_provider.embed_text(text)
                 relation.embedding = embedding.tolist() if isinstance(embedding, np.ndarray) else embedding
-                logger.debug(f"✓ Generated embedding for {relation.predicate}")
+                logger.debug(f"[OK] Generated embedding for {relation.predicate}")
             except Exception as e:
                 logger.warning(f"Failed to generate embedding for {relation.predicate}: {e}")
 
@@ -191,7 +190,7 @@ class CompetencyQuestionEnricher(Enricher):
                 cq_text = self.llm.generate(prompt, temperature=0.6)
                 cqs = [q.strip() for q in cq_text.strip().split('\n') if q.strip()]
                 entity.competency_questions = cqs
-                logger.debug(f"✓ Generated {len(cqs)} CQs for {entity.label}")
+                logger.debug(f"[OK] Generated {len(cqs)} CQs for {entity.label}")
             except Exception as e:
                 logger.warning(f"Failed to generate CQs for {entity.label}: {e}")
 
@@ -234,7 +233,7 @@ class TypeConstraintEnricher(Enricher):
                     type_scores[class_name] = 0.5 if self._is_related(entity.entity_type, class_name) else 0.0
 
             entity.type_scores = type_scores if type_scores else None
-            logger.debug(f"✓ Computed type scores for {entity.label}")
+            logger.debug(f"[OK] Computed type scores for {entity.label}")
 
         return entities
 
@@ -290,7 +289,7 @@ class AliasEnricher(Enricher):
                 aliases_text = self.llm.generate(prompt, temperature=0.6)
                 aliases = [a.strip() for a in aliases_text.strip().split(',') if a.strip()]
                 entity.aliases = aliases if aliases else None
-                logger.debug(f"✓ Generated {len(aliases or [])} aliases for {entity.label}")
+                logger.debug(f"[OK] Generated {len(aliases or [])} aliases for {entity.label}")
             except Exception as e:
                 logger.warning(f"Failed to generate aliases for {entity.label}: {e}")
 

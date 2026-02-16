@@ -7,8 +7,10 @@ Download HTML for decommissioning-related laws (and related) using law_index.jso
 - Skips already-downloaded files
 """
 from __future__ import annotations
+
 import json
 from pathlib import Path
+
 import requests
 
 IMPORTANT_ABBRS = [

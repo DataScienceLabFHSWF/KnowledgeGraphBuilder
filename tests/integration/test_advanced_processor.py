@@ -43,8 +43,8 @@ def main() -> None:
     try:
         result = processor.process_document(pdf_file)
 
-        print(f"\n✅ Processing Complete!\n")
-        print(f"📊 Results:")
+        print("\n✅ Processing Complete!\n")
+        print("📊 Results:")
         print(f"   • Chunks: {len(result.chunks)}")
         print(f"   • Metadata entries: {len(result.metadatas)}")
         print(f"   • Tables: {len(result.tables) if result.tables else 0}")
@@ -54,21 +54,21 @@ def main() -> None:
             print(f"   • Languages: {', '.join(result.stats.languages_detected)}")
 
         if result.chunks:
-            print(f"\n📝 First chunk preview:")
+            print("\n📝 First chunk preview:")
             print(f"   {result.chunks[0][:100]}...")
 
         if result.metadatas:
-            print(f"\n📌 First metadata:")
+            print("\n📌 First metadata:")
             for key, value in list(result.metadatas[0].items())[:5]:
                 print(f"   {key}: {value}")
 
         # Test caching
-        print(f"\n🔄 Testing cache...")
+        print("\n🔄 Testing cache...")
         result2 = processor.process_document(pdf_file)
         if result2.chunks == result.chunks:
-            print(f"   ✅ Cache working! Returned cached result")
+            print("   ✅ Cache working! Returned cached result")
         else:
-            print(f"   ⚠️  Cache inconsistency")
+            print("   ⚠️  Cache inconsistency")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")

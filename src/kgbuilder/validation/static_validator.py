@@ -39,10 +39,9 @@ References:
 
 from __future__ import annotations
 
-import json
 import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -214,7 +213,6 @@ class StaticValidator:
         actions = converter.from_entities_and_relations(entities or [], relations or [], operation=operation)
 
         # Write actions to temp file and invoke prover
-        import tempfile
 
         with tempfile.TemporaryDirectory() as td:
             actions_path = Path(td) / "actions.json"

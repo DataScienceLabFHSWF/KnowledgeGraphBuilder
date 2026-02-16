@@ -35,6 +35,12 @@ Public API:
     - ReportGenerator: Export validation results to JSON/Markdown/HTML
 """
 
+from kgbuilder.validation.action_converter import (
+    ActionConverter,
+    ActionSet,
+    PathAction,
+    ShapeAction,
+)
 from kgbuilder.validation.consistency_checker import ConsistencyChecker, ConsistencyReport
 from kgbuilder.validation.models import (
     Conflict,
@@ -54,22 +60,12 @@ from kgbuilder.validation.rules_engine import (
     SemanticRule,
     TransitiveRule,
 )
-from kgbuilder.validation.shacl_validator import SHACLValidator
 from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
+from kgbuilder.validation.shacl_validator import SHACLValidator
 from kgbuilder.validation.static_validator import (
+    StaticValidationResult,
     StaticValidator,
     StaticValidatorConfig,
-    StaticValidationResult,
-)
-from kgbuilder.validation.action_converter import (
-    ActionConverter,
-    ActionSet,
-    ShapeAction,
-    PathAction,
-)
-from kgbuilder.validation.validators import (
-    CompetencyQuestionValidator,
-    OntologyValidator,
 )
 from kgbuilder.validation.validators import (
     CompetencyQuestionValidator,

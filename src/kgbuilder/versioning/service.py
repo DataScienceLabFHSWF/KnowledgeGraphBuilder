@@ -11,8 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -30,23 +29,23 @@ class VersionMetadata:
     name: str
     description: str
     timestamp: datetime = field(default_factory=datetime.now)
-    
+
     # Trigger information
     trigger: str = ""  # "pipeline_run", "manual_snapshot", etc.
     pipeline_id: str | None = None  # Associated pipeline run ID
-    
+
     # KG statistics at snapshot time
     entity_count: int = 0
     relation_count: int = 0
-    
+
     # Content hash for deduplication
     content_hash: str = ""  # SHA256 of KG data
     document_set_hash: str = ""  # SHA256 of document paths used
-    
+
     # Storage
     snapshot_path: Path | None = None
     export_path: Path | None = None
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
@@ -64,24 +63,24 @@ class VersionDiff:
 
     version_from: str
     version_to: str
-    
+
     entities_added: int = 0
     entities_modified: int = 0
     entities_deleted: int = 0
-    
+
     relations_added: int = 0
     relations_modified: int = 0
     relations_deleted: int = 0
-    
+
     # Detailed lists
     new_entity_ids: list[str] = field(default_factory=list)
     removed_entity_ids: list[str] = field(default_factory=list)
     new_relation_ids: list[str] = field(default_factory=list)
     removed_relation_ids: list[str] = field(default_factory=list)
-    
+
     # Summary
     total_changes: int = 0
-    
+
     def compute_summary(self) -> None:
         """Compute total_changes from component changes."""
         self.total_changes = (
@@ -111,14 +110,14 @@ class KGVersioningService:
         self.version_dir = Path(version_dir)
         self.graph_store = graph_store
         self.metadata_file = self.version_dir / "versions.json"
-        
+
         # Create version directory
         self.version_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Load existing versions
         self.versions: dict[str, VersionMetadata] = {}
         self._load_versions()
-        
+
         logger.info("versioning_service_initialized", version_dir=str(self.version_dir))
 
     def create_snapshot(
@@ -142,22 +141,22 @@ class KGVersioningService:
             VersionMetadata for the created snapshot
         """
         logger.info("creating_kg_snapshot", name=name, trigger=trigger)
-        
+
         # Generate version ID
         timestamp = datetime.now()
         version_id = timestamp.strftime("v_%Y%m%d_%H%M%S_") + self._generate_short_hash()
-        
+
         # Query KG statistics
         entity_count = self._count_entities()
         relation_count = self._count_relations()
-        
+
         # Compute content hashes
         content_hash = self._compute_kg_hash()
-        
+
         # Create snapshot directory
         snapshot_dir = self.version_dir / version_id
         snapshot_dir.mkdir(exist_ok=True)
-        
+
         # Create metadata
         metadata = VersionMetadata(
             version_id=version_id,
@@ -171,22 +170,22 @@ class KGVersioningService:
             content_hash=content_hash,
             snapshot_path=snapshot_dir,
         )
-        
+
         # Export KG data
         if export_formats is None:
             export_formats = ["json-ld"]
-        
+
         try:
             for fmt in export_formats:
                 self._export_kg(fmt, snapshot_dir, metadata)
         except Exception as e:
             logger.error(f"export_failed during snapshot: {e}")
             # Don't fail snapshot creation if export fails
-        
+
         # Store metadata
         self.versions[version_id] = metadata
         self._save_versions()
-        
+
         logger.info(
             "kg_snapshot_created",
             version_id=version_id,
@@ -194,7 +193,7 @@ class KGVersioningService:
             relations=relation_count,
             path=str(snapshot_dir),
         )
-        
+
         return metadata
 
     def list_versions(self) -> list[VersionMetadata]:
@@ -239,7 +238,7 @@ class KGVersioningService:
         if len(versions) < 2:
             logger.warning("diff_insufficient_versions")
             return None
-        
+
         if version_to is None:
             version_to_meta = versions[0]
         else:
@@ -247,7 +246,7 @@ class KGVersioningService:
             if not version_to_meta:
                 logger.warning(f"version_not_found {version_to}")
                 return None
-        
+
         if version_from is None:
             version_from_meta = versions[1]
         else:
@@ -255,29 +254,29 @@ class KGVersioningService:
             if not version_from_meta:
                 logger.warning(f"version_not_found {version_from}")
                 return None
-        
+
         # Compute diff
         diff = VersionDiff(
             version_from=version_from_meta.version_id,
             version_to=version_to_meta.version_id,
         )
-        
+
         # Simple diff: compare entity/relation counts
         # TODO: For detailed diffing, compare actual entity/relation sets
         diff.entities_added = max(0, version_to_meta.entity_count - version_from_meta.entity_count)
         diff.entities_deleted = max(0, version_from_meta.entity_count - version_to_meta.entity_count)
         diff.relations_added = max(0, version_to_meta.relation_count - version_from_meta.relation_count)
         diff.relations_deleted = max(0, version_from_meta.relation_count - version_to_meta.relation_count)
-        
+
         diff.compute_summary()
-        
+
         logger.info(
             "kg_versions_diffed",
             from_version=diff.version_from,
             to_version=diff.version_to,
             total_changes=diff.total_changes,
         )
-        
+
         return diff
 
     def restore(self, version_id: str) -> bool:
@@ -293,17 +292,17 @@ class KGVersioningService:
         if not metadata:
             logger.error(f"restore_failed version_not_found {version_id}")
             return False
-        
+
         if not metadata.snapshot_path or not metadata.snapshot_path.exists():
             logger.error(f"restore_failed snapshot_not_found {metadata.snapshot_path}")
             return False
-        
+
         logger.warning(
             "restoring_kg_to_version",
             version_id=version_id,
             version_name=metadata.name,
         )
-        
+
         try:
             # TODO: Implement actual restore logic
             # - Load exported KG data from snapshot_path
@@ -322,7 +321,7 @@ class KGVersioningService:
             Formatted report string
         """
         report = "# Knowledge Graph Version History\n\n"
-        
+
         versions = self.list_versions()
         for i, version in enumerate(versions, 1):
             report += f"## Version {i}: {version.name}\n\n"
@@ -334,7 +333,7 @@ class KGVersioningService:
             report += f"- **Relations**: {version.relation_count}\n"
             report += f"- **Content Hash**: `{version.content_hash[:16]}...`\n"
             report += "\n"
-        
+
         return report
 
     def _count_entities(self) -> int:
@@ -369,7 +368,7 @@ class KGVersioningService:
                     RETURN collect(DISTINCT e.id) as entity_ids
                 """)
                 entity_ids = result.single()["entity_ids"] or []
-                
+
                 # Create hash from sorted entity IDs (deterministic)
                 content = json.dumps(sorted(entity_ids), sort_keys=True)
                 return hashlib.sha256(content.encode()).hexdigest()
@@ -398,9 +397,9 @@ class KGVersioningService:
         if not self.metadata_file.exists():
             logger.info("no_existing_versions")
             return
-        
+
         try:
-            with open(self.metadata_file, "r") as f:
+            with open(self.metadata_file) as f:
                 data = json.load(f)
                 for version_id, meta_dict in data.items():
                     # Reconstruct VersionMetadata
@@ -409,9 +408,9 @@ class KGVersioningService:
                         meta_dict["snapshot_path"] = Path(meta_dict["snapshot_path"])
                     if meta_dict.get("export_path"):
                         meta_dict["export_path"] = Path(meta_dict["export_path"])
-                    
+
                     self.versions[version_id] = VersionMetadata(**meta_dict)
-            
+
             logger.info("versions_loaded", count=len(self.versions))
         except Exception as e:
             logger.error(f"Failed to load versions: {e}")

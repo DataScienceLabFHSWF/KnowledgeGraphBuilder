@@ -18,7 +18,6 @@ from kgbuilder.assembly.simple_kg_assembler import KGAssemblyResult, SimpleKGAss
 from kgbuilder.core.models import Evidence, ExtractedRelation
 from kgbuilder.extraction.synthesizer import SynthesizedEntity
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -67,11 +66,11 @@ def mock_neo4j_driver():
     """Create a mock Neo4j driver."""
     driver = MagicMock()
     session = MagicMock()
-    
+
     # Mock session context manager
     driver.session.return_value.__enter__ = Mock(return_value=session)
     driver.session.return_value.__exit__ = Mock(return_value=None)
-    
+
     return driver
 
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Quick import test."""
 import sys
+
 sys.path.insert(0, "src")
 
 try:
-    from kgbuilder.extraction import LLMEntityExtractor, OntologyClassDef
     from kgbuilder.embedding import OllamaProvider
+    from kgbuilder.extraction import LLMEntityExtractor
     from kgbuilder.extraction.schemas import EntityExtractionOutput
     print("✓ All imports successful")
     print(f"  - LLMEntityExtractor: {LLMEntityExtractor}")

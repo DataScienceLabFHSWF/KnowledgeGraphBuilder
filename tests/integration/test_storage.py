@@ -9,19 +9,18 @@ Tests for:
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, patch, call
-from typing import Any
+from unittest.mock import MagicMock, patch
 
-from kgbuilder.storage.protocol import Node, Edge, QueryResult, GraphStatistics
-from kgbuilder.storage.neo4j_store import Neo4jGraphStore
-from kgbuilder.storage.rdf_store import RDFGraphStore
+import pytest
+
 from kgbuilder.assembly.kg_builder import (
     KGBuilder,
     KGBuilderConfig,
     KGBuildResult,
 )
-
+from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+from kgbuilder.storage.protocol import Edge, GraphStatistics, Node, QueryResult
+from kgbuilder.storage.rdf_store import RDFGraphStore
 
 # =============================================================================
 # FIXTURES
@@ -466,7 +465,7 @@ class TestKGBuilderIntegration:
         # Setup mocks to return only the nodes/edges in the batch
         def batch_nodes_side_effect(nodes):
             return [n.id for n in nodes]
-        
+
         def batch_edges_side_effect(edges):
             return [e.id for e in edges]
 

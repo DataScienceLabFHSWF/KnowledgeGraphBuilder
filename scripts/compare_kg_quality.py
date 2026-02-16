@@ -34,11 +34,10 @@ import json
 import os
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from neo4j import GraphDatabase
-
 
 # ---------------------------------------------------------------------------
 # Neo4j connection
@@ -102,7 +101,7 @@ def snapshot_kg(driver: GraphDatabase.driver) -> dict:
     ]
 
     snapshot = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "total_nodes": len(all_nodes),
         "total_edges": len(all_edges),
         "unique_node_labels": len(node_label_counts),
@@ -150,7 +149,7 @@ def compare_snapshots(baseline: dict, augmented: dict) -> str:
     lines: list[str] = []
     lines.append("# KG Quality Comparison Report")
     lines.append("")
-    lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}")
+    lines.append(f"Generated: {datetime.now(UTC).isoformat()}")
     lines.append("")
 
     # --- Summary table ---

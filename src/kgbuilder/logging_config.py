@@ -9,7 +9,6 @@ Provides:
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 import time
@@ -55,20 +54,20 @@ def setup_logging(
     if log_dir:
         log_dir = Path(log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Configure stderr handler (console output)
     console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(getattr(logging, log_level))
-    
+
     if enable_json:
         console_formatter = logging.Formatter('%(message)s')
     else:
         console_formatter = logging.Formatter(
             '%(asctime)s [%(levelname)s] %(name)s - %(message)s'
         )
-    
+
     console_handler.setFormatter(console_formatter)
-    
+
     # Configure file handler if log_dir provided
     file_handler = None
     if log_dir:
@@ -77,20 +76,20 @@ def setup_logging(
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter('%(message)s')
         file_handler.setFormatter(console_formatter)
-    
+
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
-    
+
     # Remove existing handlers
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     # Add handlers
     root_logger.addHandler(console_handler)
     if file_handler:
         root_logger.addHandler(file_handler)
-    
+
     # Get structlog logger
     logger = structlog.get_logger(__name__)
     logger.info("logging_configured", level=log_level, json_enabled=enable_json)
@@ -146,18 +145,18 @@ class LLMCallTracker:
             call_type: Type of call (for filtering)
         """
         self.call_count += 1
-        
+
         # Estimate tokens if not provided
         if input_tokens is None:
             input_tokens = self._estimate_tokens(prompt)
         if output_tokens is None:
             output_tokens = self._estimate_tokens(response)
-        
+
         # Update aggregates
         self.total_input_tokens += input_tokens
         self.total_output_tokens += output_tokens
         self.total_latency_seconds += latency_seconds
-        
+
         # Log the call
         log_data = {
             "model": model,
@@ -171,10 +170,10 @@ class LLMCallTracker:
             "success": success,
             "call_number": self.call_count,
         }
-        
+
         if not success and error_message:
             log_data["error"] = error_message
-        
+
         if success:
             self.logger.info("llm_call", **log_data)
         else:
@@ -265,24 +264,24 @@ class PipelineHealthMonitor:
             duration = time.time() - self.phase_times[start_key]
         else:
             duration = 0.0
-        
+
         self.phase_times[f"{phase_name}_duration"] = duration
         self.error_count += errors
-        
+
         log_data = {
             "phase": phase_name,
             "duration_seconds": duration,
         }
-        
+
         if entity_count is not None:
             log_data["entities"] = entity_count
-        
+
         if relation_count is not None:
             log_data["relations"] = relation_count
-        
+
         if errors > 0:
             log_data["errors"] = errors
-        
+
         self.logger.info("phase_complete", **log_data)
 
     def log_warning(self, message: str, **kwargs: Any) -> None:
@@ -312,7 +311,7 @@ class PipelineHealthMonitor:
             Dict with metrics
         """
         total_time = time.time() - self.start_time
-        
+
         return {
             "total_execution_seconds": total_time,
             "total_errors": self.error_count,

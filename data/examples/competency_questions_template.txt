@@ -1,0 +1,19 @@
+# Competency Questions -- Template
+#
+# Write one question per line.
+# Lines starting with '#' are comments and will be ignored.
+# These questions guide the discovery loop to extract relevant entities
+# and relations from your documents.
+#
+# Good competency questions are specific, answerable from the documents,
+# and cover the key concepts in your ontology.
+#
+# Examples for a hypothetical "Supply Chain" domain:
+
+# Who are the suppliers for each product category?
+# What raw materials are required for each product?
+# Which warehouses store which products?
+# What is the lead time for each supplier?
+# What transportation routes connect which facilities?
+# Which regulations apply to the handling of hazardous materials?
+# What quality certifications does each supplier hold?

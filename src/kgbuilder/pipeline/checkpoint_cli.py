@@ -12,9 +12,8 @@ import logging
 import os
 from pathlib import Path
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.embedding.ollama import OllamaProvider
-from kgbuilder.enrichment import SemanticEnrichmentPipeline, EnrichedEntity, EnrichedRelation
+from kgbuilder.enrichment import EnrichedEntity, EnrichedRelation, SemanticEnrichmentPipeline
 from kgbuilder.experiment.checkpoint import CheckpointManager
 
 logger = logging.getLogger(__name__)

@@ -24,20 +24,20 @@ class AnalyticsPipelineResult:
 
     start_time: datetime = field(default_factory=datetime.now)
     end_time: datetime | None = None
-    
+
     # Inference results
     inference_enabled: bool = False
     inference_stats: dict = field(default_factory=dict)  # {rule_name: count}
-    
+
     # SKOS enrichment results
     skos_enabled: bool = False
     skos_mappings_found: int = 0
     skos_mappings_applied: int = 0
-    
+
     # Metrics results
     metrics_before: GraphMetricsSnapshot | None = None
     metrics_after: GraphMetricsSnapshot | None = None
-    
+
     # Summary
     total_duration_seconds: float = 0.0
     status: str = "pending"  # pending, running, success, failed
@@ -74,7 +74,7 @@ class AnalyticsPipeline:
         self.ontology_service = ontology_service
         self.enable_inference = enable_inference
         self.enable_skos = enable_skos
-        
+
         self.metrics = GraphMetrics(graph_store)
         self.inference_engine = (
             Neo4jInferenceEngine(graph_store, ontology_service)
@@ -95,14 +95,14 @@ class AnalyticsPipeline:
         """
         result = AnalyticsPipelineResult(start_time=datetime.now())
         result.status = "running"
-        
+
         try:
             logger.info("analytics_pipeline_start")
-            
+
             # Phase 1: Measure baseline
             logger.info("analytics_phase interval=1_measure_baseline")
             result.metrics_before = self.metrics.compute_metrics(self.ontology_service)
-            
+
             # Phase 2: Inference
             if self.inference_engine:
                 logger.info("analytics_phase interval=2_inference")
@@ -112,24 +112,24 @@ class AnalyticsPipeline:
                     "inference_completed",
                     stats=result.inference_stats,
                 )
-            
+
             # Phase 3: SKOS enrichment (placeholder for future implementation)
             if self.skos_enricher:
                 logger.info("analytics_phase interval=3_skos_enrichment")
                 result.skos_enabled = True
                 # TODO: Implement batch SKOS enrichment when ontology queries available
                 logger.info("skos_enrichment_deferred", reason="ontology_queries_needed")
-            
+
             # Phase 4: Measure improvements
             logger.info("analytics_phase interval=4_measure_after")
             result.metrics_after = self.metrics.compute_metrics(self.ontology_service)
-            
+
             result.status = "success"
             result.end_time = datetime.now()
             result.total_duration_seconds = (
                 result.end_time - result.start_time
             ).total_seconds()
-            
+
             # Log summary
             self._log_summary(result)
             logger.info(
@@ -137,7 +137,7 @@ class AnalyticsPipeline:
                 duration_seconds=result.total_duration_seconds,
                 status=result.status,
             )
-            
+
         except Exception as e:
             result.status = "failed"
             result.error_message = str(e)
@@ -145,23 +145,23 @@ class AnalyticsPipeline:
             result.total_duration_seconds = (
                 result.end_time - result.start_time
             ).total_seconds()
-            
+
             logger.error(
                 "analytics_pipeline_error",
                 error=str(e),
                 duration_seconds=result.total_duration_seconds,
             )
-        
+
         return result
 
     def _log_summary(self, result: AnalyticsPipelineResult) -> None:
         """Log execution summary."""
         if not result.metrics_before or not result.metrics_after:
             return
-        
+
         node_delta = result.metrics_after.total_nodes - result.metrics_before.total_nodes
         edge_delta = result.metrics_after.total_edges - result.metrics_before.total_edges
-        
+
         logger.info(
             "analytics_summary",
             nodes_before=result.metrics_before.total_nodes,
@@ -190,8 +190,8 @@ class AnalyticsPipeline:
 
 ### Pipeline Status
 """
-        
+
         # This would be filled in with actual results
         report += f"Status: {self.status}\n"
-        
+
         return report

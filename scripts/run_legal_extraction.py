@@ -36,7 +36,6 @@ import argparse
 import os
 import sys
 import uuid
-from dataclasses import asdict
 from pathlib import Path
 
 try:
@@ -147,8 +146,8 @@ def run_llm_extraction(paragraphs: list[dict]) -> list[dict]:
     LegalLLMExtractor is not yet implemented.
     """
     try:
-        from kgbuilder.extraction.legal_llm import LegalLLMExtractor
         from kgbuilder.embedding.ollama import OllamaProvider
+        from kgbuilder.extraction.legal_llm import LegalLLMExtractor
         from kgbuilder.storage.ontology import OntologyService as OntSvc
     except ImportError as e:
         print(f"Cannot import LLM extraction modules: {e}", file=sys.stderr)

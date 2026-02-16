@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from kgbuilder.core.models import ExtractedEntity, Evidence
-from kgbuilder.confidence.coreference import CoreferenceResolver
 from kgbuilder.confidence import EntityCluster
+from kgbuilder.confidence.coreference import CoreferenceResolver
+from kgbuilder.core.models import Evidence, ExtractedEntity
 
 
 @pytest.fixture

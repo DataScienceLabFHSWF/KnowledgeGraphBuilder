@@ -11,18 +11,17 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
 
-from langchain_ollama import ChatOllama
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
+from langchain_ollama import ChatOllama
 
 from kgbuilder.core import get_base_url
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
-from kgbuilder.extraction.schemas import EntityExtractionOutput, RelationExtractionOutput
+from kgbuilder.core.models import ExtractedEntity
 from kgbuilder.extraction.entity import OntologyClassDef
 from kgbuilder.extraction.relation import OntologyRelationDef
+from kgbuilder.extraction.schemas import EntityExtractionOutput, RelationExtractionOutput
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +106,7 @@ Return ONLY valid JSON matching this format:
 
         # Build chain with error handling
         import re
-        
+
         def fix_json_arithmetic(text: str) -> str:
             """Fix invalid JSON arithmetic expressions like 'end_char: 266 + 18'.
             
@@ -120,7 +119,7 @@ Return ONLY valid JSON matching this format:
             """
             # Pattern: "key": number +/- number (possibly with spaces and multiple operations)
             pattern = r'(\"[^\"]+\"\\s*:\\s*)(\\d+(?:\\s*[+\\-*/]\\s*\\d+)+)(\\s*[,}\\n])'
-            
+
             def replace_expr(match):
                 prefix = match.group(1)
                 expr = match.group(2)
@@ -135,10 +134,10 @@ Return ONLY valid JSON matching this format:
                 except Exception:
                     return match.group(0)
                 return match.group(0)
-            
+
             fixed = re.sub(pattern, replace_expr, text)
             return fixed
-        
+
         def safe_parse(x):
             try:
                 # First, fix arithmetic expressions in the JSON
@@ -148,10 +147,10 @@ Return ONLY valid JSON matching this format:
                 logger.warning(f"JSON parsing failed, returning empty: {str(e)[:100]}")
                 # Return empty result on parse error
                 return EntityExtractionOutput(entities=[])
-        
+
         chain = prompt | llm | (lambda x: safe_parse(x))
 
-        logger.info(f"✓ Created entity extraction chain ({model})")
+        logger.info(f"[OK] Created entity extraction chain ({model})")
         return chain
 
     @staticmethod
@@ -225,7 +224,7 @@ JSON Response:"""
         # Build chain
         chain = prompt | llm | parser
 
-        logger.info(f"✓ Created relation extraction chain ({model})")
+        logger.info(f"[OK] Created relation extraction chain ({model})")
         return chain
 
     @staticmethod
@@ -316,6 +315,6 @@ def build_extraction_pipeline() -> tuple[Runnable, Runnable]:
     """
     entity_chain = ExtractionChains.create_entity_extraction_chain()
     relation_chain = ExtractionChains.create_relation_extraction_chain()
-    
-    logger.info("✓ Built complete extraction pipeline")
+
+    logger.info("[OK] Built complete extraction pipeline")
     return entity_chain, relation_chain

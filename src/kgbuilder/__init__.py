@@ -91,8 +91,8 @@ try:
         CompetencyQuestionValidator,
         OntologyValidator,
         SHACLValidator,
-        Validator,
         ValidationViolation,
+        Validator,
     )
 
     _optional_symbols.update(

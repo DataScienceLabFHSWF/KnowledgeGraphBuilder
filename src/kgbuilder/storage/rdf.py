@@ -11,7 +11,7 @@ Key features:
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -92,11 +92,11 @@ class FusekiStore:
         self.url = url
         self.dataset_name = dataset_name
         self.session = requests.Session()
-        
+
         # Setup auth if provided
         if username and password:
             self.session.auth = HTTPBasicAuth(username, password)
-        
+
         # Use simpler SPARQL endpoint for all operations
         self.sparql_url = f"{url}/{dataset_name}/sparql"
         self.update_url = f"{url}/{dataset_name}/update"
@@ -107,7 +107,7 @@ class FusekiStore:
             resp = self.session.get(f"{url}/$/datasets")
             if resp.status_code not in (200, 401):
                 resp.raise_for_status()
-            
+
             # Try to create dataset if it doesn't exist
             self._ensure_dataset_exists()
         except Exception as e:
@@ -117,8 +117,7 @@ class FusekiStore:
 
     def _ensure_dataset_exists(self) -> None:
         """Create the dataset if it doesn't exist."""
-        import json
-        
+
         # Check if dataset exists
         try:
             resp = self.session.get(f"{self.url}/$/datasets")
@@ -128,7 +127,7 @@ class FusekiStore:
                     return  # Dataset exists
         except:
             pass
-        
+
         # Create dataset if it doesn't exist
         try:
             payload = {
@@ -166,8 +165,7 @@ class FusekiStore:
         Returns:
             Query results as dict with 'results' containing 'bindings'
         """
-        import json
-        
+
         try:
             # POST SPARQL query to Fuseki
             resp = self.session.post(
@@ -177,7 +175,7 @@ class FusekiStore:
                 timeout=30
             )
             resp.raise_for_status()
-            
+
             # Parse JSON results
             return resp.json()
         except Exception as e:
@@ -224,7 +222,7 @@ class FusekiStore:
             content_type = "text/turtle"
         else:
             content_type = "application/rdf+xml"  # Default to RDF/XML
-        
+
         try:
             # Use the graph store endpoint to load RDF directly
             resp = self.session.post(

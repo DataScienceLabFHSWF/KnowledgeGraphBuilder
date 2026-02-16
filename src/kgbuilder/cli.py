@@ -33,7 +33,7 @@ def setup(
     try:
         setup_data()
     except Exception as e:
-        typer.echo(f"❌ Setup failed: {e}", err=True)
+        typer.echo(f"[ERROR] Setup failed: {e}", err=True)
         sys.exit(1)
 
 
@@ -52,7 +52,7 @@ def extract(
     3. Assemble into Neo4j Knowledge Graph
     4. Validate with SHACL
     """
-    typer.echo("🔄 Extraction pipeline not yet implemented")
+    typer.echo("[WIP] Extraction pipeline not yet implemented")
     sys.exit(1)
 
 
@@ -103,7 +103,7 @@ def query(
                 typer.echo(tabulate(results, headers="keys", tablefmt="grid"))
 
     except Exception as e:
-        typer.echo(f"❌ Query failed: {e}", err=True)
+        typer.echo(f"[ERROR] Query failed: {e}", err=True)
         sys.exit(1)
 
 
@@ -136,10 +136,10 @@ def export(
         rdf_data = fuseki.export_rdf(format=format)
 
         output_file.write_text(rdf_data)
-        typer.echo(f"✅ Exported to {output_file}")
+        typer.echo(f"[OK] Exported to {output_file}")
 
     except Exception as e:
-        typer.echo(f"❌ Export failed: {e}", err=True)
+        typer.echo(f"[ERROR] Export failed: {e}", err=True)
         sys.exit(1)
 
 
@@ -152,7 +152,7 @@ def validate() -> None:
     2. Ontology consistency checks
     3. Competency question validation
     """
-    typer.echo("🔄 Validation pipeline not yet implemented")
+    typer.echo("[WIP] Validation pipeline not yet implemented")
     sys.exit(1)
 
 
@@ -166,7 +166,7 @@ def status() -> None:
     - Fuseki RDF store statistics
     - Ingestion progress
     """
-    typer.echo("🔄 Status reporting not yet implemented")
+    typer.echo("[WIP] Status reporting not yet implemented")
     sys.exit(1)
 
 

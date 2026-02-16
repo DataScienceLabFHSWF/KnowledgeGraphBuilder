@@ -151,7 +151,7 @@ class ReportGenerator:
             "",
             "## Summary",
             "",
-            f"- **Valid**: {'✓ Yes' if result.valid else '✗ No'}",
+            f"- **Valid**: {'[OK] Yes' if result.valid else '[FAIL] No'}",
             f"- **Pass Rate**: {round(result.pass_rate * 100, 1)}%",
             f"- **Nodes**: {result.node_count}",
             f"- **Edges**: {result.edge_count}",
@@ -208,7 +208,7 @@ class ReportGenerator:
         Returns:
             HTML-formatted report
         """
-        status_icon = "✓" if result.valid else "✗"
+        status_icon = "[OK]" if result.valid else "[FAIL]"
         status_color = "green" if result.valid else "red"
 
         html_parts = [
@@ -221,8 +221,8 @@ class ReportGenerator:
             "    body { font-family: Arial, sans-serif; margin: 20px; }",
             "    .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }",
             "    .status { font-size: 18px; font-weight: bold; }",
-            f"    .status-yes {{ color: green; }}",
-            f"    .status-no {{ color: red; }}",
+            "    .status-yes { color: green; }",
+            "    .status-no { color: red; }",
             "    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }",
             "    .metric { background: #f9f9f9; padding: 15px; border-left: 4px solid #007bff; }",
             "    .metric-value { font-size: 24px; font-weight: bold; }",
@@ -237,31 +237,31 @@ class ReportGenerator:
             "  </style>",
             "</head>",
             "<body>",
-            f"  <div class='header'>",
+            "  <div class='header'>",
             f"    <h1>{self.title}</h1>",
             f"    <div class='status status-{'yes' if result.valid else 'no'}'>",
             f"      {status_icon} {'VALID' if result.valid else 'INVALID'}",
-            f"    </div>",
+            "    </div>",
             f"    <p><small>Generated: {self.generated_at}</small></p>",
-            f"  </div>",
+            "  </div>",
         ]
 
         # Metrics
         html_parts.extend([
             "  <div class='metrics'>",
-            f"    <div class='metric'>",
+            "    <div class='metric'>",
             f"      <div class='metric-value'>{result.node_count}</div>",
-            f"      <div class='metric-label'>Nodes</div>",
-            f"    </div>",
-            f"    <div class='metric'>",
+            "      <div class='metric-label'>Nodes</div>",
+            "    </div>",
+            "    <div class='metric'>",
             f"      <div class='metric-value'>{result.edge_count}</div>",
-            f"      <div class='metric-label'>Edges</div>",
-            f"    </div>",
-            f"    <div class='metric'>",
+            "      <div class='metric-label'>Edges</div>",
+            "    </div>",
+            "    <div class='metric'>",
             f"      <div class='metric-value'>{round(result.pass_rate * 100, 1)}%</div>",
-            f"      <div class='metric-label'>Pass Rate</div>",
-            f"    </div>",
-            f"  </div>",
+            "      <div class='metric-label'>Pass Rate</div>",
+            "    </div>",
+            "  </div>",
         ])
 
         # SHACL Violations

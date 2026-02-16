@@ -18,7 +18,7 @@ import structlog
 from neo4j import GraphDatabase, Session
 from neo4j.exceptions import ServiceUnavailable
 
-from kgbuilder.core.models import Evidence, ExtractedRelation
+from kgbuilder.core.models import ExtractedRelation
 from kgbuilder.extraction.synthesizer import SynthesizedEntity
 
 logger = structlog.get_logger(__name__)
@@ -102,7 +102,7 @@ class SimpleKGAssembler:
                 "neo4j_connected",
                 uri=neo4j_uri,
             )
-        except ServiceUnavailable as e:
+        except ServiceUnavailable:
             logger.error("neo4j_connection_failed", uri=neo4j_uri)
             raise
 

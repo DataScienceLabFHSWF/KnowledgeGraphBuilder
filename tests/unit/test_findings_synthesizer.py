@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from kgbuilder.core.models import ExtractedEntity, Evidence
-from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
-
+from kgbuilder.core.models import Evidence, ExtractedEntity
+from kgbuilder.extraction.synthesizer import FindingsSynthesizer
 
 # ============================================================================
 # Fixtures

@@ -9,11 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
+from kgbuilder.validation.action_converter import ActionConverter
 from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
 from kgbuilder.validation.static_validator import StaticValidator, StaticValidatorConfig
-from kgbuilder.validation.action_converter import ActionConverter
 
 
 class DummyEntity:

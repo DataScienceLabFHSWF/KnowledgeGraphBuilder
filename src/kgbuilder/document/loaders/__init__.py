@@ -1,10 +1,10 @@
 """Document loaders package."""
 
+from kgbuilder.document.loaders.advanced import DoclingPDFLoader, MarkitdownDocumentLoader
 from kgbuilder.document.loaders.base import DocumentLoaderFactory
+from kgbuilder.document.loaders.law_xml_loader import LawXMLLoader
 from kgbuilder.document.loaders.office import DOCXLoader, PPTXLoader
 from kgbuilder.document.loaders.pdf import PDFLoader
-from kgbuilder.document.loaders.advanced import DoclingPDFLoader, MarkitdownDocumentLoader
-from kgbuilder.document.loaders.law_xml_loader import LawXMLLoader
 
 # Register loaders
 DocumentLoaderFactory.register(PDFLoader)

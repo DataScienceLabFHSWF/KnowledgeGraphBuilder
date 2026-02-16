@@ -101,7 +101,7 @@ class QualityReport:
 
 from kgbuilder.confidence.analyzer import ConfidenceAnalyzer
 from kgbuilder.confidence.booster import ConfidenceBooster
-from kgbuilder.confidence.calibrator import ConfidenceCalibrator, CalibrationResult
+from kgbuilder.confidence.calibrator import CalibrationResult, ConfidenceCalibrator
 from kgbuilder.confidence.coreference import CoreferenceResolver
 from kgbuilder.confidence.filter import EntityQualityFilter
 from kgbuilder.confidence.voter import ConsensusVoter, VotingResult

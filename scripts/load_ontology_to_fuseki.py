@@ -16,17 +16,18 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kgbuilder.storage.rdf import FusekiStore
 import structlog
 
+from kgbuilder.storage.rdf import FusekiStore
 
 logger = structlog.get_logger(__name__)
 
 
 def load_ontology() -> None:
     """Load ontology into Fuseki."""
-    from dotenv import load_dotenv
     import os
+
+    from dotenv import load_dotenv
 
     # Load environment variables
     load_dotenv()
@@ -72,14 +73,14 @@ def load_ontology() -> None:
         fuseki.load_ontology(ontology_content)
         logger.info("ontology_loaded_successfully")
 
-        print(f"✓ Ontology loaded successfully to {fuseki_url}")
-        print(f"  Dataset: kgbuilder")
+        print(f"[OK] Ontology loaded successfully to {fuseki_url}")
+        print("  Dataset: kgbuilder")
         print(f"  File: {ontology_path}")
         print(f"  Size: {len(ontology_content) / 1024:.1f} KB")
 
     except Exception as e:
         logger.error("failed_to_load_ontology", error=str(e), exc_info=True)
-        print(f"✗ Failed to load ontology: {e}")
+        print(f"[FAIL] Failed to load ontology: {e}")
         raise
 
 

@@ -25,11 +25,11 @@ from kgbuilder.pipeline.orchestrator import (
     IterationResult,
 )
 from kgbuilder.pipeline.stopping_criterion import (
+    CompetencyQuestionResults,
+    KGBuildState,
     StoppingCriteria,
     StoppingCriterionChecker,
     StoppingReason,
-    KGBuildState,
-    CompetencyQuestionResults,
     ValidationResults,
 )
 

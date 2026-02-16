@@ -14,7 +14,7 @@ import logging
 import time
 from dataclasses import dataclass
 
-from kgbuilder.core.protocols import LLMProvider, EmbeddingProvider
+from kgbuilder.core.protocols import EmbeddingProvider, LLMProvider
 from kgbuilder.enrichment.enrichers import (
     AliasEnricher,
     CompetencyQuestionEnricher,
@@ -22,7 +22,7 @@ from kgbuilder.enrichment.enrichers import (
     EmbeddingEnricher,
     TypeConstraintEnricher,
 )
-from kgbuilder.enrichment.protocols import Enricher, EnrichedEntity, EnrichedRelation
+from kgbuilder.enrichment.protocols import EnrichedEntity, EnrichedRelation, Enricher
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class SemanticEnrichmentPipeline:
                     elif phase_name == "type_constraints" and ent.type_scores:
                         metrics.type_scores_assigned += 1
 
-                logger.debug(f"✓ Phase {phase_name} complete")
+                logger.debug(f"[OK] Phase {phase_name} complete")
 
             except Exception as e:
                 logger.error(f"Enrichment phase '{phase_name}' failed: {e}", exc_info=True)
@@ -131,7 +131,7 @@ class SemanticEnrichmentPipeline:
         metrics.duration_seconds = time.time() - start_time
 
         logger.info(
-            f"✓ Enrichment complete in {metrics.duration_seconds:.2f}s: "
+            f"[OK] Enrichment complete in {metrics.duration_seconds:.2f}s: "
             f"descriptions={metrics.descriptions_added}, "
             f"embeddings={metrics.embeddings_added}, "
             f"cqs={metrics.competency_questions_added}, "

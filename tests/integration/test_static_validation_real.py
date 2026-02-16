@@ -6,14 +6,13 @@ local runs where the JAR/vampire are not available.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
-from kgbuilder.validation.static_validator import StaticValidator, StaticValidatorConfig
-from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
 from kgbuilder.validation.action_converter import ActionConverter
+from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
+from kgbuilder.validation.static_validator import StaticValidator, StaticValidatorConfig
 
 
 @pytest.mark.skipif(

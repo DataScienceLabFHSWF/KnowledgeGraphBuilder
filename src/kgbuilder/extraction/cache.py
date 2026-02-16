@@ -16,7 +16,7 @@ from typing import Any
 
 import structlog
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
+from kgbuilder.core.models import ExtractedEntity
 
 logger = structlog.get_logger(__name__)
 
@@ -28,11 +28,11 @@ class CacheKey:
     content_hash: str      # SHA256 of chunk content
     question_id: str       # Which question triggered extraction
     entity_type: str       # What entity type was extracted
-    
+
     def to_string(self) -> str:
         """Convert to string key."""
         return f"{self.content_hash}:{self.question_id}:{self.entity_type}"
-    
+
     @staticmethod
     def from_extraction_params(
         text: str,
@@ -57,7 +57,7 @@ class ExtractionCache:
     - Extraction without cache: 26.7s
     - Memory: ~10-50MB for typical KG (manageable)
     """
-    
+
     def __init__(
         self,
         cache_dir: Path | None = None,
@@ -75,18 +75,18 @@ class ExtractionCache:
         self._cache_dir = Path(cache_dir) if cache_dir else None
         self._max_memory_bytes = max_memory_mb * 1024 * 1024
         self._enable_persistence = enable_persistence
-        
+
         # Statistics
         self._hits = 0
         self._misses = 0
         self._memory_used = 0
-        
+
         if self._cache_dir and self._enable_persistence:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
             self._load_persistent_cache()
-        
+
         logger.info("extraction_cache_initialized", max_memory_mb=max_memory_mb)
-    
+
     def get(
         self,
         text: str,
@@ -105,7 +105,7 @@ class ExtractionCache:
         """
         key = CacheKey.from_extraction_params(text, question_id, entity_type)
         key_str = key.to_string()
-        
+
         if key_str in self._memory_cache:
             self._hits += 1
             logger.debug(
@@ -115,10 +115,10 @@ class ExtractionCache:
                 hit_rate=f"{self._hit_rate():.1%}",
             )
             return self._memory_cache[key_str]
-        
+
         self._misses += 1
         return None
-    
+
     def put(
         self,
         text: str,
@@ -136,7 +136,7 @@ class ExtractionCache:
         """
         key = CacheKey.from_extraction_params(text, question_id, entity_type)
         key_str = key.to_string()
-        
+
         # Check memory limit
         estimated_size = len(json.dumps([e.__dict__ for e in entities]).encode())
         if self._memory_used + estimated_size > self._max_memory_bytes:
@@ -146,10 +146,10 @@ class ExtractionCache:
                 max_memory_mb=self._max_memory_bytes / 1024 / 1024,
             )
             return  # Don't cache if over limit
-        
+
         self._memory_cache[key_str] = entities
         self._memory_used += estimated_size
-        
+
         logger.debug(
             "extraction_cached",
             question_id=question_id,
@@ -157,12 +157,12 @@ class ExtractionCache:
             entity_count=len(entities),
             cache_size_mb=self._memory_used / 1024 / 1024,
         )
-    
+
     def stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         total = self._hits + self._misses
         hit_rate = self._hits / total if total > 0 else 0.0
-        
+
         return {
             "hit_rate": f"{hit_rate:.1%}",
             "cache_hits": self._hits,
@@ -173,7 +173,7 @@ class ExtractionCache:
             "max_memory_mb": self._max_memory_bytes / 1024 / 1024,
             "time_saved_minutes": self._hits * 26.7 / 60,  # Assume 26.7s per extraction
         }
-    
+
     def clear(self) -> None:
         """Clear cache."""
         self._memory_cache.clear()
@@ -181,21 +181,21 @@ class ExtractionCache:
         self._misses = 0
         self._memory_used = 0
         logger.info("extraction_cache_cleared")
-    
+
     def _hit_rate(self) -> float:
         """Get current hit rate."""
         total = self._hits + self._misses
         return self._hits / total if total > 0 else 0.0
-    
+
     def _load_persistent_cache(self) -> None:
         """Load cache from disk."""
         if not self._cache_dir:
             return
-        
+
         cache_file = self._cache_dir / "extraction_cache.json"
         if not cache_file.exists():
             return
-        
+
         try:
             with open(cache_file) as f:
                 data = json.load(f)

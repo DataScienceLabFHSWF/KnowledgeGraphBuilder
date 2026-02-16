@@ -19,15 +19,13 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import time
-from typing import Any
 
 import rdflib
 import structlog
 from pyshacl import validate
 
-from kgbuilder.storage.protocol import GraphStore, Node, Edge
+from kgbuilder.storage.protocol import Edge, GraphStore, Node
 from kgbuilder.validation.models import (
     ValidationResult,
     ValidationViolation,

@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence, generate_entity_id
+from kgbuilder.core.models import Evidence, ExtractedEntity, ExtractedRelation, generate_entity_id
 from kgbuilder.extraction.entity import OntologyClassDef
 
 logger = logging.getLogger(__name__)
@@ -151,7 +151,7 @@ class RuleBasedExtractor:
         """Initialize rule-based extractor."""
         self.patterns: dict[str, list[RulePattern]] = {}
         self._init_default_patterns()
-        logger.info(f"✓ Initialized RuleBasedExtractor with {len(self.patterns)} pattern groups")
+        logger.info(f"[OK] Initialized RuleBasedExtractor with {len(self.patterns)} pattern groups")
 
     def _init_default_patterns(self) -> None:
         """Initialize default patterns for common entity types.

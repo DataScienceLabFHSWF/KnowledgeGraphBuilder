@@ -36,7 +36,6 @@ class SemanticRetriever:
             collection_name: Collection name for vectors
             embedding_provider: Optional embedding provider (defaults to mock)
         """
-        from langchain_community.vectorstores import Qdrant
 
         self.qdrant_url = qdrant_url
         self.collection_name = collection_name
@@ -83,7 +82,7 @@ class SemanticRetriever:
 
         # Get embeddings for all texts
         embeddings_list = embeddings.embed_documents(texts)
-        
+
         # Initialize Qdrant store if needed
         if not self._initialized:
             self._vector_store = QdrantStore(
@@ -92,20 +91,20 @@ class SemanticRetriever:
             )
             self._vector_store.connect()
             self._initialized = True
-        
+
         # Store documents with embeddings
         doc_ids = []
         for i, (text, meta, emb) in enumerate(zip(texts, metadata, embeddings_list)):
             doc_id = f"doc_{i}"
             doc_ids.append(doc_id)
-            
+
             # Store as point in Qdrant
             self._vector_store.store(
                 texts=[text],
                 embeddings=[emb],
                 metadata=[{**meta, "doc_id": doc_id}]
             )
-        
+
         return doc_ids
 
     def search(

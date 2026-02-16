@@ -10,10 +10,10 @@ extract all law links and metadata, and save as a structured JSON file.
 Usage: python scripts/crawl_law_index.py
 """
 from __future__ import annotations
-import re
-import sys
+
 import json
 from pathlib import Path
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -30,7 +30,7 @@ def crawl_index_page(letter: str) -> list[dict[str, str]]:
     if letter == 'N':
         html_path = Path(__file__).parent.parent / 'data' / 'law_index' / 'Teilliste_N.html'
         html = html_path.read_text(encoding='iso-8859-1')
-        print(f"[INFO] Parsing local Teilliste_N.html for structure analysis.")
+        print("[INFO] Parsing local Teilliste_N.html for structure analysis.")
     else:
         url = f"{BASE_URL}Teilliste_{letter}.html"
         print(f"[INFO] Crawling index page: {url}")

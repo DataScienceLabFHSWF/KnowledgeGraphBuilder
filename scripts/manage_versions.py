@@ -14,12 +14,14 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
+
 from tabulate import tabulate
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kgbuilder.storage.versioning import KGVersioningService
+
 
 def list_versions(service: KGVersioningService):
     versions = service.list_versions()
@@ -44,7 +46,7 @@ def list_versions(service: KGVersioningService):
 def diff_versions(service: KGVersioningService, v1_id: str, v2_id: str):
     try:
         diff = service.diff(v1_id, v2_id)
-        
+
         print(f"\nDiff: {v1_id} -> {v2_id}")
         print("-" * 50)
         print(f"Nodes Added:     {len(diff.nodes_added)}")

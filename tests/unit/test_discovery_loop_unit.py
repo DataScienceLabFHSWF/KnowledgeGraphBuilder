@@ -12,8 +12,8 @@ Comprehensive test suite for discovery loop including:
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
+
 import pytest
 
 from kgbuilder.agents.discovery_loop import (
@@ -27,8 +27,7 @@ from kgbuilder.agents.question_generator import (
     QuestionGenerationAgent,
     ResearchQuestion,
 )
-from kgbuilder.core.models import ExtractedEntity, Evidence
-
+from kgbuilder.core.models import Evidence, ExtractedEntity
 
 # ============================================================================
 # Fixtures
@@ -39,20 +38,20 @@ from kgbuilder.core.models import ExtractedEntity, Evidence
 def mock_retriever() -> MagicMock:
     """Create a mock retriever with test data."""
     retriever = MagicMock(spec=Retriever)
-    
+
     # Create mock retrieval results
     result1 = MagicMock()
     result1.doc_id = "doc_001"
     result1.content = "Kernkraftwerk Emsland is a nuclear facility with cooling systems."
     result1.score = 0.92
-    
+
     result2 = MagicMock()
     result2.doc_id = "doc_002"
     result2.content = "Safety document describing reactor operations and requirements."
     result2.score = 0.88
-    
+
     retriever.retrieve.return_value = [result1, result2]
-    
+
     return retriever
 
 
@@ -60,7 +59,7 @@ def mock_retriever() -> MagicMock:
 def mock_extractor() -> MagicMock:
     """Create a mock extractor with test data."""
     extractor = MagicMock(spec=EntityExtractor)
-    
+
     # Create mock extracted entities
     entity1 = ExtractedEntity(
         id="ent_001",
@@ -70,7 +69,7 @@ def mock_extractor() -> MagicMock:
         confidence=0.95,
         evidence=[Evidence(source_type="doc", source_id="doc_001")],
     )
-    
+
     entity2 = ExtractedEntity(
         id="ent_002",
         label="Cooling System",
@@ -79,7 +78,7 @@ def mock_extractor() -> MagicMock:
         confidence=0.90,
         evidence=[Evidence(source_type="doc", source_id="doc_001")],
     )
-    
+
     entity3 = ExtractedEntity(
         id="ent_003",
         label="Safety Report",
@@ -88,13 +87,13 @@ def mock_extractor() -> MagicMock:
         confidence=0.92,
         evidence=[Evidence(source_type="doc", source_id="doc_002")],
     )
-    
+
     # Return different entities based on which call
     extractor.extract.side_effect = [
         [entity1, entity2],  # First call
         [entity3],           # Second call
     ]
-    
+
     return extractor
 
 
@@ -102,18 +101,18 @@ def mock_extractor() -> MagicMock:
 def mock_question_generator() -> MagicMock:
     """Create a mock question generator."""
     gen = MagicMock(spec=QuestionGenerationAgent)
-    
+
     # Setup ontology service mock
     gen._ontology = MagicMock()
     gen._ontology.get_all_classes.return_value = [
         "Facility",
-        "Equipment", 
+        "Equipment",
         "SafetyDocument",
         "Organization",
         "Operation",
         "Requirement",
     ]
-    
+
     # Initial questions
     q1 = ResearchQuestion(
         question_id="q_facility",
@@ -122,7 +121,7 @@ def mock_question_generator() -> MagicMock:
         priority=0.9,
         reason="Initial",
     )
-    
+
     q2 = ResearchQuestion(
         question_id="q_equipment",
         text="What Equipment is mentioned?",
@@ -130,10 +129,10 @@ def mock_question_generator() -> MagicMock:
         priority=0.85,
         reason="Initial",
     )
-    
+
     gen.generate_questions.return_value = [q1, q2]
     gen.generate_follow_up_questions.return_value = []  # No follow-ups in basic tests
-    
+
     return gen
 
 
@@ -153,7 +152,7 @@ def test_discovery_loop_initialization(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     assert loop is not None
     assert loop._retriever == mock_retriever
     assert loop._extractor == mock_extractor
@@ -178,7 +177,7 @@ def test_run_discovery_basic(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     # Create initial questions
     questions = [
         ResearchQuestion(
@@ -189,14 +188,14 @@ def test_run_discovery_basic(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,  # Won't reach
         top_k_docs=2,
     )
-    
+
     # Verify result structure
     assert isinstance(result, DiscoveryResult)
     assert result.success is True
@@ -216,7 +215,7 @@ def test_run_discovery_with_generated_questions(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     # Don't provide initial questions - should generate them
     result = loop.run_discovery(
         initial_questions=None,
@@ -224,7 +223,7 @@ def test_run_discovery_with_generated_questions(
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Should have generated questions
     assert mock_question_generator.generate_questions.called
     assert result.success is True
@@ -241,7 +240,7 @@ def test_run_discovery_coverage_target(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_1",
@@ -258,7 +257,7 @@ def test_run_discovery_coverage_target(
             reason="Test",
         ),
     ]
-    
+
     # Set high coverage target - processing entities is guaranteed to meet it
     # since we find 2 entity types and have 6 total classes (33% coverage)
     result = loop.run_discovery(
@@ -267,7 +266,7 @@ def test_run_discovery_coverage_target(
         coverage_target=0.32,  # Stop after first iteration achieves this
         top_k_docs=2,
     )
-    
+
     # Should stop after first iteration when coverage target is met
     assert result.total_iterations >= 1
 
@@ -283,7 +282,7 @@ def test_run_discovery_max_iterations(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     # Setup continuous follow-up questions
     q = ResearchQuestion(
         question_id="q_test",
@@ -292,17 +291,17 @@ def test_run_discovery_max_iterations(
         priority=0.9,
         reason="Test",
     )
-    
+
     # Return same question for follow-ups (will iterate max_iterations times)
     mock_question_generator.generate_follow_up_questions.return_value = [q]
-    
+
     result = loop.run_discovery(
         initial_questions=[q],
         max_iterations=3,
         coverage_target=1.0,  # Won't reach
         top_k_docs=2,
     )
-    
+
     assert result.total_iterations == 3
 
 
@@ -400,7 +399,7 @@ def test_static_validation_allows_valid_document(
     )
 
     result = loop.run_discovery(initial_questions=mock_question_generator.generate_questions.return_value[:1], max_iterations=1)
-    assert len(result.entities) == 1    
+    assert len(result.entities) == 1
     questions = [
         ResearchQuestion(
             question_id="q_1",
@@ -410,14 +409,14 @@ def test_static_validation_allows_valid_document(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Should have extracted entities
     assert len(result.entities) > 0
     assert len(result.entities) == len(loop._findings)
@@ -434,7 +433,7 @@ def test_provenance_tracking(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -444,14 +443,14 @@ def test_provenance_tracking(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Check provenance exists for entities
     for entity in result.entities:
         provenance = loop.get_provenance(entity.id)
@@ -474,7 +473,7 @@ def test_coverage_calculation(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -484,14 +483,14 @@ def test_coverage_calculation(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Coverage should be between 0 and 1
     assert 0.0 <= result.final_coverage <= 1.0
 
@@ -503,13 +502,13 @@ def test_coverage_with_no_findings(
     """Test coverage with no entities found."""
     extractor = MagicMock(spec=EntityExtractor)
     extractor.extract.return_value = []  # No entities
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -519,14 +518,14 @@ def test_coverage_with_no_findings(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     assert result.final_coverage == 0.0
     assert len(result.entities) == 0
 
@@ -547,7 +546,7 @@ def test_iteration_results_tracking(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -557,17 +556,17 @@ def test_iteration_results_tracking(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     assert len(result.iterations) == 1
     iter_result = result.iterations[0]
-    
+
     assert isinstance(iter_result, IterationResult)
     assert iter_result.iteration == 1
     assert iter_result.processing_time_sec > 0
@@ -590,7 +589,7 @@ def test_get_provenance_method(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -600,18 +599,18 @@ def test_get_provenance_method(
             reason="Test",
         ),
     ]
-    
+
     loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Get provenance for first entity
     entity_id = list(loop._findings.keys())[0]
     provenance = loop.get_provenance(entity_id)
-    
+
     assert isinstance(provenance, set)
     assert len(provenance) > 0
 
@@ -627,7 +626,7 @@ def test_get_findings_by_type(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -637,14 +636,14 @@ def test_get_findings_by_type(
             reason="Test",
         ),
     ]
-    
+
     loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Get findings by type
     facilities = loop.get_findings_by_type("Facility")
     assert len(facilities) > 0
@@ -667,7 +666,7 @@ def test_error_handling_invalid_question(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     # Empty list results in iteration but no questions processed
     result = loop.run_discovery(
         initial_questions=[],
@@ -675,7 +674,7 @@ def test_error_handling_invalid_question(
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Empty questions list means iteration runs but finds nothing
     assert result.success is True
     assert len(result.entities) == 0
@@ -693,14 +692,14 @@ def test_error_handling_none_questions(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     result = loop.run_discovery(
         initial_questions=None,  # None triggers generation
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Should generate questions internally
     assert mock_question_generator.generate_questions.called
     assert result.success is True
@@ -725,7 +724,7 @@ def test_multi_iteration_discovery(
         description="Test",
         confidence=0.9,
     )
-    
+
     entity2 = ExtractedEntity(
         id="ent_2",
         label="Entity 2",
@@ -733,13 +732,13 @@ def test_multi_iteration_discovery(
         description="Test",
         confidence=0.85,
     )
-    
+
     extractor = MagicMock(spec=EntityExtractor)
     extractor.extract.side_effect = [
         [entity1],  # First iteration
         [entity2],  # Second iteration
     ]
-    
+
     # Setup follow-up questions for second iteration
     followup_q = ResearchQuestion(
         question_id="q_followup",
@@ -748,15 +747,15 @@ def test_multi_iteration_discovery(
         priority=0.8,
         reason="Follow-up",
     )
-    
+
     mock_question_generator.generate_follow_up_questions.return_value = [followup_q]
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=extractor,
         question_generator=mock_question_generator,
     )
-    
+
     initial_q = ResearchQuestion(
         question_id="q_initial",
         text="Initial?",
@@ -764,14 +763,14 @@ def test_multi_iteration_discovery(
         priority=0.9,
         reason="Initial",
     )
-    
+
     result = loop.run_discovery(
         initial_questions=[initial_q],
         max_iterations=2,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Should have completed 2 iterations
     assert result.total_iterations == 2
     assert len(result.entities) == 2
@@ -788,7 +787,7 @@ def test_result_data_classes(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -798,14 +797,14 @@ def test_result_data_classes(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Verify all result fields are populated
     assert isinstance(result, DiscoveryResult)
     assert result.success is True
@@ -816,7 +815,7 @@ def test_result_data_classes(
     assert isinstance(result.entities, list)
     assert isinstance(result.iterations, list)
     assert result.error_message is None
-    
+
     # Verify iteration result fields
     if result.iterations:
         iter_result = result.iterations[0]
@@ -841,7 +840,7 @@ def test_discovery_result_success_field(
         extractor=mock_extractor,
         question_generator=mock_question_generator,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q_test",
@@ -851,14 +850,14 @@ def test_discovery_result_success_field(
             reason="Test",
         ),
     ]
-    
+
     result = loop.run_discovery(
         initial_questions=questions,
         max_iterations=1,
         coverage_target=1.0,
         top_k_docs=2,
     )
-    
+
     # Verify success is True for normal completion
     assert result.success is True
     assert isinstance(result.success, bool)

@@ -10,9 +10,9 @@ Design goals:
 """
 from __future__ import annotations
 
-import os
 import logging
-from typing import List, Any
+import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

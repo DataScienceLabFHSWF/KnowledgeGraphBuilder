@@ -18,7 +18,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import time
-from typing import Any
 
 import structlog
 from dotenv import load_dotenv
@@ -28,16 +27,15 @@ logger = structlog.get_logger(__name__)
 
 def main() -> None:
     """Test Phase 2 FusionRAG."""
-    import os
 
     load_dotenv()
 
     logger.info("initializing_phase2_comparison")
 
-    from kgbuilder.storage.vector import QdrantStore
     from kgbuilder.embedding.ollama import OllamaProvider
     from kgbuilder.rag import StandardRAGPipeline
     from kgbuilder.retrieval import EnhancedFusionRAGRetriever
+    from kgbuilder.storage.vector import QdrantStore
 
     try:
         ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
@@ -103,13 +101,13 @@ def main() -> None:
                 response_phase1 = rag_phase1.answer(query)
                 phase1_time = (time.time() - start_time) * 1000
 
-                print(f"\n[PHASE 1: Standard RAG]")
+                print("\n[PHASE 1: Standard RAG]")
                 print(f"  Retrieved docs: {len(response_phase1.retrieved_docs)}")
                 print(f"  Retrieval time: {response_phase1.retrieval_time_ms:.1f}ms")
                 print(f"  Generation time: {response_phase1.generation_time_ms:.1f}ms")
                 print(f"  Total time: {phase1_time:.1f}ms")
                 print(f"  Confidence: {response_phase1.confidence:.2f}")
-                print(f"\n  Answer (first 200 chars):")
+                print("\n  Answer (first 200 chars):")
                 print(f"  {response_phase1.answer[:200]}...")
 
                 logger.info(
@@ -130,23 +128,23 @@ def main() -> None:
                 results_phase2 = retriever_phase2.retrieve(query, top_k=5)
                 phase2_time = (time.time() - start_time) * 1000
 
-                print(f"\n[PHASE 2: Enhanced FusionRAG]")
+                print("\n[PHASE 2: Enhanced FusionRAG]")
                 print(f"  Retrieved docs: {len(results_phase2)}")
                 print(f"  Retrieval time: {phase2_time:.1f}ms")
 
                 # Show retrieval breakdown
                 if results_phase2:
-                    print(f"\n  Top retrieved document:")
+                    print("\n  Top retrieved document:")
                     top = results_phase2[0]
                     print(f"    Dense score: {top.dense_score:.4f}")
                     print(f"    Sparse score: {top.sparse_score:.4f}")
                     print(f"    Fusion score: {top.fusion_score:.4f}")
                     print(f"    Rerank score: {top.rerank_score:.4f}")
                     if top.content:
-                        print(f"    Content (first 150 chars):")
+                        print("    Content (first 150 chars):")
                         print(f"    {top.content[:150]}...")
                     else:
-                        print(f"    Content: (empty - old ingestion data)")
+                        print("    Content: (empty - old ingestion data)")
 
                 logger.info(
                     "phase2_complete",

@@ -103,13 +103,13 @@ class Neo4jStore:
         self.uri = uri
         self.username = username
         self.password = password
-        
+
         # Support both auth and no-auth scenarios
         if username and password:
             self.driver = GraphDatabase.driver(uri, auth=(username, password))
         else:
             self.driver = GraphDatabase.driver(uri)
-        
+
         self._verify_connection()
         self._create_constraints()
 

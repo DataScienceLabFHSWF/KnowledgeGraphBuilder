@@ -22,7 +22,7 @@ from typing import Any
 import structlog
 
 from kgbuilder.storage.protocol import GraphStore
-from kgbuilder.validation.models import Conflict, ConflictType, ValidationResult, ViolationSeverity
+from kgbuilder.validation.models import Conflict, ConflictType
 
 logger = structlog.get_logger(__name__)
 

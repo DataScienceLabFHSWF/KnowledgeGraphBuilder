@@ -6,11 +6,10 @@ providing insights into reliability and suggesting improvements.
 
 from __future__ import annotations
 
-import json
-import structlog
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+
+import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -24,33 +23,33 @@ class StructuredGenerationMetrics:
     validation_failures: int = 0
     json_parse_failures: int = 0
     retries_exhausted: int = 0
-    
+
     # Success rates
     first_attempt_success_rate: float = 0.0  # % succeeding on first try
     overall_success_rate: float = 0.0  # % eventually succeeding
-    
+
     # Average metrics
     average_retries_on_success: float = 0.0
     average_retries_on_failure: float = 0.0
-    
+
     # Per-schema tracking
     schema_stats: dict[str, dict] = field(default_factory=dict)
-    
+
     # Time series (for trending)
     timestamp: datetime = field(default_factory=datetime.now)
-    
+
     def compute_rates(self) -> None:
         """Compute derived metrics from raw counters."""
         if self.total_attempts == 0:
             return
-        
+
         self.overall_success_rate = 100 * self.successful_generations / self.total_attempts
-        
+
         # First attempt success = total - retries_needed
         # Approximated as successful - those that needed retries
         # For simplicity: assume some succeeded on first try
         if self.successful_generations > 0:
-            self.first_attempt_success_rate = 100 * max(0, 
+            self.first_attempt_success_rate = 100 * max(0,
                 self.successful_generations - self.validation_failures - self.json_parse_failures
             ) / self.total_attempts
 
@@ -62,18 +61,18 @@ class GenerationAttemptRecord:
     timestamp: datetime = field(default_factory=datetime.now)
     schema_name: str = ""
     attempt_number: int = 1
-    
+
     # Input
     prompt_length: int = 0
-    
+
     # Execution
     duration_seconds: float = 0.0
-    
+
     # Outcome
     status: str = ""  # "" | "success" | "validation_failure" | "json_error"
     raw_output: str = ""
     error_message: str = ""
-    
+
     # Retry info
     total_retries: int = 0
     was_recovered: bool = False  # Did error recovery succeed?
@@ -137,9 +136,9 @@ class StructuredGenerationBenchmark:
             total_retries=total_retries,
             was_recovered=was_recovered,
         )
-        
+
         self.records.append(record)
-        
+
         # Update aggregate metrics
         if success:
             self.metrics.successful_generations += 1
@@ -147,12 +146,12 @@ class StructuredGenerationBenchmark:
             self.metrics.json_parse_failures += 1
         elif error_type == "validation_error":
             self.metrics.validation_failures += 1
-        
+
         if total_retries >= 3:  # Assuming max_retries=3
             self.metrics.retries_exhausted += 1
-        
+
         self.metrics.total_attempts += 1
-        
+
         # Update per-schema stats
         if schema_name not in self.metrics.schema_stats:
             self.metrics.schema_stats[schema_name] = {
@@ -160,17 +159,17 @@ class StructuredGenerationBenchmark:
                 "successes": 0,
                 "failures": 0,
             }
-        
+
         stats = self.metrics.schema_stats[schema_name]
         stats["attempts"] += 1
         if success:
             stats["successes"] += 1
         else:
             stats["failures"] += 1
-        
+
         # Compute derived metrics
         self.metrics.compute_rates()
-        
+
         # Log if success rate is poor
         if self.metrics.overall_success_rate < 0.85 and self.metrics.total_attempts > 10:
             logger.warning(
@@ -191,14 +190,14 @@ class StructuredGenerationBenchmark:
         """
         if schema_name is None:
             return self.metrics.overall_success_rate
-        
+
         if schema_name not in self.metrics.schema_stats:
             return 0.0
-        
+
         stats = self.metrics.schema_stats[schema_name]
         if stats["attempts"] == 0:
             return 0.0
-        
+
         return 100 * stats["successes"] / stats["attempts"]
 
     def identify_problem_patterns(self) -> dict[str, ANY]:
@@ -214,23 +213,23 @@ class StructuredGenerationBenchmark:
             "common_error_patterns": [],
             "recommendations": [],
         }
-        
+
         # Check error type distribution
         json_error_pct = 100 * self.metrics.json_parse_failures / max(1, self.metrics.total_attempts)
         validation_error_pct = 100 * self.metrics.validation_failures / max(1, self.metrics.total_attempts)
-        
+
         if json_error_pct > 10:
             findings["high_json_error_rate"] = True
             findings["recommendations"].append(
                 "High JSON parse errors: Ensure `format=\"json\"` is used in Ollama calls"
             )
-        
+
         if validation_error_pct > 10:
             findings["high_validation_error_rate"] = True
             findings["recommendations"].append(
                 "High validation errors: Add more detailed field descriptions to schema, use few-shot examples"
             )
-        
+
         # Schema-specific analysis
         for schema_name, stats in self.metrics.schema_stats.items():
             success_rate = 100 * stats["successes"] / max(1, stats["attempts"])
@@ -240,7 +239,7 @@ class StructuredGenerationBenchmark:
                     "success_rate": success_rate,
                     "attempts": stats["attempts"],
                 })
-        
+
         return findings
 
     def generate_report(self, output_path: str | None = None) -> str:
@@ -284,8 +283,8 @@ class StructuredGenerationBenchmark:
             for rec in patterns["recommendations"]:
                 report += f"- {rec}\n"
 
-        report += f"\n## Target Success Rate\n\n"
-        report += f"- **Target**: ≥95% success rate\n"
+        report += "\n## Target Success Rate\n\n"
+        report += "- **Target**: ≥95% success rate\n"
         report += f"- **Current**: {self.metrics.overall_success_rate:.1f}%\n"
         report += f"- **Gap**: {max(0, 95 - self.metrics.overall_success_rate):.1f}%\n"
 

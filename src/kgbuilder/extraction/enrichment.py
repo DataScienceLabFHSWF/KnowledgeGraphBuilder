@@ -17,8 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-import structlog
 import numpy as np
+import structlog
 from numpy.typing import NDArray
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation

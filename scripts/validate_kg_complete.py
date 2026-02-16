@@ -30,11 +30,12 @@ import structlog
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kgbuilder.storage.ontology import FusekiOntologyService
 from kgbuilder.storage.neo4j import Neo4jGraphStore
-from kgbuilder.validation.shacl_validator import SHACLValidator
+
+from kgbuilder.storage.ontology import FusekiOntologyService
 from kgbuilder.validation.consistency_checker import ConsistencyChecker
 from kgbuilder.validation.rules_engine import RulesEngine
+from kgbuilder.validation.shacl_validator import SHACLValidator
 
 logger = structlog.get_logger(__name__)
 
@@ -334,9 +335,9 @@ class KGValidationOrchestrator:
 def print_report(report: ValidationReport) -> None:
     """Pretty-print validation report."""
     status_emoji = {
-        "PASS": "✓",
-        "WARNING": "⚠",
-        "FAIL": "✗",
+        "PASS": "[OK]",
+        "WARNING": "[WARN]",
+        "FAIL": "[FAIL]",
         "UNKNOWN": "?",
     }
 
@@ -391,7 +392,7 @@ def print_report(report: ValidationReport) -> None:
         if report.kg.get("structural_checks"):
             checks = report.kg["structural_checks"]
             if checks.get("isolated_nodes", 0) > 0:
-                print(f"  ⚠ Isolated nodes: {checks['isolated_nodes']}")
+                print(f"  [WARN] Isolated nodes: {checks['isolated_nodes']}")
         if report.kg.get("issues"):
             for issue in report.kg["issues"]:
                 print(f"    ! {issue}")
@@ -404,7 +405,7 @@ def print_report(report: ValidationReport) -> None:
         print(f"  {status_emoji.get(status, '?')} Status: {status}")
         if report.integration.get("checks"):
             for check, passed in report.integration["checks"].items():
-                icon = "✓" if passed else "✗"
+                icon = "[OK]" if passed else "[FAIL]"
                 print(f"  {icon} {check}")
         if report.integration.get("issues"):
             for issue in report.integration["issues"]:
@@ -415,13 +416,13 @@ def print_report(report: ValidationReport) -> None:
     if report.errors:
         print("ERRORS:")
         for error in report.errors:
-            print(f"  ✗ {error}")
+            print(f"  [FAIL] {error}")
         print()
 
     if report.warnings:
         print("WARNINGS:")
         for warning in report.warnings:
-            print(f"  ⚠ {warning}")
+            print(f"  [WARN] {warning}")
         print()
 
     print("=" * 80)

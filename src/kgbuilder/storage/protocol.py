@@ -25,12 +25,11 @@ Usage:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Iterator, Protocol, runtime_checkable
-import json
-import uuid
+from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
@@ -64,18 +63,18 @@ class Node:
         ...     properties={"confidence": 0.85, "description": "..."}
         ... )
     """
-    
+
     id: str
     label: str
     node_type: str
     properties: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     def __post_init__(self) -> None:
         """Set default metadata if not provided."""
         if "created_at" not in self.metadata:
             self.metadata["created_at"] = datetime.utcnow().isoformat()
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -85,7 +84,7 @@ class Node:
             "properties": self.properties,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Node:
         """Create Node from dictionary."""
@@ -122,19 +121,19 @@ class Edge:
         ...     properties={"confidence": 0.9}
         ... )
     """
-    
+
     id: str
     source_id: str
     target_id: str
     edge_type: str
     properties: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     def __post_init__(self) -> None:
         """Set default metadata if not provided."""
         if "created_at" not in self.metadata:
             self.metadata["created_at"] = datetime.utcnow().isoformat()
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -145,7 +144,7 @@ class Edge:
             "properties": self.properties,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Edge:
         """Create Edge from dictionary."""
@@ -168,7 +167,7 @@ class QueryResult:
         columns: Column names in result
         summary: Query execution summary (timing, counts, etc.)
     """
-    
+
     records: list[dict[str, Any]]
     columns: list[str] = field(default_factory=list)
     summary: dict[str, Any] = field(default_factory=dict)
@@ -186,7 +185,7 @@ class GraphStatistics:
         avg_confidence: Average confidence across all nodes
         density: Graph density (edges / possible edges)
     """
-    
+
     node_count: int = 0
     edge_count: int = 0
     nodes_by_type: dict[str, int] = field(default_factory=dict)
@@ -222,11 +221,11 @@ class GraphStore(Protocol):
         ...     stats = store.get_statistics()
         ...     print(f"Created {stats.node_count} nodes")
     """
-    
+
     # -------------------------------------------------------------------------
     # Node Operations
     # -------------------------------------------------------------------------
-    
+
     def add_node(self, node: Node) -> str:
         """Add a node to the graph.
         
@@ -239,7 +238,7 @@ class GraphStore(Protocol):
             The node ID (for chaining)
         """
         ...
-    
+
     def get_node(self, node_id: str) -> Node | None:
         """Get a node by ID.
         
@@ -250,7 +249,7 @@ class GraphStore(Protocol):
             The node if found, None otherwise
         """
         ...
-    
+
     def get_nodes_by_type(self, node_type: str) -> list[Node]:
         """Get all nodes of a specific type.
         
@@ -261,7 +260,7 @@ class GraphStore(Protocol):
             List of matching nodes
         """
         ...
-    
+
     def update_node(self, node_id: str, properties: dict[str, Any]) -> bool:
         """Update node properties.
         
@@ -273,7 +272,7 @@ class GraphStore(Protocol):
             True if node was found and updated
         """
         ...
-    
+
     def delete_node(self, node_id: str) -> bool:
         """Delete a node and its connected edges.
         
@@ -284,11 +283,11 @@ class GraphStore(Protocol):
             True if node was found and deleted
         """
         ...
-    
+
     # -------------------------------------------------------------------------
     # Edge Operations
     # -------------------------------------------------------------------------
-    
+
     def add_edge(self, edge: Edge) -> str:
         """Add an edge to the graph.
         
@@ -304,7 +303,7 @@ class GraphStore(Protocol):
             ValueError: If source or target node doesn't exist
         """
         ...
-    
+
     def get_edge(self, edge_id: str) -> Edge | None:
         """Get an edge by ID.
         
@@ -315,7 +314,7 @@ class GraphStore(Protocol):
             The edge if found, None otherwise
         """
         ...
-    
+
     def get_edges_for_node(self, node_id: str, direction: str = "both") -> list[Edge]:
         """Get all edges connected to a node.
         
@@ -327,11 +326,11 @@ class GraphStore(Protocol):
             List of connected edges
         """
         ...
-    
+
     # -------------------------------------------------------------------------
     # Query Operations
     # -------------------------------------------------------------------------
-    
+
     def query(self, query_str: str, params: dict[str, Any] | None = None) -> QueryResult:
         """Execute a query (Cypher, SPARQL, or simple filter).
         
@@ -348,11 +347,11 @@ class GraphStore(Protocol):
             Query results
         """
         ...
-    
+
     # -------------------------------------------------------------------------
     # Bulk Operations
     # -------------------------------------------------------------------------
-    
+
     def add_nodes_batch(self, nodes: list[Node]) -> int:
         """Add multiple nodes in a batch.
         
@@ -365,7 +364,7 @@ class GraphStore(Protocol):
             Number of nodes added
         """
         ...
-    
+
     def add_edges_batch(self, edges: list[Edge]) -> int:
         """Add multiple edges in a batch.
         
@@ -376,11 +375,11 @@ class GraphStore(Protocol):
             Number of edges added
         """
         ...
-    
+
     # -------------------------------------------------------------------------
     # Statistics & Export
     # -------------------------------------------------------------------------
-    
+
     def get_statistics(self) -> GraphStatistics:
         """Get statistics about the graph.
         
@@ -388,7 +387,7 @@ class GraphStore(Protocol):
             GraphStatistics with counts and metrics
         """
         ...
-    
+
     def get_all_nodes(self) -> Iterator[Node]:
         """Iterate over all nodes.
         
@@ -396,7 +395,7 @@ class GraphStore(Protocol):
             All nodes in the graph
         """
         ...
-    
+
     def get_all_edges(self) -> Iterator[Edge]:
         """Iterate over all edges.
         
@@ -404,7 +403,7 @@ class GraphStore(Protocol):
             All edges in the graph
         """
         ...
-    
+
     def clear(self) -> None:
         """Remove all nodes and edges from the graph."""
         ...
@@ -438,31 +437,31 @@ class InMemoryGraphStore:
         >>> print(store.get_statistics().node_count)  # 2
         >>> kg_dict = store.to_dict()  # Export to JSON-serializable dict
     """
-    
+
     def __init__(self) -> None:
         """Initialize empty in-memory graph."""
         self._nodes: dict[str, Node] = {}
         self._edges: dict[str, Edge] = {}
         logger.info("in_memory_graph_store_initialized")
-    
+
     # -------------------------------------------------------------------------
     # Node Operations
     # -------------------------------------------------------------------------
-    
+
     def add_node(self, node: Node) -> str:
         """Add or update a node."""
         self._nodes[node.id] = node
         logger.debug("node_added", node_id=node.id, node_type=node.node_type)
         return node.id
-    
+
     def get_node(self, node_id: str) -> Node | None:
         """Get a node by ID."""
         return self._nodes.get(node_id)
-    
+
     def get_nodes_by_type(self, node_type: str) -> list[Node]:
         """Get all nodes of a specific type."""
         return [n for n in self._nodes.values() if n.node_type == node_type]
-    
+
     def update_node(self, node_id: str, properties: dict[str, Any]) -> bool:
         """Update node properties."""
         node = self._nodes.get(node_id)
@@ -470,12 +469,12 @@ class InMemoryGraphStore:
             return False
         node.properties.update(properties)
         return True
-    
+
     def delete_node(self, node_id: str) -> bool:
         """Delete a node and its connected edges."""
         if node_id not in self._nodes:
             return False
-        
+
         # Delete connected edges
         edges_to_delete = [
             eid for eid, e in self._edges.items()
@@ -483,29 +482,29 @@ class InMemoryGraphStore:
         ]
         for eid in edges_to_delete:
             del self._edges[eid]
-        
+
         del self._nodes[node_id]
         return True
-    
+
     # -------------------------------------------------------------------------
     # Edge Operations
     # -------------------------------------------------------------------------
-    
+
     def add_edge(self, edge: Edge) -> str:
         """Add an edge to the graph."""
         if edge.source_id not in self._nodes:
             raise ValueError(f"Source node {edge.source_id} not found")
         if edge.target_id not in self._nodes:
             raise ValueError(f"Target node {edge.target_id} not found")
-        
+
         self._edges[edge.id] = edge
         logger.debug("edge_added", edge_id=edge.id, edge_type=edge.edge_type)
         return edge.id
-    
+
     def get_edge(self, edge_id: str) -> Edge | None:
         """Get an edge by ID."""
         return self._edges.get(edge_id)
-    
+
     def get_edges_for_node(self, node_id: str, direction: str = "both") -> list[Edge]:
         """Get all edges connected to a node."""
         edges = []
@@ -515,11 +514,11 @@ class InMemoryGraphStore:
             elif direction in ("incoming", "both") and edge.target_id == node_id:
                 edges.append(edge)
         return edges
-    
+
     # -------------------------------------------------------------------------
     # Query Operations
     # -------------------------------------------------------------------------
-    
+
     def query(self, query_str: str, params: dict[str, Any] | None = None) -> QueryResult:
         """Execute a simple filter query.
         
@@ -537,24 +536,24 @@ class InMemoryGraphStore:
             records = [n.to_dict() for n in self._nodes.values()]
         else:
             records = [n.to_dict() for n in self.get_nodes_by_type(query_str)]
-        
+
         return QueryResult(
             records=records,
             columns=["id", "label", "type", "properties"],
             summary={"count": len(records)}
         )
-    
+
     # -------------------------------------------------------------------------
     # Bulk Operations
     # -------------------------------------------------------------------------
-    
+
     def add_nodes_batch(self, nodes: list[Node]) -> int:
         """Add multiple nodes in a batch."""
         for node in nodes:
             self._nodes[node.id] = node
         logger.info("nodes_batch_added", count=len(nodes))
         return len(nodes)
-    
+
     def add_edges_batch(self, edges: list[Edge]) -> int:
         """Add multiple edges in a batch."""
         added = 0
@@ -566,29 +565,29 @@ class InMemoryGraphStore:
                 logger.warning("edge_skipped", edge_id=edge.id, reason=str(e))
         logger.info("edges_batch_added", count=added)
         return added
-    
+
     # -------------------------------------------------------------------------
     # Statistics & Export
     # -------------------------------------------------------------------------
-    
+
     def get_statistics(self) -> GraphStatistics:
         """Compute graph statistics."""
         nodes_by_type: dict[str, int] = {}
         edges_by_type: dict[str, int] = {}
         confidences: list[float] = []
-        
+
         for node in self._nodes.values():
             nodes_by_type[node.node_type] = nodes_by_type.get(node.node_type, 0) + 1
             if "confidence" in node.properties:
                 confidences.append(float(node.properties["confidence"]))
-        
+
         for edge in self._edges.values():
             edges_by_type[edge.edge_type] = edges_by_type.get(edge.edge_type, 0) + 1
-        
+
         n = len(self._nodes)
         e = len(self._edges)
         density = e / (n * (n - 1)) if n > 1 else 0.0
-        
+
         return GraphStatistics(
             node_count=n,
             edge_count=e,
@@ -599,25 +598,25 @@ class InMemoryGraphStore:
             max_confidence=max(confidences) if confidences else 0.0,
             density=density,
         )
-    
+
     def get_all_nodes(self) -> Iterator[Node]:
         """Iterate over all nodes."""
         yield from self._nodes.values()
-    
+
     def get_all_edges(self) -> Iterator[Edge]:
         """Iterate over all edges."""
         yield from self._edges.values()
-    
+
     def clear(self) -> None:
         """Remove all nodes and edges."""
         self._nodes.clear()
         self._edges.clear()
         logger.info("graph_cleared")
-    
+
     # -------------------------------------------------------------------------
     # Export Methods (In-Memory specific)
     # -------------------------------------------------------------------------
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Export graph to a JSON-serializable dictionary.
         
@@ -640,7 +639,7 @@ class InMemoryGraphStore:
             "nodes": [n.to_dict() for n in self._nodes.values()],
             "edges": [e.to_dict() for e in self._edges.values()],
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> InMemoryGraphStore:
         """Import graph from a dictionary.
@@ -657,7 +656,7 @@ class InMemoryGraphStore:
         for edge_data in data.get("edges", []):
             store.add_edge(Edge.from_dict(edge_data))
         return store
-    
+
     def to_json(self, indent: int = 2) -> str:
         """Export graph to JSON string.
         

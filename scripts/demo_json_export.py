@@ -26,14 +26,15 @@ interoperability with other tools.
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 # Add src to path for local development
 import sys
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kgbuilder.storage.protocol import InMemoryGraphStore, Node, Edge
-from kgbuilder.storage.export import KGExporter, ExportConfig
+from kgbuilder.storage.export import ExportConfig, KGExporter
+from kgbuilder.storage.protocol import Edge, InMemoryGraphStore, Node
 
 
 def create_sample_graph() -> InMemoryGraphStore:
@@ -43,7 +44,7 @@ def create_sample_graph() -> InMemoryGraphStore:
     to show the output format without running the full pipeline.
     """
     store = InMemoryGraphStore()
-    
+
     # Add facility nodes
     store.add_node(Node(
         id="facility_001",
@@ -56,7 +57,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "status": "decommissioning",
         },
     ))
-    
+
     store.add_node(Node(
         id="facility_002",
         label="Gundremmingen Nuclear Power Plant",
@@ -67,7 +68,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "evidence_count": 8,
         },
     ))
-    
+
     # Add process nodes
     store.add_node(Node(
         id="process_001",
@@ -79,7 +80,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "evidence_count": 5,
         },
     ))
-    
+
     store.add_node(Node(
         id="process_002",
         label="Contamination Assessment",
@@ -90,7 +91,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "evidence_count": 7,
         },
     ))
-    
+
     store.add_node(Node(
         id="process_003",
         label="Component Dismantling",
@@ -101,7 +102,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "evidence_count": 4,
         },
     ))
-    
+
     # Add regulatory nodes
     store.add_node(Node(
         id="reg_001",
@@ -113,7 +114,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "abbreviation": "BASE",
         },
     ))
-    
+
     # Add waste type nodes
     store.add_node(Node(
         id="waste_001",
@@ -125,7 +126,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "abbreviation": "LLW",
         },
     ))
-    
+
     store.add_node(Node(
         id="waste_002",
         label="Intermediate-Level Radioactive Waste",
@@ -136,7 +137,7 @@ def create_sample_graph() -> InMemoryGraphStore:
             "abbreviation": "ILW",
         },
     ))
-    
+
     # Add relationships
     store.add_edge(Edge(
         id="e1",
@@ -145,7 +146,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="undergoes",
         properties={"confidence": 0.87},
     ))
-    
+
     store.add_edge(Edge(
         id="e2",
         source_id="facility_001",
@@ -153,7 +154,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="undergoes",
         properties={"confidence": 0.89},
     ))
-    
+
     store.add_edge(Edge(
         id="e3",
         source_id="facility_001",
@@ -161,7 +162,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="undergoes",
         properties={"confidence": 0.82},
     ))
-    
+
     store.add_edge(Edge(
         id="e4",
         source_id="process_001",
@@ -169,7 +170,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="precedes",
         properties={"confidence": 0.91},
     ))
-    
+
     store.add_edge(Edge(
         id="e5",
         source_id="process_002",
@@ -177,7 +178,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="precedes",
         properties={"confidence": 0.88},
     ))
-    
+
     store.add_edge(Edge(
         id="e6",
         source_id="reg_001",
@@ -185,7 +186,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="regulates",
         properties={"confidence": 0.96},
     ))
-    
+
     store.add_edge(Edge(
         id="e7",
         source_id="reg_001",
@@ -193,7 +194,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="regulates",
         properties={"confidence": 0.94},
     ))
-    
+
     store.add_edge(Edge(
         id="e8",
         source_id="process_003",
@@ -201,7 +202,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="produces",
         properties={"confidence": 0.85},
     ))
-    
+
     store.add_edge(Edge(
         id="e9",
         source_id="process_003",
@@ -209,7 +210,7 @@ def create_sample_graph() -> InMemoryGraphStore:
         edge_type="produces",
         properties={"confidence": 0.83},
     ))
-    
+
     return store
 
 
@@ -223,16 +224,16 @@ def main() -> None:
         help="Output directory for exported files",
     )
     args = parser.parse_args()
-    
+
     print("=" * 60)
     print("KGBuilder Phase 6 Demo: Export KG Without Neo4j")
     print("=" * 60)
     print()
-    
+
     # Create sample graph
     print("Creating sample knowledge graph...")
     store = create_sample_graph()
-    
+
     # Show statistics
     stats = store.get_statistics()
     print(f"  Nodes: {stats.node_count}")
@@ -240,20 +241,20 @@ def main() -> None:
     print(f"  Node types: {dict(stats.nodes_by_type)}")
     print(f"  Edge types: {dict(stats.edges_by_type)}")
     print()
-    
+
     # Create output directory
     output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Configure exporter
     config = ExportConfig(
         base_uri="http://example.org/decommissioning/",
         ontology_uri="http://example.org/decom-ontology#",
         pretty_print=True,
     )
-    
+
     exporter = KGExporter(store, config)
-    
+
     # Export to all formats
     formats = [
         ("json", "Simple JSON"),
@@ -262,14 +263,14 @@ def main() -> None:
         ("cypher", "Cypher (Neo4j import)"),
         ("graphml", "GraphML (Visualization)"),
     ]
-    
+
     print("Exporting to multiple formats...")
     for fmt, description in formats:
         ext = "ttl" if fmt == "turtle" else fmt
         filepath = output_dir / f"kg_demo.{ext}"
         exporter.export_to_file(filepath, format=fmt)
-        print(f"  ✓ {description}: {filepath}")
-    
+        print(f"  [OK] {description}: {filepath}")
+
     print()
     print("=" * 60)
     print("SUCCESS: KG exported without Neo4j!")

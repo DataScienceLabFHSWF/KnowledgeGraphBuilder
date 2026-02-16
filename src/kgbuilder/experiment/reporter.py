@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +49,7 @@ class ExperimentReporter:
     Attributes:
         output_dir: Directory for saving reports.
     """
-    
+
     def __init__(self, output_dir: Path | str | None = None) -> None:
         """Initialize reporter.
         
@@ -59,7 +58,7 @@ class ExperimentReporter:
         """
         self.output_dir = Path(output_dir) if output_dir else Path(".")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def generate_markdown(
         self,
         report: ExperimentReport,
@@ -81,13 +80,13 @@ class ExperimentReporter:
             Generated Markdown content as string.
         """
         lines = []
-        
+
         # Header
         lines.append(f"# Experiment Report: {report.experiment_name}")
         lines.append("")
         lines.append(f"**Generated:** {report.timestamp}")
         lines.append("")
-        
+
         # Executive Summary
         lines.append("## Executive Summary")
         lines.append("")
@@ -98,7 +97,7 @@ class ExperimentReporter:
         lines.append(f"- **Average Run Duration:** {summary.get('avg_run_duration_min', 'N/A'):.2f}min")
         lines.append(f"- **Completed Successfully:** {summary.get('completed_runs', 0)}/{summary.get('total_runs', 0)}")
         lines.append("")
-        
+
         # Best Variant
         best_variant = summary.get("best_variant")
         if best_variant:
@@ -107,16 +106,16 @@ class ExperimentReporter:
             for metric, value in best_variant.get("metrics", {}).items():
                 lines.append(f"- {metric}: {value:.4f}")
             lines.append("")
-        
+
         # Convergence Analysis
         if report.convergence:
             lines.append("## Convergence Analysis")
             lines.append("")
-            
+
             for metric, variant_conv in report.convergence.items():
                 lines.append(f"### {metric}")
                 lines.append("")
-                
+
                 for variant, conv in variant_conv.items():
                     lines.append(f"#### {variant}")
                     lines.append("")
@@ -127,81 +126,81 @@ class ExperimentReporter:
                     lines.append(f"| Std Dev | {conv.std_dev:.4f} |")
                     lines.append(f"| Min | {conv.min_value:.4f} |")
                     lines.append(f"| Max | {conv.max_value:.4f} |")
-                    
+
                     if conv.plateaued:
                         lines.append(f"| Plateau Detected | Yes (at run {conv.plateau_start}) |")
                     else:
-                        lines.append(f"| Plateau Detected | No |")
-                    
+                        lines.append("| Plateau Detected | No |")
+
                     lines.append("")
-                
+
                 if include_visualizations:
                     lines.append(f"![{metric} Convergence]"
                                 f"(convergence_{metric.lower()}.png)")
                     lines.append("")
-        
+
         # Comparative Analysis
         if report.comparison:
             lines.append("## Comparative Analysis")
             lines.append("")
-            
+
             for metric, comp in report.comparison.items():
                 lines.append(f"### {metric}")
                 lines.append("")
                 lines.append(f"**Winner:** {comp.best_variant}")
                 lines.append(f"**Margin:** {comp.best_margin:.4f}")
                 lines.append("")
-                
+
                 lines.append("#### Ranking")
                 lines.append("")
                 lines.append("| Rank | Variant | Score | Margin |")
                 lines.append("|------|---------|-------|--------|")
-                
+
                 for idx, (variant, score) in enumerate(comp.ranking.items(), 1):
                     margin = comp.margins.get(variant, 0.0)
                     lines.append(f"| {idx} | {variant} | {score:.4f} | {margin:.4f} |")
-                
+
                 lines.append("")
-                
+
                 if include_visualizations:
                     lines.append(f"![{metric} Comparison](comparison_{metric.lower()}.png)")
                     lines.append("")
-        
+
         # Detailed Results
         if report.details:
             lines.append("## Detailed Results")
             lines.append("")
-            
+
             for variant, metrics in report.details.items():
                 lines.append(f"### {variant}")
                 lines.append("")
                 lines.append("| Metric | Value |")
                 lines.append("|--------|-------|")
-                
+
                 for metric, value in metrics.items():
                     if isinstance(value, float):
                         lines.append(f"| {metric} | {value:.4f} |")
                     else:
                         lines.append(f"| {metric} | {value} |")
-                
+
                 lines.append("")
-        
+
         # Footer
         lines.append("---")
         lines.append("")
         lines.append("*This report was automatically generated by KGBuilder Experiment Framework.*")
-        
+
         content = "\n".join(lines)
-        
+
         if save_path:
             path = Path(save_path) if save_path else self._get_save_path(
                 f"{report.experiment_name}_report.md"
             )
             path.write_text(content)
             logger.info("markdown_report_saved", path=str(path))
-        
+
         return content
-    
+
     def generate_json(
         self,
         report: ExperimentReport,
@@ -239,7 +238,7 @@ class ExperimentReporter:
             "details": report.details,
             "visualizations": report.visualizations or {}
         }
-        
+
         # Convert dataclass instances to dicts
         def convert_dataclasses(obj: Any) -> Any:
             if hasattr(obj, "__dataclass_fields__"):
@@ -249,21 +248,21 @@ class ExperimentReporter:
             elif isinstance(obj, list):
                 return [convert_dataclasses(item) for item in obj]
             return obj
-        
+
         data = convert_dataclasses(data)
-        
+
         indent = 2 if pretty else None
         content = json.dumps(data, indent=indent)
-        
+
         if save_path:
             path = Path(save_path) if save_path else self._get_save_path(
                 f"{report.experiment_name}_report.json"
             )
             Path(path).write_text(content)
             logger.info("json_report_saved", path=str(path))
-        
+
         return content
-    
+
     def generate_html(
         self,
         report: ExperimentReport,
@@ -284,7 +283,7 @@ class ExperimentReporter:
             Generated HTML content as string.
         """
         html_parts = []
-        
+
         # HTML Header
         html_parts.append("""<!DOCTYPE html>
 <html lang="en">
@@ -374,13 +373,13 @@ class ExperimentReporter:
 <body>
     <div class="container">
 """)
-        
+
         # Title and timestamp
-        html_parts.append(f"<h1>🧪 Experiment Report: {report.experiment_name}</h1>")
+        html_parts.append(f"<h1>Experiment Report: {report.experiment_name}</h1>")
         html_parts.append(f"<p><strong>Generated:</strong> {report.timestamp}</p>")
-        
+
         # Executive Summary
-        html_parts.append("<h2>📊 Executive Summary</h2>")
+        html_parts.append("<h2>Executive Summary</h2>")
         summary = report.summary
         html_parts.append('<div class="summary-box">')
         html_parts.append(f"<p><strong>Total Variants:</strong> {summary.get('total_variants', 'N/A')}</p>")
@@ -395,25 +394,25 @@ class ExperimentReporter:
             f"<p><strong>Success Rate:</strong> {summary.get('completed_runs', 0)}/{summary.get('total_runs', 0)} "
             f"({summary.get('success_rate', 0):.1%})</p>"
         )
-        
+
         # Best variant
         best = summary.get("best_variant")
         if best:
-            html_parts.append(f"<h3>🏆 Best Performing Variant: <span class='winner'>{best['name']}</span></h3>")
+            html_parts.append(f"<h3>Best Performing Variant: <span class='winner'>{best['name']}</span></h3>")
             html_parts.append("<div style='margin: 10px 0;'>")
             for metric, value in best.get("metrics", {}).items():
                 html_parts.append(f"<span class='metric'>{metric}: {value:.4f}</span>")
             html_parts.append("</div>")
-        
+
         html_parts.append("</div>")
-        
+
         # Convergence Analysis
         if report.convergence:
-            html_parts.append("<h2>📈 Convergence Analysis</h2>")
-            
+            html_parts.append("<h2>Convergence Analysis</h2>")
+
             for metric, variant_conv in report.convergence.items():
                 html_parts.append(f"<h3>{metric}</h3>")
-                
+
                 for variant, conv in variant_conv.items():
                     html_parts.append(f"<h4>{variant}</h4>")
                     html_parts.append("<table>")
@@ -423,87 +422,87 @@ class ExperimentReporter:
                     html_parts.append(f"<tr><td>Std Dev</td><td>{conv.std_dev:.4f}</td></tr>")
                     html_parts.append(f"<tr><td>Min</td><td>{conv.min_value:.4f}</td></tr>")
                     html_parts.append(f"<tr><td>Max</td><td>{conv.max_value:.4f}</td></tr>")
-                    
+
                     plateau_text = f"Yes (run {conv.plateau_start})" if conv.plateaued else "No"
                     html_parts.append(f"<tr><td>Plateau</td><td>{plateau_text}</td></tr>")
                     html_parts.append("</table>")
-                
+
                 if include_visualizations and report.visualizations:
                     img_key = f"convergence_{metric.lower()}"
                     if img_key in report.visualizations:
-                        html_parts.append(f'<div class="image-container">')
+                        html_parts.append('<div class="image-container">')
                         html_parts.append(
                             f'<img src="{report.visualizations[img_key]}" alt="{metric} Convergence">'
                         )
                         html_parts.append('</div>')
-        
+
         # Comparative Analysis
         if report.comparison:
-            html_parts.append("<h2>⚖️ Comparative Analysis</h2>")
-            
+            html_parts.append("<h2>Comparative Analysis</h2>")
+
             for metric, comp in report.comparison.items():
                 html_parts.append(f"<h3>{metric}</h3>")
                 html_parts.append(f"<p><strong>Winner:</strong> <span class='winner'>{comp.best_variant}</span></p>")
                 html_parts.append(f"<p><strong>Winning Margin:</strong> {comp.best_margin:.4f}</p>")
-                
+
                 html_parts.append("<h4>Ranking</h4>")
                 html_parts.append("<table>")
                 html_parts.append("<tr><th>Rank</th><th>Variant</th><th>Score</th><th>Margin</th></tr>")
-                
+
                 for idx, (variant, score) in enumerate(comp.ranking.items(), 1):
                     margin = comp.margins.get(variant, 0.0)
                     html_parts.append(f"<tr><td>{idx}</td><td>{variant}</td><td>{score:.4f}</td><td>{margin:.4f}</td></tr>")
-                
+
                 html_parts.append("</table>")
-                
+
                 if include_visualizations and report.visualizations:
                     img_key = f"comparison_{metric.lower()}"
                     if img_key in report.visualizations:
-                        html_parts.append(f'<div class="image-container">')
+                        html_parts.append('<div class="image-container">')
                         html_parts.append(
                             f'<img src="{report.visualizations[img_key]}" alt="{metric} Comparison">'
                         )
                         html_parts.append('</div>')
-        
+
         # Detailed Results
         if report.details:
-            html_parts.append("<h2>📋 Detailed Results</h2>")
-            
+            html_parts.append("<h2>Detailed Results</h2>")
+
             for variant, metrics in report.details.items():
                 html_parts.append(f"<h3>{variant}</h3>")
                 html_parts.append("<table>")
                 html_parts.append("<tr><th>Metric</th><th>Value</th></tr>")
-                
+
                 for metric, value in metrics.items():
                     if isinstance(value, float):
                         html_parts.append(f"<tr><td>{metric}</td><td>{value:.4f}</td></tr>")
                     else:
                         html_parts.append(f"<tr><td>{metric}</td><td>{value}</td></tr>")
-                
+
                 html_parts.append("</table>")
-        
+
         # Footer
         html_parts.append('<div class="footer">')
         html_parts.append("<p>This report was automatically generated by KGBuilder Experiment Framework.</p>")
         html_parts.append("</div>")
-        
+
         html_parts.append("""
     </div>
 </body>
 </html>
 """)
-        
+
         content = "\n".join(html_parts)
-        
+
         if save_path:
             path = Path(save_path) if save_path else self._get_save_path(
                 f"{report.experiment_name}_report.html"
             )
             Path(path).write_text(content)
             logger.info("html_report_saved", path=str(path))
-        
+
         return content
-    
+
     def save_report(
         self,
         report: ExperimentReport,
@@ -523,27 +522,27 @@ class ExperimentReporter:
         """
         if formats is None:
             formats = ["markdown", "json", "html"]
-        
+
         paths = {}
-        
+
         if "markdown" in formats:
             path = self._get_save_path(f"{report.experiment_name}_report.md")
             self.generate_markdown(report, save_path=str(path))
             paths["markdown"] = path
-        
+
         if "json" in formats:
             path = self._get_save_path(f"{report.experiment_name}_report.json")
             self.generate_json(report, save_path=str(path))
             paths["json"] = path
-        
+
         if "html" in formats:
             path = self._get_save_path(f"{report.experiment_name}_report.html")
             self.generate_html(report, save_path=str(path))
             paths["html"] = path
-        
+
         logger.info("report_saved", formats=formats, paths={k: str(v) for k, v in paths.items()})
         return paths
-    
+
     def _get_save_path(self, filename: str) -> Path:
         """Get save path for a report file.
         

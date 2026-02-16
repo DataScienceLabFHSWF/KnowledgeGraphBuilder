@@ -3,10 +3,12 @@ Move each main law HTML into its own subdirectory in data/law_html/<ABBR>/<ABBR>
 Then, parse each reference HTML to find and download the XML version (if available) into the same subdirectory.
 """
 from __future__ import annotations
-from pathlib import Path
-from bs4 import BeautifulSoup
-import requests
+
 import shutil
+from pathlib import Path
+
+import requests
+from bs4 import BeautifulSoup
 
 LAW_DIR = Path(__file__).parent.parent.parent / "data" / "law_html"
 IMPORTANT_ABBRS = [

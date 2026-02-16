@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from kgbuilder.core import ChunkingStrategy
 from kgbuilder.core.models import Chunk, ChunkMetadata, Document
 
 
@@ -164,20 +163,20 @@ class StructuralChunker:
 
         chunks = []
         content = document.content
-        
+
         # Pattern for common heading markers (##, ###, etc.)
         heading_pattern = r"^(#{1,6})\s+(.+?)$"
         lines = content.split("\n")
-        
+
         current_chunk = []
         current_heading = None
         current_level = 0
         current_start = 0
         start_pos = 0
-        
+
         for line_idx, line in enumerate(lines):
             heading_match = re.match(heading_pattern, line)
-            
+
             if heading_match:
                 # Found a heading - save current chunk if exists
                 if current_chunk:
@@ -196,7 +195,7 @@ class StructuralChunker:
                         ),
                     )
                     chunks.append(chunk)
-                
+
                 # Start new section
                 current_heading = heading_match.group(2)
                 current_level = len(heading_match.group(1))
@@ -204,9 +203,9 @@ class StructuralChunker:
                 current_start = start_pos
             else:
                 current_chunk.append(line)
-            
+
             start_pos += len(line) + 1  # +1 for newline
-        
+
         # Save final chunk
         if current_chunk:
             chunk_content = "\n".join(current_chunk)
@@ -223,7 +222,7 @@ class StructuralChunker:
                 ),
             )
             chunks.append(chunk)
-        
+
         return chunks
 
 
@@ -256,30 +255,29 @@ class HierarchicalChunker:
         Returns:
             List of chunks with parent_id relationships
         """
-        import re
 
         # First, create structural chunks (parents)
         structural_chunker = StructuralChunker()
         parent_chunks = structural_chunker.chunk(
             document, chunk_size=2000, chunk_overlap=100
         )
-        
+
         all_chunks = list(parent_chunks)  # Include parent chunks
-        
+
         # For each parent chunk, create child chunks
         for parent_chunk in parent_chunks:
             content = parent_chunk.content
-            
+
             # Split parent into smaller child chunks
             step = chunk_size - chunk_overlap
-            
+
             for start in range(0, len(content), step):
                 end = min(start + chunk_size, len(content))
-                
+
                 child_content = content[start:end].strip()
                 if not child_content or len(child_content) < 50:
                     continue
-                
+
                 child_chunk = Chunk(
                     id=str(uuid4()),
                     content=child_content,
@@ -294,5 +292,5 @@ class HierarchicalChunker:
                     ),
                 )
                 all_chunks.append(child_chunk)
-        
+
         return all_chunks

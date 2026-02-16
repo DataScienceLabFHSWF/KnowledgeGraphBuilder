@@ -7,13 +7,13 @@ See Planning/FUSIONRAG_INTEGRATION.md Section 1 for design.
 
 from __future__ import annotations
 
-import structlog
 import time
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 import ollama
+import structlog
 
 from kgbuilder.core import get_base_url
 
@@ -111,7 +111,7 @@ class StandardRAGPipeline:
             )
             return documents
 
-        except Exception as e:
+        except Exception:
             logger.exception("retrieval_failed", exc_info=True)
             return []
 
@@ -145,7 +145,7 @@ Answer:"""
             logger.info("generation_complete", answer_len=len(answer))
             return answer
 
-        except Exception as e:
+        except Exception:
             logger.error("generation_failed")
             return "Error generating response"
 
@@ -158,7 +158,6 @@ Answer:"""
         Returns:
             RAGResponse with answer and metadata
         """
-        import time
 
         try:
             # Retrieve
@@ -191,7 +190,7 @@ Answer:"""
                 confidence=avg_score,
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("rag_failed", exc_info=True)
             return RAGResponse(
                 answer="Error processing query",

@@ -27,16 +27,15 @@ logger = structlog.get_logger(__name__)
 
 def main() -> None:
     """Test standard RAG pipeline."""
-    import os
 
     load_dotenv()
 
     logger.info("initializing_standard_rag_pipeline")
 
     # Initialize components
-    from kgbuilder.storage.vector import QdrantStore
     from kgbuilder.embedding.ollama import OllamaProvider
     from kgbuilder.rag import StandardRAGPipeline
+    from kgbuilder.storage.vector import QdrantStore
 
     try:
         ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")

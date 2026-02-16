@@ -6,16 +6,17 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
-import logging
+
+# Minimal FileOntologyService (copied from scripts/validate_kg_ttl.py) - lightweight OWL reader
+import rdflib
 
 from kgbuilder.storage.neo4j_store import Neo4jGraphStore
 from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
 from kgbuilder.validation.shacl_validator import SHACLValidator
 
-# Minimal FileOntologyService (copied from scripts/validate_kg_ttl.py) - lightweight OWL reader
-import rdflib
 
 class FileOntologyService:
     def __init__(self, owl_path: Path, ontology_namespace: str | None = None) -> None:

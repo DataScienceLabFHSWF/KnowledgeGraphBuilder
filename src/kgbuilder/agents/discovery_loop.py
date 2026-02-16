@@ -14,15 +14,15 @@ Orchestrates the discovery process:
 
 from __future__ import annotations
 
-import structlog
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+import structlog
+
 from kgbuilder.agents.question_generator import QuestionGenerationAgent, ResearchQuestion
 from kgbuilder.core.models import ExtractedEntity
-
 
 logger = structlog.get_logger(__name__)
 
@@ -183,7 +183,7 @@ class IterativeDiscoveryLoop:
             DiscoveryResult with all findings and metadata
         """
         start_time = time.time()
-        
+
         # Use provided classes or fall back to instance variable
         classes_to_use = ontology_classes if ontology_classes is not None else self._ontology_classes
 
@@ -239,7 +239,7 @@ class IterativeDiscoveryLoop:
                                 extract_relations=extract_relations
                             )
                         )
-                    
+
                     # Wait for all to complete
                     for future in futures:
                         try:
@@ -469,7 +469,7 @@ class IterativeDiscoveryLoop:
                                 ontology_relations=self._ontology_relations
                             )
                             self._relations.extend(relations)
-                            
+
                             if relations:
                                 self._logger.debug(
                                     "relations_extracted_from_document",
@@ -485,7 +485,7 @@ class IterativeDiscoveryLoop:
                                 error=str(e),
                             )
                             # Continue on relation extraction failure (don't block entity success)
-                    
+
                     self._logger.debug(
                         "extracted_from_document",
                         question_id=question.question_id,
@@ -502,7 +502,7 @@ class IterativeDiscoveryLoop:
                     )
                     continue
 
-        except Exception as e:
+        except Exception:
             self._logger.error(
                 "question_processing_failed",
                 question_id=question.question_id,

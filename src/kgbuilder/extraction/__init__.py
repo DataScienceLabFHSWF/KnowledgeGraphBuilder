@@ -15,12 +15,12 @@ Provides:
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.chains import ExtractionChains, build_extraction_pipeline
-from kgbuilder.extraction.ensemble import EnsembleExtractor
 from kgbuilder.extraction.enrichment import (
     EnrichedEntity,
     EnrichedRelation,
     SemanticEnrichmentPipeline,
 )
+from kgbuilder.extraction.ensemble import EnsembleExtractor
 from kgbuilder.extraction.entity import (
     EntityExtractor,
     LLMEntityExtractor,

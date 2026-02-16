@@ -18,7 +18,7 @@ from __future__ import annotations
 import difflib
 from dataclasses import dataclass, field
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.legal_llm import LegalLLMExtractor
 from kgbuilder.extraction.legal_rules import LegalRuleBasedExtractor
 
@@ -194,7 +194,7 @@ class LegalEnsembleExtractor:
         a_target = getattr(a, 'target_label', '') or a.target_entity_id
         b_source = getattr(b, 'source_label', '') or b.source_entity_id
         b_target = getattr(b, 'target_label', '') or b.target_entity_id
-        
+
         return (str(a_source).lower() == str(b_source).lower() and
                 str(a_target).lower() == str(b_target).lower() and
                 a.predicate == b.predicate)

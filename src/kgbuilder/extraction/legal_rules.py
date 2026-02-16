@@ -20,8 +20,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
-
+from kgbuilder.core.models import Evidence, ExtractedEntity, ExtractedRelation
 
 # ---------------------------------------------------------------------------
 # Regex patterns for German legal text

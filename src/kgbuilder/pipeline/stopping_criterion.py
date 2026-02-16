@@ -24,8 +24,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+
 import structlog
-from typing import Optional
 
 logger = structlog.get_logger(__name__)
 
@@ -83,9 +83,9 @@ class StoppingCriteria:
                 f"min_avg_confidence must be 0-1, got {self.min_avg_confidence}"
             )
         if self.min_entity_count < 0:
-            raise ValueError(f"min_entity_count must be >= 0")
+            raise ValueError("min_entity_count must be >= 0")
         if self.max_iterations < 1:
-            raise ValueError(f"max_iterations must be >= 1")
+            raise ValueError("max_iterations must be >= 1")
 
 
 @dataclass
@@ -193,8 +193,8 @@ class StoppingCriterionChecker:
     def check(
         self,
         kg_state: KGBuildState,
-        cq_results: Optional[CompetencyQuestionResults] = None,
-        validation_results: Optional[ValidationResults] = None,
+        cq_results: CompetencyQuestionResults | None = None,
+        validation_results: ValidationResults | None = None,
     ) -> tuple[bool, StoppingReason, dict[str, Any]]:
         """Check if KG building should stop.
 
@@ -270,7 +270,7 @@ class StoppingCriterionChecker:
             "required": self.criteria.min_avg_confidence,
         }
 
-    def _check_cq_coverage(self, cq_results: Optional[CompetencyQuestionResults]) -> None:
+    def _check_cq_coverage(self, cq_results: CompetencyQuestionResults | None) -> None:
         """Check if minimum CQ coverage is met."""
         if cq_results is None:
             self.check_results["cq_coverage"] = {
@@ -292,7 +292,7 @@ class StoppingCriterionChecker:
         }
 
     def _check_validation_pass_rate(
-        self, validation_results: Optional[ValidationResults]
+        self, validation_results: ValidationResults | None
     ) -> None:
         """Check if minimum validation pass rate is met."""
         if validation_results is None:
@@ -359,7 +359,7 @@ class StoppingCriterionChecker:
         for check_name, check_result in self.check_results.items():
             if isinstance(check_result, dict):
                 passed = check_result.get("passed", False)
-                status = "✓ PASS" if passed else "✗ FAIL"
+                status = "[OK] PASS" if passed else "[FAIL] FAIL"
                 lines.append(f"  {check_name}: {status}")
 
                 if "current" in check_result:

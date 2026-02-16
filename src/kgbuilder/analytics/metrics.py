@@ -6,9 +6,10 @@ to understand KG structure, identify hubs/orphans, and measure schema coverage.
 
 from __future__ import annotations
 
-import structlog
 from dataclasses import dataclass, field
 from datetime import datetime
+
+import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -21,31 +22,31 @@ class GraphMetricsSnapshot:
     total_nodes: int = 0
     total_edges: int = 0
     total_relations: int = 0
-    
+
     # Node statistics
     typed_nodes: int = 0
     typed_percentage: float = 0.0
-    
+
     # Edge statistics
     relations_with_domain_range: int = 0
     relations_satisfying_constraints: int = 0
     constraint_satisfaction_rate: float = 0.0
-    
+
     # Centrality
     average_degree: float = 0.0
     max_degree: int = 0
     orphan_nodes: int = 0  # Nodes with degree 0
     hub_nodes: int = 0  # Nodes with degree > avg * 2
-    
+
     # Quality
     missing_descriptions: int = 0
     missing_types: int = 0
     orphan_entities: int = 0
-    
+
     # Predicate distribution (power-law)
     unique_predicates: int = 0
     most_common_predicates: list[tuple[str, int]] = field(default_factory=list)
-    
+
     # Auxiliary
     duration_seconds: float = 0.0
     notes: str = ""
@@ -82,45 +83,45 @@ class GraphMetrics:
         """
         snapshot = GraphMetricsSnapshot()
         start_time = datetime.now()
-        
+
         try:
             # Count nodes and edges
             snapshot.total_nodes = self._count_nodes()
             snapshot.total_edges = self._count_edges()
             snapshot.total_relations = self._count_relations()
-            
+
             # Schema coverage
             snapshot.typed_nodes = self._count_typed_nodes()
             snapshot.typed_percentage = (
                 100 * snapshot.typed_nodes / max(snapshot.total_nodes, 1)
             )
-            
+
             # Metrics
             snapshot.orphan_nodes = self._count_orphan_nodes()
             snapshot.average_degree = self._compute_average_degree()
             snapshot.max_degree = self._compute_max_degree()
             snapshot.hub_nodes = self._count_hub_nodes(snapshot.average_degree)
-            
+
             # Data quality
             snapshot.missing_descriptions = self._count_missing_descriptions()
             snapshot.missing_types = self._count_missing_types()
             snapshot.orphan_entities = self._count_orphan_entities()
-            
+
             # Predicates
             snapshot.unique_predicates = self._count_unique_predicates()
             snapshot.most_common_predicates = self._get_predicate_distribution(top_k=10)
-            
+
             # Constraints (if ontology available)
             if ontology_service:
                 result = self._check_constraint_satisfaction(ontology_service)
                 snapshot.relations_with_domain_range = result["total"]
                 snapshot.relations_satisfying_constraints = result["satisfied"]
                 snapshot.constraint_satisfaction_rate = result["rate"]
-            
+
         except Exception as e:
             logger.error(f"metrics_computation_error: {e}")
             snapshot.notes = f"Error during computation: {e}"
-        
+
         snapshot.duration_seconds = (datetime.now() - start_time).total_seconds()
         logger.info(
             "graph_metrics_computed",
@@ -130,7 +131,7 @@ class GraphMetrics:
             orphans=snapshot.orphan_nodes,
             duration=snapshot.duration_seconds,
         )
-        
+
         return snapshot
 
     def _count_nodes(self) -> int:
@@ -196,7 +197,7 @@ class GraphMetrics:
         return {"total": 0, "satisfied": 0, "rate": 0.0}
 
     def generate_diagnostics_report(
-        self, 
+        self,
         snapshot: GraphMetricsSnapshot,
         output_path: str | None = None
     ) -> str:

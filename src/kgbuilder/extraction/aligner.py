@@ -69,8 +69,8 @@ class TextAligner:
         # This is strictly for finding the location; we return indices into original source_text
         snippet_norm = " ".join(snippet.lower().split())
         source_norm = " ".join(source_text.lower().split())
-        
-        # Note: mapping normalized indices back to original is hard. 
+
+        # Note: mapping normalized indices back to original is hard.
         # Instead, we'll use difflib for robust fuzzy matching if exact fails.
 
         # 3. Fuzzy match using SequenceMatcher
@@ -84,14 +84,14 @@ class TextAligner:
             candidate_start = match.a
             candidate_end = match.a + match.size
             candidate_text = source_text[candidate_start:candidate_end]
-            
+
             # Calculate similarity between full snippet and the candidate region
             # We expand the region slightly to see if we can cover the whole snippet?
-            # Creating a true fuzzy find is expensive. 
+            # Creating a true fuzzy find is expensive.
             # Simplified approach: Use the longest common substring as anchor.
-            
+
             similarity = match.size / len(snippet)
-            
+
             if similarity >= 0.99: # Practically exact but maybe some edge case
                  return AlignmentResult(
                     AlignmentStatus.EXACT, candidate_start, candidate_end, candidate_text, similarity

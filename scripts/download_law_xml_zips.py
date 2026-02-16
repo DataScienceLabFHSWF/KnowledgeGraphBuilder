@@ -7,12 +7,13 @@ Download XML ZIPs for all important laws by parsing their reference HTML.
 """
 from __future__ import annotations
 
-from pathlib import Path
-from bs4 import BeautifulSoup
-import requests
-import zipfile
 import io
 import json
+import zipfile
+from pathlib import Path
+
+import requests
+from bs4 import BeautifulSoup
 
 LAW_DIR = Path(__file__).parent.parent / "data" / "law_html"
 INDEX_PATH = Path(__file__).parent.parent / "data" / "law_index" / "law_index.json"

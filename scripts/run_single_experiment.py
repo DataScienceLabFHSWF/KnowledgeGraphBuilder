@@ -5,12 +5,13 @@ This script wraps your chosen parameters into a ConfigVariant and executes one r
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
-import json
 
-from kgbuilder.experiment.config import ConfigVariant, KGBuilderParams, ExperimentConfig
+from kgbuilder.experiment.config import ConfigVariant, ExperimentConfig, KGBuilderParams
 from kgbuilder.experiment.manager import ExperimentManager
+
 
 def main() -> None:
     """Run KG build experiment(s) using ExperimentManager."""
@@ -48,7 +49,7 @@ def main() -> None:
     manager = ExperimentManager(experiment_config)
     try:
         results = manager.run_experiments()
-        print("✓ Experiment(s) run complete. Check wandb and output directory for logs and artifacts.")
+        print("[OK] Experiment(s) run complete. Check wandb and output directory for logs and artifacts.")
         print(f"Completed runs: {results.completed_runs}, Failed runs: {results.failed_runs}")
     except Exception as e:
         print(f"Experiment run failed: {e}")

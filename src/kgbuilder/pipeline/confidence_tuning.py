@@ -21,9 +21,9 @@ import structlog
 from kgbuilder.confidence import (
     ConfidenceAnalyzer,
     ConfidenceBooster,
-    CoreferenceResolver,
     ConfidenceCalibrator,
     ConsensusVoter,
+    CoreferenceResolver,
     EntityQualityFilter,
 )
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
@@ -195,7 +195,7 @@ class ConfidenceTuningPipeline:
             try:
                 high_confidence = [e for e in entities if e.confidence >= 0.8]
                 consensus_votes_requested = len(high_confidence)
-                
+
                 voting_results = self.voter.request_votes_batch(high_confidence)
                 unanimous = sum(
                     1 for r in voting_results

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-import pytest
 from pathlib import Path
 
-from kgbuilder.confidence.filter import EntityQualityFilter, QualityReport
-from kgbuilder.core.models import ExtractedEntity, Evidence
+import pytest
+
+from kgbuilder.confidence.filter import EntityQualityFilter
+from kgbuilder.core.models import Evidence, ExtractedEntity
 
 
 @pytest.fixture

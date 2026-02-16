@@ -9,12 +9,12 @@ Tests the complete integration of:
 
 from __future__ import annotations
 
-import pytest
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from kgbuilder.storage.protocol import Node, Edge, QueryResult, GraphStatistics
+import pytest
+
 from kgbuilder.assembly.kg_builder import KGBuilder, KGBuilderConfig
+from kgbuilder.storage.protocol import Edge, GraphStatistics, Node, QueryResult
 
 
 class TestPhase7Integration:

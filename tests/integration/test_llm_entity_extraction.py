@@ -8,14 +8,13 @@ Tests entity extraction end-to-end with:
 - Structured output validation
 """
 
-import sys
 import os
+import sys
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import logging
-from pathlib import Path
 
 from kgbuilder.embedding.ollama import OllamaProvider
 from kgbuilder.extraction.entity import (
@@ -33,11 +32,11 @@ logger = logging.getLogger(__name__)
 
 def test_llm_entity_extraction():
     """Test LLMEntityExtractor with real Ollama connection."""
-    
+
     logger.info("=" * 80)
     logger.info("TESTING LLMEntityExtractor WITH OLLAMA")
     logger.info("=" * 80)
-    
+
     # Initialize LLM provider (Ollama)
     logger.info("\n1. Initializing Ollama LLM provider...")
     try:
@@ -52,7 +51,7 @@ def test_llm_entity_extraction():
         logger.error(f"   ✗ Failed to connect to Ollama: {e}")
         logger.error("   Make sure Ollama is running: docker-compose up")
         return False
-    
+
     # Initialize entity extractor
     logger.info("\n2. Initializing LLMEntityExtractor...")
     extractor = LLMEntityExtractor(
@@ -60,8 +59,8 @@ def test_llm_entity_extraction():
         confidence_threshold=0.5,
         max_retries=2,
     )
-    logger.info(f"   ✓ Extractor initialized (threshold: 0.5)")
-    
+    logger.info("   ✓ Extractor initialized (threshold: 0.5)")
+
     # Define ontology classes for nuclear domain
     logger.info("\n3. Defining ontology classes...")
     ontology_classes = [
@@ -91,7 +90,7 @@ def test_llm_entity_extraction():
         ),
     ]
     logger.info(f"   ✓ Defined {len(ontology_classes)} entity types")
-    
+
     # Test texts
     test_cases = [
         {
@@ -113,23 +112,23 @@ def test_llm_entity_extraction():
             """,
         },
     ]
-    
+
     # Run tests
     logger.info("\n4. Running extraction tests...")
     all_passed = True
-    
+
     for test_case in test_cases:
         logger.info(f"\n   Test: {test_case['name']}")
         logger.info(f"   Text length: {len(test_case['text'])} chars")
-        
+
         try:
             entities = extractor.extract(
                 text=test_case['text'],
                 ontology_classes=ontology_classes,
             )
-            
+
             logger.info(f"   ✓ Extracted {len(entities)} entities")
-            
+
             if entities:
                 for i, entity in enumerate(entities, 1):
                     logger.info(
@@ -139,11 +138,11 @@ def test_llm_entity_extraction():
             else:
                 logger.warning("   ✗ No entities extracted (LLM returned empty)")
                 all_passed = False
-        
+
         except Exception as e:
             logger.error(f"   ✗ Extraction failed: {e}")
             all_passed = False
-    
+
     # Summary
     logger.info("\n" + "=" * 80)
     if all_passed:
@@ -151,7 +150,7 @@ def test_llm_entity_extraction():
     else:
         logger.info("✗ SOME TESTS FAILED")
     logger.info("=" * 80)
-    
+
     return all_passed
 
 

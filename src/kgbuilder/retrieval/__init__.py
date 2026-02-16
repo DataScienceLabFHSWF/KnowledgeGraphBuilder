@@ -13,6 +13,13 @@ See Planning/FUSIONRAG_INTEGRATION.md for architecture.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
+import structlog
+from numpy.typing import NDArray
+
 # Re-export Phase 2 components
 from kgbuilder.retrieval.phase2 import (
     BM25Retriever,
@@ -20,13 +27,6 @@ from kgbuilder.retrieval.phase2 import (
     EnhancedFusionRAGRetriever,
     RerankedResult,
 )
-
-import structlog
-from dataclasses import dataclass
-from typing import Any
-
-import numpy as np
-from numpy.typing import NDArray
 
 logger = structlog.get_logger(__name__)
 
@@ -119,7 +119,7 @@ class FusionRAGRetriever:
             url = f"{self.qdrant.url}/collections/{self.qdrant.collection_name}/points/scroll"
             page_size = 100
             offset = None
-            
+
             documents_indexed = 0
             while True:
                 # Scroll with pagination
@@ -129,44 +129,44 @@ class FusionRAGRetriever:
                 }
                 if offset is not None:
                     scroll_request["offset"] = offset
-                
+
                 response = self.qdrant.http_client.post(
                     f"/collections/{self.qdrant.collection_name}/points/scroll",
                     json=scroll_request,
                 )
-                
+
                 if response.status_code != 200:
                     logger.warning(
                         "sparse_index_qdrant_scroll_failed",
                         status=response.status_code
                     )
                     break
-                
+
                 data = response.json()
                 points = data.get("result", {}).get("points", [])
-                
+
                 if not points:
                     break
-                
+
                 # Extract document content from payloads
                 for point in points:
                     doc_id = point["payload"].get("id", f"point_{point['id']}")
                     content = point["payload"].get("content", "")
-                    
+
                     if content:
                         self._documents[doc_id] = content
                         self._metadata[doc_id] = {
-                            k: v for k, v in point["payload"].items() 
+                            k: v for k, v in point["payload"].items()
                             if k not in ["id", "content"]
                         }
                         documents_indexed += 1
-                
+
                 # Check if there are more pages
                 next_page = data.get("result", {}).get("next_page_offset")
                 if next_page is None:
                     break
                 offset = next_page
-            
+
             if documents_indexed > 0:
                 self._index_built = True
                 logger.info(
@@ -175,7 +175,7 @@ class FusionRAGRetriever:
                 )
             else:
                 logger.warning("sparse_index_qdrant_no_documents_found")
-                
+
         except Exception as e:
             logger.warning(
                 "sparse_index_build_failed",
@@ -288,10 +288,10 @@ class FusionRAGRetriever:
                 doc_id, score, metadata = result
                 # Normalize score to [0, 1] (assuming cosine similarity)
                 normalized_score = max(0.0, min(1.0, (score + 1.0) / 2.0))
-                
+
                 # Get content from metadata
                 content = metadata.get("content", "")
-                
+
                 dense_results[doc_id] = RetrievalResult(
                     doc_id=doc_id,
                     content=content,
@@ -303,7 +303,7 @@ class FusionRAGRetriever:
             logger.debug("dense_retrieval_complete", count=len(dense_results))
             return dense_results
 
-        except Exception as e:
+        except Exception:
             logger.error("dense_retrieval_failed")
             import traceback
             traceback.print_exc()
@@ -351,7 +351,7 @@ class FusionRAGRetriever:
             logger.debug("sparse_retrieval_complete", count=len(sparse_results))
             return sparse_results
 
-        except Exception as e:
+        except Exception:
             logger.error("sparse_retrieval_failed")
             return {}
 
@@ -412,7 +412,7 @@ Alternative questions:"""
             variants = [q.strip() for q in response.split("\n") if q.strip()]
             return variants[:2]  # Limit to 2 variants
 
-        except Exception as e:
+        except Exception:
             logger.debug("query_expansion_failed")
             return []
 

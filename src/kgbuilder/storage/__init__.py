@@ -33,24 +33,26 @@ TODO (RDFStore - Fuseki/alternatives):
 See Planning/ISSUES_BACKLOG.md Issues #3.2, #6.2, #7.1 for acceptance criteria.
 """
 
+from .export import ExportConfig, KGExporter, export_kg
 from .graph import GraphStore, Neo4jStore
-from .rdf import FusekiStore, RDFStore
-from .vector import QdrantStore, VectorStore
-from .retrieval import SemanticRetriever
+from .neo4j_store import Neo4jGraphStore
 
 # New protocol-based exports (Phase 6)
 from .protocol import (
-    Node,
     Edge,
-    QueryResult,
     GraphStatistics,
-    GraphStore as GraphStoreProtocol,
     InMemoryGraphStore,
+    Node,
+    QueryResult,
     create_graph_store,
 )
-from .export import KGExporter, ExportConfig, export_kg
-from .neo4j_store import Neo4jGraphStore
+from .protocol import (
+    GraphStore as GraphStoreProtocol,
+)
+from .rdf import FusekiStore, RDFStore
 from .rdf_store import RDFGraphStore
+from .retrieval import SemanticRetriever
+from .vector import QdrantStore, VectorStore
 
 __all__ = [
     # Legacy exports

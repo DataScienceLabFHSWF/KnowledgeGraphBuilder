@@ -20,9 +20,8 @@ from unittest.mock import MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from kgbuilder.agents.question_generator import QuestionGenerationAgent
-from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
 from kgbuilder.assembly.simple_kg_assembler import SimpleKGAssembler
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
+from kgbuilder.core.models import ExtractedRelation
 from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
 
 
@@ -259,7 +258,7 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
             iterations=2,
         )
 
-        print(f"\n✓ Assembly Results:")
+        print("\n✓ Assembly Results:")
         print(f"  - Nodes Created: {result.nodes_created}")
         print(f"  - Relationships Created: {result.relationships_created}")
         print(f"  - Coverage: {result.coverage:.2f}")
@@ -268,7 +267,7 @@ def test_kg_assembly(entities: list[SynthesizedEntity]) -> dict[str, Any]:
         print(f"  - Warnings: {len(result.warnings)}")
 
         if result.statistics:
-            print(f"\n  Statistics:")
+            print("\n  Statistics:")
             for key, value in result.statistics.items():
                 print(f"    - {key}: {value}")
 

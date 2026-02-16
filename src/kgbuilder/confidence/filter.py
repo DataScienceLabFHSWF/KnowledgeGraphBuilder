@@ -167,14 +167,14 @@ Generated: {report.timestamp}
             md += f"| {entity_type} | {count} |\n"
 
         if report.quality_issues:
-            md += f"""
+            md += """
 ## Quality Issues
 
 """
             for issue in report.quality_issues:
                 md += f"- {issue}\n"
         else:
-            md += "\n## Quality Assessment\n\n✅ No quality issues detected.\n"
+            md += "\n## Quality Assessment\n\n[OK] No quality issues detected.\n"
 
         if filepath:
             with open(filepath, "w") as f:

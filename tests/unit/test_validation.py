@@ -39,7 +39,6 @@ from kgbuilder.validation.rules_engine import (
 )
 from kgbuilder.validation.shacl_validator import SHACLValidator
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

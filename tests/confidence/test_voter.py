@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
+
 from kgbuilder.confidence.voter import ConsensusVoter
-from kgbuilder.core.models import ExtractedEntity, Evidence
+from kgbuilder.core.models import Evidence, ExtractedEntity
 
 
 @pytest.fixture

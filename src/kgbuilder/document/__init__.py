@@ -7,10 +7,10 @@ from kgbuilder.document.advanced_processor import (
 )
 from kgbuilder.document.chunking import FixedSizeChunker, SemanticChunker
 from kgbuilder.document.loaders import (
-    DOCXLoader,
     DocumentLoaderFactory,
-    PPTXLoader,
+    DOCXLoader,
     PDFLoader,
+    PPTXLoader,
 )
 
 __all__ = [

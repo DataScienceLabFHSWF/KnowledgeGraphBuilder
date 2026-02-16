@@ -6,8 +6,6 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from kgbuilder.validation.action_converter import (
     ActionConverter,
     ActionSet,

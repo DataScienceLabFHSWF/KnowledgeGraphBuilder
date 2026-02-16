@@ -9,10 +9,10 @@ coverage gaps. These questions guide the iterative discovery loop.
 from __future__ import annotations
 
 import re
-import structlog
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
+
+import structlog
 
 from kgbuilder.core.models import ExtractedEntity
 

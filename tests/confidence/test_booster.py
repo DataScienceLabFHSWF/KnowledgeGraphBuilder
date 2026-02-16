@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from kgbuilder.core.models import ExtractedEntity, Evidence
 from kgbuilder.confidence.booster import ConfidenceBooster
+from kgbuilder.core.models import Evidence, ExtractedEntity
 
 
 @pytest.fixture

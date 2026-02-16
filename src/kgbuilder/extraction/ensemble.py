@@ -12,9 +12,10 @@ Key features:
 
 from __future__ import annotations
 
-import structlog
 from collections import defaultdict
 from typing import Any
+
+import structlog
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.entity import OntologyClassDef
@@ -48,7 +49,7 @@ class TieredExtractor:
         self.llm_extractor = llm_extractor
         self.min_entities = min_entities_heuristic
         logger.info(
-            f"✓ Initialized TieredExtractor (Rules -> {llm_extractor.__class__.__name__})"
+            f"[OK] Initialized TieredExtractor (Rules -> {llm_extractor.__class__.__name__})"
         )
 
     def extract(
@@ -87,7 +88,7 @@ class TieredRelationExtractor:
         self.llm_extractor = llm_extractor
         self.min_relations = min_relations_heuristic
         logger.info(
-            f"✓ Initialized TieredRelationExtractor (Rules -> {llm_extractor.__class__.__name__})"
+            f"[OK] Initialized TieredRelationExtractor (Rules -> {llm_extractor.__class__.__name__})"
         )
 
     def extract(
@@ -132,7 +133,7 @@ class EnsembleExtractor:
         self.extractors = extractors
         self.names = [e.__class__.__name__ for e in extractors]
         logger.info(
-            f"✓ Initialized EnsembleExtractor with {len(extractors)} extractors: "
+            f"[OK] Initialized EnsembleExtractor with {len(extractors)} extractors: "
             f"{', '.join(self.names)}"
         )
 
@@ -236,7 +237,7 @@ class EnsembleExtractor:
             merged_entities.append(merged)
 
         logger.info(
-            f"✓ Ensemble extracted {len(merged_entities)} entities "
+            f"[OK] Ensemble extracted {len(merged_entities)} entities "
             f"({sum(1 for e in all_results.values() if len(e) > 1)} with agreement)"
         )
         return merged_entities

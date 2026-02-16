@@ -1,0 +1,24 @@
+{
+    "_comment": "Domain profile template -- copy and adapt for your domain.",
+    "_usage": "python scripts/quickstart.py --profile data/profiles/my-domain.json ...",
+
+    "ontology_dataset": "my-domain",
+    "ontology_path": "data/ontology/my-domain.owl",
+    "document_dir": "data/my-domain-docs/",
+    "document_extensions": [".pdf", ".docx", ".txt"],
+    "vector_collection": "my-domain",
+
+    "output_dir": "output/my-domain/",
+    "max_iterations": 2,
+    "questions_per_class": 3,
+    "confidence_threshold": 0.5,
+    "top_k": 10,
+
+    "skip_discovery": false,
+    "skip_analytics": false,
+    "skip_confidence_tuning": false,
+    "skip_validation": false,
+
+    "wandb_enabled": false,
+    "export_formats": ["json-ld"]
+}

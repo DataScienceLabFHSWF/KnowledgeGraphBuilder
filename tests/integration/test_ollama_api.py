@@ -11,8 +11,8 @@ Usage:
 """
 import os
 import sys
+
 import requests
-import json
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:18134")
 MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")

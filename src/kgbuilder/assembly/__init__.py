@@ -10,19 +10,20 @@ Provides:
 - LangChain LCEL-based orchestration
 """
 
+# New protocol-based assembler (Phase 6)
+from kgbuilder.assembly.assembler import (
+    KGAssembler as ProtocolKGAssembler,
+)
+from kgbuilder.assembly.assembler import (
+    KGAssemblyResult,
+    assemble_to_dict,
+    assemble_to_json,
+)
 from kgbuilder.assembly.core import (
     AssemblyResult,
     GraphStatistics,
     KGAssembler,
     SimpleKGAssembler,
-)
-
-# New protocol-based assembler (Phase 6)
-from kgbuilder.assembly.assembler import (
-    KGAssembler as ProtocolKGAssembler,
-    KGAssemblyResult,
-    assemble_to_json,
-    assemble_to_dict,
 )
 
 # Multi-store orchestrator (Phase 7)

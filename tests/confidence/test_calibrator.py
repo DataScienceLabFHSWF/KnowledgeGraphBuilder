@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from kgbuilder.confidence.calibrator import ConfidenceCalibrator
-from kgbuilder.core.models import ExtractedEntity, Evidence
+from kgbuilder.core.models import Evidence, ExtractedEntity
 
 
 @pytest.fixture

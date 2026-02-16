@@ -15,18 +15,16 @@ from pathlib import Path
 # Setup paths
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
+from unittest.mock import MagicMock
+
 import structlog
-from unittest.mock import MagicMock, patch
 
 from kgbuilder.agents.discovery_loop import (
-    DiscoveryResult,
     IterativeDiscoveryLoop,
-    IterationResult,
 )
 from kgbuilder.agents.question_generator import QuestionGenerationAgent, ResearchQuestion
 from kgbuilder.core.models import ExtractedEntity
 from kgbuilder.retrieval import RetrievalResult
-
 
 structlog.configure(
     processors=[
@@ -42,7 +40,7 @@ logger = structlog.get_logger(__name__)
 def create_mock_retriever():
     """Create a mock FusionRAGRetriever."""
     retriever = MagicMock()
-    
+
     # Mock retrieve method to return sample documents
     def retrieve_side_effect(query: str, top_k: int):
         return [
@@ -61,7 +59,7 @@ def create_mock_retriever():
                 metadata={"source": "operations_manual.pdf"},
             ),
         ]
-    
+
     retriever.retrieve.side_effect = retrieve_side_effect
     return retriever
 
@@ -69,7 +67,7 @@ def create_mock_retriever():
 def create_mock_extractor():
     """Create a mock EnsembleExtractor."""
     extractor = MagicMock()
-    
+
     # Mock extract to return entities
     def extract_side_effect(text: str):
         entities = []
@@ -104,7 +102,7 @@ def create_mock_extractor():
                 )
             )
         return entities
-    
+
     extractor.extract.side_effect = extract_side_effect
     return extractor
 
@@ -112,41 +110,41 @@ def create_mock_extractor():
 def test_discovery_loop_initialization():
     """Test DiscoveryLoop initialization."""
     logger.info("test_start", test="discovery_loop_initialization")
-    
+
     mock_retriever = create_mock_retriever()
     mock_extractor = create_mock_extractor()
     mock_question_gen = MagicMock(spec=QuestionGenerationAgent)
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=mock_extractor,
         question_generator=mock_question_gen,
     )
-    
+
     assert loop is not None
     assert loop._findings == {}
     assert loop._provenance == {}
-    
+
     logger.info("test_pass", test="discovery_loop_initialization")
 
 
 def test_run_discovery_basic():
     """Test basic discovery loop execution."""
     logger.info("test_start", test="run_discovery_basic")
-    
+
     mock_retriever = create_mock_retriever()
     mock_extractor = create_mock_extractor()
     mock_question_gen = MagicMock(spec=QuestionGenerationAgent)
     mock_question_gen._ontology.get_all_classes.return_value = [
         "Facility", "Operation", "Document"
     ]
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=mock_extractor,
         question_generator=mock_question_gen,
     )
-    
+
     # Create test questions
     questions = [
         ResearchQuestion(
@@ -157,10 +155,10 @@ def test_run_discovery_basic():
             reason="test",
         ),
     ]
-    
+
     # Mock question generator to return empty list after first iteration
     mock_question_gen.generate_follow_up_questions.return_value = []
-    
+
     # Run discovery
     result = loop.run_discovery(
         initial_questions=questions,
@@ -168,13 +166,13 @@ def test_run_discovery_basic():
         coverage_target=0.0,  # Run one iteration
         top_k_docs=2,
     )
-    
+
     # Verify results
     assert result.success
     assert result.total_iterations == 1
     assert len(result.entities) > 0
     assert len(result.iterations) == 1
-    
+
     logger.info(
         "test_pass",
         test="run_discovery_basic",
@@ -186,18 +184,18 @@ def test_run_discovery_basic():
 def test_provenance_tracking():
     """Test provenance tracking during discovery."""
     logger.info("test_start", test="provenance_tracking")
-    
+
     mock_retriever = create_mock_retriever()
     mock_extractor = create_mock_extractor()
     mock_question_gen = MagicMock(spec=QuestionGenerationAgent)
     mock_question_gen._ontology.get_all_classes.return_value = ["Facility", "Operation"]
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=mock_extractor,
         question_generator=mock_question_gen,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q1",
@@ -207,9 +205,9 @@ def test_provenance_tracking():
             reason="test",
         ),
     ]
-    
+
     mock_question_gen.generate_follow_up_questions.return_value = []
-    
+
     # Run discovery
     result = loop.run_discovery(
         initial_questions=questions,
@@ -217,13 +215,13 @@ def test_provenance_tracking():
         coverage_target=0.0,
         top_k_docs=2,
     )
-    
+
     # Check provenance was tracked
     for entity in result.entities:
         provenance = loop.get_provenance(entity.id)
         assert len(provenance) > 0, f"Entity {entity.id} should have provenance"
         assert "doc1" in provenance or "doc2" in provenance
-    
+
     logger.info(
         "test_pass",
         test="provenance_tracking",
@@ -234,20 +232,20 @@ def test_provenance_tracking():
 def test_coverage_calculation():
     """Test coverage calculation."""
     logger.info("test_start", test="coverage_calculation")
-    
+
     mock_retriever = create_mock_retriever()
     mock_extractor = create_mock_extractor()
     mock_question_gen = MagicMock(spec=QuestionGenerationAgent)
     mock_question_gen._ontology.get_all_classes.return_value = [
         "Facility", "Operation", "Document", "Hazard"
     ]
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=mock_extractor,
         question_generator=mock_question_gen,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q1",
@@ -257,9 +255,9 @@ def test_coverage_calculation():
             reason="test",
         ),
     ]
-    
+
     mock_question_gen.generate_follow_up_questions.return_value = []
-    
+
     # Run discovery
     result = loop.run_discovery(
         initial_questions=questions,
@@ -267,11 +265,11 @@ def test_coverage_calculation():
         coverage_target=0.0,
         top_k_docs=2,
     )
-    
+
     # Coverage should be > 0 (we found Facility and Operation)
     assert result.final_coverage > 0.0
     assert result.final_coverage <= 1.0
-    
+
     logger.info(
         "test_pass",
         test="coverage_calculation",
@@ -282,20 +280,20 @@ def test_coverage_calculation():
 def test_get_findings_by_type():
     """Test filtering findings by type."""
     logger.info("test_start", test="get_findings_by_type")
-    
+
     mock_retriever = create_mock_retriever()
     mock_extractor = create_mock_extractor()
     mock_question_gen = MagicMock(spec=QuestionGenerationAgent)
     mock_question_gen._ontology.get_all_classes.return_value = [
         "Facility", "Operation"
     ]
-    
+
     loop = IterativeDiscoveryLoop(
         retriever=mock_retriever,
         extractor=mock_extractor,
         question_generator=mock_question_gen,
     )
-    
+
     questions = [
         ResearchQuestion(
             question_id="q1",
@@ -305,9 +303,9 @@ def test_get_findings_by_type():
             reason="test",
         ),
     ]
-    
+
     mock_question_gen.generate_follow_up_questions.return_value = []
-    
+
     # Run discovery
     result = loop.run_discovery(
         initial_questions=questions,
@@ -315,16 +313,16 @@ def test_get_findings_by_type():
         coverage_target=0.0,
         top_k_docs=2,
     )
-    
+
     # Get findings by type
     facilities = loop.get_findings_by_type("Facility")
     operations = loop.get_findings_by_type("Operation")
-    
+
     assert len(facilities) > 0, "Should find some facilities"
     assert len(operations) > 0, "Should find some operations"
     assert all(e.entity_type == "Facility" for e in facilities)
     assert all(e.entity_type == "Operation" for e in operations)
-    
+
     logger.info(
         "test_pass",
         test="get_findings_by_type",
@@ -336,7 +334,7 @@ def test_get_findings_by_type():
 def main() -> None:
     """Run all tests."""
     logger.info("===== TEST SUITE: IterativeDiscoveryLoop =====")
-    
+
     tests = [
         test_discovery_loop_initialization,
         test_run_discovery_basic,
@@ -344,10 +342,10 @@ def main() -> None:
         test_coverage_calculation,
         test_get_findings_by_type,
     ]
-    
+
     passed = 0
     failed = 0
-    
+
     for test_func in tests:
         try:
             test_func()
@@ -367,14 +365,14 @@ def main() -> None:
                 exc_info=True,
             )
             failed += 1
-    
+
     logger.info(
         "===== TEST SUMMARY =====",
         total=len(tests),
         passed=passed,
         failed=failed,
     )
-    
+
     if failed > 0:
         sys.exit(1)
 

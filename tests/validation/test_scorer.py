@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from kgbuilder.validation.scorer import KGQualityScorer, KGQualityReport
+from kgbuilder.validation.scorer import KGQualityReport, KGQualityScorer
 from kgbuilder.validation.static_validator import StaticValidationResult
 
 

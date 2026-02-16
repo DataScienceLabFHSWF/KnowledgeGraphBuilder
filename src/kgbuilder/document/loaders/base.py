@@ -16,7 +16,6 @@ See Planning/ISSUES_BACKLOG.md Issue #2.1 for acceptance criteria.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Type
 
 from kgbuilder.core import DocumentLoader
 from kgbuilder.core.exceptions import UnsupportedFormatError
@@ -26,10 +25,10 @@ from kgbuilder.core.models import Document
 class DocumentLoaderFactory:
     """Factory for creating appropriate document loaders."""
 
-    _loaders: Dict[str, Type[DocumentLoader]] = {}
+    _loaders: dict[str, type[DocumentLoader]] = {}
 
     @classmethod
-    def register(cls, loader_class: Type[DocumentLoader]) -> None:
+    def register(cls, loader_class: type[DocumentLoader]) -> None:
         """Register a loader class for its supported extensions.
 
         Args:

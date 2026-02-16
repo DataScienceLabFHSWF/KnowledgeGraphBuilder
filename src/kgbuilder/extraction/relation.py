@@ -12,15 +12,16 @@ Key features:
 
 from __future__ import annotations
 
-import structlog
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+import structlog
+
+from kgbuilder.core.models import Evidence, ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.schemas import RelationExtractionOutput
 
 if TYPE_CHECKING:
-    from kgbuilder.extraction.chains import ExtractionChains
+    pass
 
 logger = structlog.get_logger(__name__)
 
@@ -112,25 +113,25 @@ class LLMRelationExtractor:
             List of extracted relations
         """
         from kgbuilder.extraction.chains import ExtractionChains
-        
+
         if not entities or not ontology_relations:
             return []
-        
+
         # 1. Format input for LLM
         entity_list = self._format_entities_for_prompt(entities)
         relations_section = ExtractionChains.format_relations_section(ontology_relations)
         ontology_dict = {r.uri: r for r in ontology_relations}
-        
+
         # 2. Get LLM chain
         model = getattr(self._llm, "model", "qwen3:8b")
         base_url = getattr(self._llm, "base_url", None)
-        
+
         chain = ExtractionChains.create_relation_extraction_chain(
             model=model,
             base_url=base_url,
             temperature=0.5
         )
-        
+
         # 3. Call LLM with retry logic
         for attempt in range(self.max_retries):
             try:
@@ -140,24 +141,24 @@ class LLMRelationExtractor:
                     "entities_list": entity_list,
                     "relations_section": relations_section,
                 })
-                
+
                 # 4. Validate each relation
                 validated = []
                 for rel_item in output.relations:
                     # Skip if low confidence
                     if rel_item.confidence < self.confidence_threshold:
                         continue
-                    
+
                     # Find source and target entities by ID
                     source_entity = self._find_entity_by_id(rel_item.source_id, entities)
                     target_entity = self._find_entity_by_id(rel_item.target_id, entities)
-                    
+
                     if not source_entity or not target_entity:
                         continue
-                    
+
                     # Get ontology definition
                     onto_def = ontology_dict.get(rel_item.relation_type)
-                    
+
                     # Validate domain/range
                     if not self._validate_domain_range(
                         source_entity=source_entity,
@@ -165,7 +166,7 @@ class LLMRelationExtractor:
                         ontology_def=onto_def
                     ):
                         continue
-                    
+
                     # Convert to ExtractedRelation with evidence
                     extracted = ExtractedRelation(
                         id=rel_item.id,
@@ -183,21 +184,21 @@ class LLMRelationExtractor:
                         ]
                     )
                     validated.append(extracted)
-                
+
                 # 5. Check cardinality constraints
                 relations = self._check_cardinality_constraints(
                     validated,
                     ontology_dict
                 )
-                
+
                 self._logger.info(
                     "relation_extraction_success",
                     extracted_count=len(relations),
                     confidence_avg=sum(r.confidence for r in relations) / len(relations) if relations else 0.0
                 )
-                
+
                 return relations
-                
+
             except Exception as e:
                 attempt += 1
                 self._logger.warning(
@@ -211,7 +212,7 @@ class LLMRelationExtractor:
                         error=str(e)
                     )
                     return []
-        
+
         return []
 
     def _build_extraction_prompt(
@@ -231,10 +232,10 @@ class LLMRelationExtractor:
             Formatted prompt string
         """
         from kgbuilder.extraction.chains import ExtractionChains
-        
+
         entity_list = self._format_entities_for_prompt(entities)
         relations_section = ExtractionChains.format_relations_section(ontology_relations)
-        
+
         return f"""Extract relationships between the following entities from the text.
 
 ENTITIES MENTIONED:
@@ -335,12 +336,12 @@ Respect domain/range constraints strictly."""
         # If no ontology definition, assume valid (permissive)
         if not ontology_def:
             return True
-        
+
         # Check domain (source must be in domain)
         if ontology_def.domain:
             source_types = {t.strip() for t in source_entity.entity_type.split("|")}
             domain_types = set(ontology_def.domain)
-            
+
             if not source_types.intersection(domain_types):
                 self._logger.debug(
                     "domain_check_failed",
@@ -348,12 +349,12 @@ Respect domain/range constraints strictly."""
                     actual=source_entity.entity_type
                 )
                 return False
-        
+
         # Check range (target must be in range)
         if ontology_def.range:
             target_types = {t.strip() for t in target_entity.entity_type.split("|")}
             range_types = set(ontology_def.range)
-            
+
             if not target_types.intersection(range_types):
                 self._logger.debug(
                     "range_check_failed",
@@ -361,7 +362,7 @@ Respect domain/range constraints strictly."""
                     actual=target_entity.entity_type
                 )
                 return False
-        
+
         return True
 
     def _check_cardinality_constraints(
@@ -382,15 +383,15 @@ Respect domain/range constraints strictly."""
             Filtered relations respecting cardinality
         """
         filtered = []
-        
+
         for relation in relations:
             onto_def = ontology_defs.get(relation.predicate)
-            
+
             if not onto_def:
                 # No constraints, keep it
                 filtered.append(relation)
                 continue
-            
+
             # Check functional constraint
             # (source, predicate) should not appear more than once
             if onto_def.is_functional:
@@ -403,7 +404,7 @@ Respect domain/range constraints strictly."""
                         existing = r
                         existing_idx = i
                         break
-                
+
                 if existing:
                     self._logger.debug(
                         "functional_constraint_check",
@@ -416,7 +417,7 @@ Respect domain/range constraints strictly."""
                     if relation.confidence > existing.confidence:
                         filtered[existing_idx] = relation
                     continue
-            
+
             # Check inverse functional constraint
             # (target, predicate) should not appear more than once
             if onto_def.is_inverse_functional:
@@ -429,7 +430,7 @@ Respect domain/range constraints strictly."""
                         existing = r
                         existing_idx = i
                         break
-                
+
                 if existing:
                     self._logger.debug(
                         "inverse_functional_constraint_check",
@@ -442,8 +443,8 @@ Respect domain/range constraints strictly."""
                     if relation.confidence > existing.confidence:
                         filtered[existing_idx] = relation
                     continue
-            
+
             # No constraint violation
             filtered.append(relation)
-        
+
         return filtered

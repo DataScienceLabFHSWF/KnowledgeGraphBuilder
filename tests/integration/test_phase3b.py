@@ -17,11 +17,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import numpy as np
+
 from kgbuilder.document import DocumentLoaderFactory
-from kgbuilder.extraction import LLMEntityExtractor, OntologyClassDef
 from kgbuilder.embedding import OllamaProvider
-from kgbuilder.storage import Neo4jStore, QdrantStore, SemanticRetriever
-from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.extraction import LLMEntityExtractor
+from kgbuilder.storage import Neo4jStore, QdrantStore
 
 
 def main() -> None:
@@ -33,7 +33,7 @@ def main() -> None:
     print("\n1️⃣ Loading sample documents...")
     doc_dir = Path(__file__).parent.parent / "data" / "Decommissioning_Files"
     pdf_files = sorted(list(doc_dir.glob("*.pdf")))[:2]  # Just 2 for speed
-    
+
     if not pdf_files:
         print("❌ No PDF files found in data/")
         return
@@ -81,12 +81,12 @@ def main() -> None:
     # Step 4: Extract entities and store in graph
     print("\n4️⃣ Extracting entities and storing in Neo4j...")
     all_entities = []
-    
+
     for filename, content in documents:
         try:
             # Extract entities
             entities = extractor.extract(content[:500])  # First 500 chars for speed
-            
+
             for entity in entities:
                 # Store in Neo4j
                 neo4j.add_node(
@@ -100,7 +100,7 @@ def main() -> None:
                     },
                 )
                 all_entities.append(entity)
-            
+
             print(f"  ✓ {filename}: {len(entities)} entities extracted")
         except Exception as e:
             print(f"  ✗ {filename}: {e}")
@@ -112,7 +112,7 @@ def main() -> None:
     print("\n5️⃣ Generating embeddings and storing in Qdrant...")
     try:
         embedder = OllamaProvider("nomic-embed-text")  # Embedding model
-        
+
         entity_texts = [e.label for e in all_entities]
         embeddings = []
         for text in entity_texts:
@@ -124,7 +124,7 @@ def main() -> None:
             except:
                 # Use random embedding if embed fails
                 embeddings.append(np.random.randn(768).astype(np.float32))
-        
+
         if embeddings:
             qdrant.store(
                 [e.id for e in all_entities],

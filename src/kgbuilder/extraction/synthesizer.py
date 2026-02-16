@@ -18,7 +18,7 @@ from typing import Any
 
 import structlog
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+from kgbuilder.core.models import Evidence, ExtractedEntity, ExtractedRelation
 
 logger = structlog.get_logger(__name__)
 

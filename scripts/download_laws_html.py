@@ -10,9 +10,9 @@ Script to download and store all referenced German laws as HTML from gesetze-im-
 Usage: python scripts/download_laws_html.py
 """
 from __future__ import annotations
-import re
-import sys
+
 from pathlib import Path
+
 import requests
 
 # List of law abbreviations (expand as needed)

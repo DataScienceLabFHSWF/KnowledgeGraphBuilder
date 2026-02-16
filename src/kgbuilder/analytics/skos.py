@@ -74,11 +74,11 @@ class SKOSEnricher:
         try:
             # Query Fuseki for SKOS concepts matching this label
             # Using SPARQL: SELECT ?concept ?prefLabel ?altLabel ?broader ?narrower
-            # WHERE { ?concept skos:prefLabel | skos:altLabel ?label . 
+            # WHERE { ?concept skos:prefLabel | skos:altLabel ?label .
             #         FILTER(CONTAINS(LCASE(?label), LCASE(entity_label))) }
-            
+
             concepts = self._query_skos_concepts(entity_label, entity_type)
-            
+
             if not concepts:
                 logger.debug(f"skos_no_match entity_id={entity_id} label={entity_label}")
                 return None
@@ -139,10 +139,10 @@ class SKOSEnricher:
         # Take best match confidence
         best_conf = 0.0
         entity_lower = entity_label.lower()
-        
+
         for concept in concepts:
             pref_label = concept.get("prefLabel", "").lower()
-            
+
             # Exact match on prefLabel
             if pref_label == entity_lower:
                 best_conf = max(best_conf, 1.0)
@@ -173,7 +173,7 @@ class SKOSEnricher:
             Dict mapping entity_id -> SKOSMapping
         """
         results = {}
-        
+
         for entity in entities:
             mapping = self.enrich_entity(
                 entity_id=entity.get("id"),
@@ -182,6 +182,6 @@ class SKOSEnricher:
             )
             if mapping:
                 results[entity.get("id")] = mapping
-        
+
         logger.info(f"skos_enrichment_batch entity_count={len(entities)} matched={len(results)}")
         return results

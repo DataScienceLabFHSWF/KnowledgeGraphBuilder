@@ -44,8 +44,8 @@ See Planning/ISSUES_BACKLOG.md Issues #4.2-#4.4 for acceptance criteria.
 
 from kgbuilder.agents.discovery_loop import (
     DiscoveryResult,
-    IterativeDiscoveryLoop,
     IterationResult,
+    IterativeDiscoveryLoop,
 )
 from kgbuilder.agents.question_generator import (
     OntologyService,

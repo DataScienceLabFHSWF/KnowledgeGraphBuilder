@@ -9,11 +9,11 @@ Requirements:
 Usage:
   python scripts/test_ollama_qwen3.py
 """
-import sys
 import json
-import requests
-
 import os
+import sys
+
+import requests
 
 # Allow override of Ollama base URL via environment variable, default to port 18134
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:18134")

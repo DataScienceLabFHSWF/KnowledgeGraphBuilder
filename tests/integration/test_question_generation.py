@@ -14,15 +14,15 @@ from pathlib import Path
 # Setup paths
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
+from unittest.mock import MagicMock
+
 import structlog
-from unittest.mock import MagicMock, patch
 
 from kgbuilder.agents.question_generator import (
     QuestionGenerationAgent,
     ResearchQuestion,
 )
-from kgbuilder.core.models import ExtractedEntity, Evidence
-
+from kgbuilder.core.models import ExtractedEntity
 
 structlog.configure(
     processors=[

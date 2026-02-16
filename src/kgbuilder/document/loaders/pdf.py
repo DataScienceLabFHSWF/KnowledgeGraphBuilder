@@ -20,7 +20,6 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import uuid4
 
-from kgbuilder.core import DocumentLoader
 from kgbuilder.core.exceptions import DocumentLoadError
 from kgbuilder.core.models import Document, DocumentMetadata, FileType
 

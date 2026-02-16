@@ -25,16 +25,16 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
+
 import structlog
-from datetime import datetime
 
 from kgbuilder.pipeline.stopping_criterion import (
+    CompetencyQuestionResults,
+    KGBuildState,
     StoppingCriteria,
     StoppingCriterionChecker,
     StoppingReason,
-    KGBuildState,
-    CompetencyQuestionResults,
     ValidationResults,
 )
 
@@ -57,7 +57,7 @@ class BuildPipelineConfig:
     enable_validation: bool = True
     enable_cq_checking: bool = True
     validate_at_each_iteration: bool = True
-    stopping_criteria: Optional[StoppingCriteria] = None
+    stopping_criteria: StoppingCriteria | None = None
 
 
 @dataclass
@@ -78,9 +78,9 @@ class IterationResult:
     iteration_num: int
     entities_extracted: int = 0
     relations_extracted: int = 0
-    validation_result: Optional[dict[str, Any]] = None
-    cq_results: Optional[CompetencyQuestionResults] = None
-    stopping_check: Optional[dict[str, Any]] = None
+    validation_result: dict[str, Any] | None = None
+    cq_results: CompetencyQuestionResults | None = None
+    stopping_check: dict[str, Any] | None = None
     duration_ms: float = 0.0
     errors: list[str] = field(default_factory=list)
 
@@ -106,15 +106,15 @@ class BuildPipelineResult:
     total_iterations: int
     final_kg_state: KGBuildState
     iterations: list[IterationResult] = field(default_factory=list)
-    validation_summary: Optional[ValidationResults] = None
-    cq_summary: Optional[CompetencyQuestionResults] = None
+    validation_summary: ValidationResults | None = None
+    cq_summary: CompetencyQuestionResults | None = None
     total_duration_ms: float = 0.0
     errors: list[str] = field(default_factory=list)
 
     def get_summary_string(self) -> str:
         """Get human-readable summary."""
         summary_lines = [
-            f"Build Pipeline Result: {'✓ SUCCESS' if self.success else '✗ FAILED'}",
+            f"Build Pipeline Result: {'[OK] SUCCESS' if self.success else '[FAIL] FAILED'}",
             f"Stopping Reason: {self.stopping_reason.value}",
             f"Iterations: {self.total_iterations}",
             f"Final Entity Count: {self.final_kg_state.entity_count}",
@@ -158,7 +158,7 @@ class BuildPipeline:
     │ 3. Validate (SHACL + Rules)        │
     │ 4. Check CQ Answerability          │
     │ 5. Check Stopping Criteria         │
-    │    - If Pass: Stop ✓               │
+    │    - If Pass: Stop [OK]               │
     │    - If Fail: Continue Loop        │
     │                                    │
     └────────────────────────────────────┘
@@ -190,8 +190,8 @@ class BuildPipeline:
     def run(
         self,
         documents: list[Any],
-        competency_questions: Optional[list[dict[str, str]]] = None,
-        initial_kg_state: Optional[KGBuildState] = None,
+        competency_questions: list[dict[str, str]] | None = None,
+        initial_kg_state: KGBuildState | None = None,
     ) -> BuildPipelineResult:
         """Run the complete build pipeline.
 
@@ -211,7 +211,6 @@ class BuildPipeline:
         Returns:
             BuildPipelineResult with final KG and stopping reason
         """
-        from datetime import datetime
         import time
 
         start_time = time.time()
@@ -230,8 +229,8 @@ class BuildPipeline:
 
         iterations: list[IterationResult] = []
         final_reason = StoppingReason.NOT_STOPPED
-        validation_summary: Optional[ValidationResults] = None
-        cq_summary: Optional[CompetencyQuestionResults] = None
+        validation_summary: ValidationResults | None = None
+        cq_summary: CompetencyQuestionResults | None = None
 
         # Main iteration loop
         for iteration_num in range(1, self.config.max_iterations + 1):

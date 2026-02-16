@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from kgbuilder.core.models import ExtractedEntity
 from kgbuilder.confidence.analyzer import ConfidenceAnalyzer
+from kgbuilder.core.models import ExtractedEntity
 
 
 @pytest.fixture

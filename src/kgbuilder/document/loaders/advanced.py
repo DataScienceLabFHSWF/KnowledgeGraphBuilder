@@ -43,10 +43,10 @@ class DoclingPDFLoader:
         try:
             converter = DocumentConverter()
             result = converter.convert(file_path)
-            
+
             # Convert to markdown for better structure preservation
             content = result.document.export_to_markdown()
-            
+
             # Alternative: export_to_text() for plain text
             # content = result.document.export_to_text()
 

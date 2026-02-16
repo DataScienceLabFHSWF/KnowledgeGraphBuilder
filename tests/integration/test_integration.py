@@ -17,9 +17,8 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from kgbuilder.core.models import Chunk, ChunkMetadata, Document, Evidence, ExtractedEntity
+from kgbuilder.core.models import Chunk, Document, ExtractedEntity
 from kgbuilder.document import DocumentLoaderFactory, FixedSizeChunker
-from kgbuilder.embedding import OllamaProvider
 from kgbuilder.storage import Neo4jStore, QdrantStore, SemanticRetriever
 
 
@@ -37,10 +36,10 @@ class TestDocumentLoaders:
         """Test PDF loader is available."""
         doc_path = Path(__file__).parent.parent / "data" / "Decommissioning_Files"
         pdf_files = list(doc_path.glob("*.pdf"))
-        
+
         if not pdf_files:
             pytest.skip("No PDF files available")
-        
+
         loader = DocumentLoaderFactory.get_loader(pdf_files[0])
         assert loader is not None
         assert hasattr(loader, "load")
@@ -49,13 +48,13 @@ class TestDocumentLoaders:
         """Test basic document loading."""
         doc_path = Path(__file__).parent.parent / "data" / "Decommissioning_Files"
         pdf_files = list(doc_path.glob("*.pdf"))
-        
+
         if not pdf_files:
             pytest.skip("No PDF files available")
-        
+
         loader = DocumentLoaderFactory.get_loader(pdf_files[0])
         doc = loader.load(pdf_files[0])
-        
+
         assert doc is not None
         assert hasattr(doc, "content")
         assert len(doc.content) > 0
@@ -74,7 +73,7 @@ class TestChunking:
         """Test basic chunking operation."""
         from pathlib import Path
         chunker = FixedSizeChunker()
-        
+
         # Create a test document
         doc = Document(
             id="test_doc",
@@ -82,9 +81,9 @@ class TestChunking:
             file_type="text",
             source_path=Path("test.txt"),
         )
-        
+
         chunks = chunker.chunk(doc, chunk_size=100, chunk_overlap=10)
-        
+
         assert len(chunks) > 0
         assert all(isinstance(c, Chunk) for c in chunks)
         assert all(c.document_id == "test_doc" for c in chunks)
@@ -112,7 +111,7 @@ class TestNeo4jStorage:
             "Person",
             {"name": "Alice", "age": 30},
         )
-        
+
         # Query to verify
         results = neo4j_store.query(
             "MATCH (p:Person {id: $id}) RETURN p.name as name",
@@ -125,10 +124,10 @@ class TestNeo4jStorage:
         # Add nodes first
         neo4j_store.add_node("alice", "Person", {"name": "Alice"})
         neo4j_store.add_node("bob", "Person", {"name": "Bob"})
-        
+
         # Add relation
         neo4j_store.add_edge("alice", "bob", "KNOWS", {"since": 2020})
-        
+
         # Query to verify
         results = neo4j_store.query(
             "MATCH (a)-[r:KNOWS]->(b) WHERE a.id = $alice RETURN r",
@@ -153,9 +152,9 @@ class TestNeo4jStorage:
             )
             for i in range(3)
         ]
-        
+
         neo4j_store.add_entities(entities)
-        
+
         # Verify
         results = neo4j_store.query("MATCH (e:Entity) RETURN COUNT(e) as count")
         assert results[0]["count"] >= 3
@@ -182,13 +181,13 @@ class TestQdrantStorage:
             np.random.randn(768).astype(np.float32),
             np.random.randn(768).astype(np.float32),
         ]
-        
+
         qdrant_store.store(
             ["doc1", "doc2"],
             embeddings,
             [{"type": "Person"}, {"type": "Place"}],
         )
-        
+
         # Verify collection exists
         collections = qdrant_store.list_collections()
         assert "test_kg" in collections
@@ -199,16 +198,16 @@ class TestQdrantStorage:
             np.random.randn(768).astype(np.float32),
             np.random.randn(768).astype(np.float32),
         ]
-        
+
         qdrant_store.store(
             ["entity1", "entity2"],
             embeddings,
             [{"name": "Alice"}, {"name": "Bob"}],
         )
-        
+
         # Search with first embedding
         results = qdrant_store.search(embeddings[0], top_k=1)
-        
+
         assert len(results) > 0
         assert results[0][1] >= 0  # Score should exist
         assert "name" in results[0][2]  # Metadata should exist
@@ -216,9 +215,9 @@ class TestQdrantStorage:
     def test_qdrant_delete(self, qdrant_store: QdrantStore) -> None:
         """Test deleting embeddings."""
         embeddings = [np.random.randn(768).astype(np.float32)]
-        
+
         qdrant_store.store(["to_delete"], embeddings)
-        
+
         # Should not raise
         qdrant_store.delete(["to_delete"])
 
@@ -265,7 +264,7 @@ class TestEndToEnd:
     ) -> None:
         """Test extracting entities and storing them."""
         neo4j, qdrant = storage_backends
-        
+
         # Create test entities
         entities = [
             ExtractedEntity(
@@ -283,27 +282,27 @@ class TestEndToEnd:
                 confidence=0.90,
             ),
         ]
-        
+
         # Store in graph
         neo4j.add_entities(entities)
-        
+
         # Generate embeddings for storage in vector DB
         embeddings = [
             np.random.randn(768).astype(np.float32),
             np.random.randn(768).astype(np.float32),
         ]
-        
+
         # Store in vector DB
         qdrant.store(
             [e.id for e in entities],
             embeddings,
             [{"label": e.label, "type": e.entity_type} for e in entities],
         )
-        
+
         # Verify in graph
         results = neo4j.query("MATCH (e:Entity) RETURN COUNT(e) as count")
         assert results[0]["count"] >= 2
-        
+
         # Verify in vector DB
         search_results = qdrant.search(embeddings[0], top_k=1)
         assert len(search_results) > 0

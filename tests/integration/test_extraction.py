@@ -11,7 +11,6 @@ Usage:
     python scripts/test_extraction.py [--skip-extraction]
 """
 
-import json
 import sys
 from pathlib import Path
 

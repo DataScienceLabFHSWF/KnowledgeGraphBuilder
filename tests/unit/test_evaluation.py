@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -107,7 +107,7 @@ class TestQADataset:
     def test_dataset_filter_by_type(self, sample_questions: list[QAQuestion]) -> None:
         """Test filtering by query type."""
         dataset = QADataset(
-            name="test", 
+            name="test",
             description="Test",
             questions=sample_questions
         )
@@ -120,7 +120,7 @@ class TestQADataset:
     ) -> None:
         """Test filtering by difficulty."""
         dataset = QADataset(
-            name="test", 
+            name="test",
             description="Test",
             questions=sample_questions
         )
@@ -131,7 +131,7 @@ class TestQADataset:
     def test_dataset_filter_by_tags(self, sample_questions: list[QAQuestion]) -> None:
         """Test filtering by tags."""
         dataset = QADataset(
-            name="test", 
+            name="test",
             description="Test",
             questions=sample_questions
         )
@@ -142,7 +142,7 @@ class TestQADataset:
     def test_dataset_statistics(self, sample_questions: list[QAQuestion]) -> None:
         """Test getting dataset statistics."""
         dataset = QADataset(
-            name="test", 
+            name="test",
             description="Test",
             questions=sample_questions
         )
@@ -156,7 +156,7 @@ class TestQADataset:
     ) -> None:
         """Test train/test split."""
         dataset = QADataset(
-            name="test", 
+            name="test",
             description="Test",
             questions=sample_questions
         )
@@ -167,7 +167,7 @@ class TestQADataset:
     def test_dataset_to_dict(self, sample_questions: list[QAQuestion]) -> None:
         """Test dataset.to_dict()."""
         dataset = QADataset(
-            name="test", 
+            name="test",
             description="Test",
             questions=sample_questions
         )
@@ -184,7 +184,7 @@ class TestQADataset:
 
             # Save
             dataset = QADataset(
-                name="test", 
+                name="test",
                 description="Test",
                 questions=sample_questions
             )
@@ -205,7 +205,7 @@ class TestQADataset:
 
             # Save
             dataset = QADataset(
-                name="test", 
+                name="test",
                 description="Test",
                 questions=sample_questions
             )

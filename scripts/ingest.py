@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import structlog
 import ollama
+import structlog
 
 # Setup paths
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -25,7 +25,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from kgbuilder.core.config import ProcessingConfig
 from kgbuilder.document.advanced_processor import AdvancedDocumentProcessor
 from kgbuilder.storage.vector import QdrantStore
-
 
 logger = structlog.get_logger(__name__)
 
@@ -102,7 +101,7 @@ class AdvancedIngestionPipeline:
                         model="qwen3-embedding",
                         input=chunk_text,
                     )
-                    
+
                     # ollama.embed returns EmbedResponse with embeddings attribute
                     embedding = np.array(response.embeddings[0], dtype=np.float32)
                     emb_time = time.time() - emb_chunk_start
@@ -112,7 +111,7 @@ class AdvancedIngestionPipeline:
                     if expected_dim is None:
                         expected_dim = embedding.shape[0]
                         self.logger.info("embedding_dimension_detected", dimension=expected_dim)
-                    
+
                     # Verify embedding dimensions match
                     if embedding.shape[0] != expected_dim:
                         self.logger.warning(
@@ -126,7 +125,7 @@ class AdvancedIngestionPipeline:
                     # Add full chunk text to metadata for retrieval
                     chunk_metadata = doc_result.metadatas[chunk_id].copy()
                     chunk_metadata["content"] = chunk_text
-                    
+
                     self.qdrant.store(
                         ids=[f"{file_path.stem}_chunk_{chunk_id}"],
                         embeddings=[embedding],

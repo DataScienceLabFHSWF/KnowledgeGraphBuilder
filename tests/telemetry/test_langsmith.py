@@ -1,12 +1,11 @@
 """Unit tests for optional Langsmith tracing integration."""
 from __future__ import annotations
 
-import os
 import pytest
 
-from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
-from kgbuilder.extraction.chains import ExtractionChains
 from kgbuilder.assembly.core import SimpleKGAssembler
+from kgbuilder.extraction.chains import ExtractionChains
+from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
 
 
 @pytest.mark.parametrize("enabled", [True, False])

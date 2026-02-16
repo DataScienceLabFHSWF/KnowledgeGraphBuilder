@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
-import pickle
 import random
 import time
 from pathlib import Path
@@ -69,7 +67,7 @@ class OllamaProvider:
         self.temperature = temperature
         self.top_p = top_p
         self.timeout = timeout
-        
+
         # Circuit breaker state for fault tolerance
         self.consecutive_timeouts = 0
         self.circuit_breaker_threshold = 5  # Open circuit after 5 consecutive timeouts
@@ -82,7 +80,7 @@ class OllamaProvider:
 
         # Cached model metadata (lazy-loaded from Ollama API)
         self._dimension: int | None = None
-        
+
         # PERSISTENT CACHE (New Optimization)
         self.cache_dir = Path(".cache/ollama")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -99,7 +97,7 @@ class OllamaProvider:
         cache_file = self.cache_dir / f"{key}.json"
         if cache_file.exists():
             try:
-                with open(cache_file, "r") as f:
+                with open(cache_file) as f:
                     data = json.load(f)
                     self._cache_hits += 1
                     return data["response"]
@@ -169,7 +167,7 @@ class OllamaProvider:
             Configured requests.Session with resilience
         """
         session = requests.Session()
-        
+
         # Retry strategy: exponential backoff for transient failures
         retry_strategy = Retry(
             total=3,  # Total number of retries
@@ -177,12 +175,12 @@ class OllamaProvider:
             status_forcelist=[408, 502, 503, 504],  # Retry on these HTTP codes
             allowed_methods=["GET", "POST"],  # Allow retries on these methods
         )
-        
+
         # Mount adapters for HTTP and HTTPS
         adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=10)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        
+
         return session
 
     def _check_circuit_breaker(self) -> None:
@@ -253,7 +251,7 @@ class OllamaProvider:
                     target_model=self.model,
                     available_models=model_names
                 )
-            
+
             self._record_success()
         except requests.exceptions.Timeout:
             raise ConnectionError(
@@ -297,7 +295,7 @@ class OllamaProvider:
 
         # Check circuit breaker before attempting
         self._check_circuit_breaker()
-        
+
         # Simple token count: whitespace split
         prompt_tokens = len(prompt.split())
         params = {
@@ -311,7 +309,7 @@ class OllamaProvider:
 
         max_retries = 3
         base_delay = 1.0  # Start with 1 second
-        
+
         for attempt in range(max_retries):
             try:
                 response = self.session.post(
@@ -323,7 +321,7 @@ class OllamaProvider:
                 result = response.json()
                 completion = result.get("response", "")
                 completion_tokens = len(completion.split())
-                
+
                 # Save to cache
                 self._save_cache(cache_key, completion)
 
@@ -336,11 +334,11 @@ class OllamaProvider:
                     f"total_prompt={OllamaProvider.total_prompt_tokens}, "
                     f"total_completion={OllamaProvider.total_completion_tokens}"
                 )
-                
+
                 # Record success and reset consecutive timeout counter
                 self._record_success()
                 return completion
-                
+
             except requests.exceptions.Timeout as e:
                 self._record_timeout()
                 if attempt < max_retries - 1:
@@ -357,7 +355,7 @@ class OllamaProvider:
                         f"Ollama may be overloaded or unresponsive."
                     )
                     raise RuntimeError(f"LLM generation timeout after {max_retries} retries: {e}") from e
-                    
+
             except requests.exceptions.ConnectionError as e:
                 self._record_timeout()
                 if attempt < max_retries - 1:
@@ -370,11 +368,11 @@ class OllamaProvider:
                 else:
                     logger.error(f"Generation failed: Connection error after {max_retries} attempts")
                     raise RuntimeError(f"LLM connection failed: {e}") from e
-                    
+
             except Exception as e:
                 logger.error(f"Generation failed: {type(e).__name__}: {e}")
                 raise RuntimeError(f"LLM generation error: {e}") from e
-        
+
         # Shouldn't reach here due to exceptions, but just in case
         raise RuntimeError("Generation failed: Unknown error after all retries")
     @classmethod
@@ -415,8 +413,7 @@ class OllamaProvider:
             ValidationError: If output doesn't match schema after retries
             RuntimeError: If generation fails
         """
-        import re
-        
+
         # Append schema instructions to prompt
         schema_json = schema.model_json_schema()
         schema_instruction = (
@@ -424,11 +421,11 @@ class OllamaProvider:
             f"{json.dumps(schema_json, indent=2)}\n\n"
             f"Critical: JSON must be valid. Return raw JSON only, no markdown."
         )
-        
+
         temperature = kwargs.get("temperature", max(0.3, self.temperature - 0.2))
         retry_count = 0
         last_error: Exception | None = None
-        
+
         while retry_count < max_retries:
             try:
                 augmented_prompt = prompt + schema_instruction
@@ -436,7 +433,7 @@ class OllamaProvider:
                     # Add retry hint
                     augmented_prompt += f"\n\nAttempt {retry_count + 1}/{max_retries}. "
                     augmented_prompt += "Ensure ALL required fields are present and valid."
-                
+
                 raw_output = self.generate(
                     augmented_prompt,
                     temperature=temperature,
@@ -446,29 +443,29 @@ class OllamaProvider:
 
                 # Extract JSON from response (handle markdown code blocks)
                 json_str = self._extract_json_from_response(raw_output)
-                
+
                 # Fix common JSON issues
                 json_str = self._fix_json_string(json_str)
-                
+
                 # Parse with pydantic's model_validate_json for better error messages
                 try:
                     result = schema.model_validate_json(json_str)
-                    logger.debug(f"✓ Structured output validated: {type(result).__name__}")
+                    logger.debug(f"[OK] Structured output validated: {type(result).__name__}")
                     return result
                 except json.JSONDecodeError:
                     # Attempt JSON recovery strategies
-                    logger.debug(f"JSON parse error, attempting recovery...")
+                    logger.debug("JSON parse error, attempting recovery...")
                     recovered_json = self._attempt_json_recovery(json_str)
                     if recovered_json:
                         result = schema.model_validate_json(recovered_json)
-                        logger.info("✓ JSON recovery successful")
+                        logger.info("[OK] JSON recovery successful")
                         return result
                     raise
 
             except ValidationError as e:
                 last_error = e
                 retry_count += 1
-                
+
                 if retry_count < max_retries:
                     # Extract validation errors for next prompt
                     error_details = self._extract_validation_errors(e)
@@ -478,23 +475,23 @@ class OllamaProvider:
                 else:
                     logger.error(f"Schema validation failed after {max_retries} retries: {e}")
                     raise
-                    
+
             except json.JSONDecodeError as e:
                 last_error = e
                 retry_count += 1
-                
+
                 if retry_count < max_retries:
                     logger.warning(f"JSON parse failed (attempt {retry_count}/{max_retries}): {e}")
                     continue
                 else:
                     logger.error(f"JSON parsing failed after {max_retries} retries: {e}")
                     raise RuntimeError(f"JSON parsing failed: {e}") from e
-                    
+
             except Exception as e:
                 last_error = e
                 logger.error(f"Structured generation failed: {e}")
                 raise RuntimeError(f"Structured generation error: {e}") from e
-        
+
         # Should not reach here, but as safety net
         if last_error:
             raise RuntimeError(f"Structured generation failed after {max_retries} retries") from last_error
@@ -503,7 +500,7 @@ class OllamaProvider:
     def _extract_json_from_response(self, response: str) -> str:
         """Extract JSON from response, handling markdown and extra text."""
         json_str = response.strip()
-        
+
         # Remove markdown code blocks
         if json_str.startswith("```json"):
             json_str = json_str[7:]
@@ -511,42 +508,42 @@ class OllamaProvider:
             json_str = json_str[3:]
         if json_str.endswith("```"):
             json_str = json_str[:-3]
-        
+
         json_str = json_str.strip()
-        
+
         # Find first { and last }
         start_idx = json_str.find("{")
         end_idx = json_str.rfind("}")
-        
+
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
             json_str = json_str[start_idx:end_idx+1]
-        
+
         return json_str
-    
+
     def _fix_json_string(self, json_str: str) -> str:
         """Apply common JSON fixes before parsing."""
         import re
-        
+
         # Fix unescaped backslashes (LLM sometimes generates these)
         json_str = re.sub(r'\\(?!\\|")', r'\\\\', json_str)
-        
+
         # Fix single quotes to double quotes (but preserve apostrophes in text)
         # Only replace quotes that bound field names/values, not inside strings
-        
+
         return json_str
-    
+
     def _extract_validation_errors(self, error: ValidationError) -> str:
         """Extract human-readable validation errors."""
         errors = error.errors()
         if not errors:
             return str(error)
-        
+
         error_msgs = []
         for err in errors[:3]:  # First 3 errors
             field = ".".join(str(x) for x in err.get("loc", []))
             msg = err.get("msg", "")
             error_msgs.append(f"{field}: {msg}")
-        
+
         return "; ".join(error_msgs)
 
     def _attempt_json_recovery(self, json_str: str) -> str | None:
@@ -565,11 +562,11 @@ class OllamaProvider:
         """
         if not json_str.strip():
             return None
-        
+
         # Strategy 1: Find balanced braces
         open_braces = json_str.count("{")
         close_braces = json_str.count("}")
-        
+
         if close_braces < open_braces:
             # Add missing closing braces
             missing = open_braces - close_braces
@@ -580,7 +577,7 @@ class OllamaProvider:
                 return recovered
             except json.JSONDecodeError:
                 pass
-        
+
         # Strategy 2: Find last balanced position
         depth = 0
         last_valid_pos = 0
@@ -591,7 +588,7 @@ class OllamaProvider:
             elif char == "}":
                 depth -= 1
                 last_valid_pos = i
-        
+
         # Try truncating to last valid position
         if last_valid_pos > 0 and depth > 0:
             recovered = json_str[:last_valid_pos + 1] + "}" * abs(depth)
@@ -601,7 +598,7 @@ class OllamaProvider:
                 return recovered
             except json.JSONDecodeError:
                 pass
-        
+
         # Strategy 3: Remove trailing incomplete fields
         # Look for pattern: "key": " without closing
         import re
@@ -613,7 +610,7 @@ class OllamaProvider:
                 return recovered
             except json.JSONDecodeError:
                 pass
-        
+
         return None
 
     def embed_text(self, text: str) -> Any:
@@ -728,13 +725,13 @@ class OllamaProvider:
         """
         if embedding_model is None:
             embedding_model = os.environ.get("OLLAMA_EMBED_MODEL", "qwen3-embedding")
-            
+
         # Check circuit breaker before attempting
         self._check_circuit_breaker()
-        
+
         max_retries = 3
         base_delay = 1.0
-        
+
         for attempt in range(max_retries):
             try:
                 response = self.session.post(
@@ -748,16 +745,16 @@ class OllamaProvider:
                 response.raise_for_status()
                 result = response.json()
                 embeddings = result.get("embeddings", [])
-                
+
                 if not embeddings or not embeddings[0]:
                     raise RuntimeError("No embeddings returned from Ollama")
-                
+
                 # Record success
                 self._record_success()
-                
+
                 # Return first embedding (embeddings is list of lists)
                 return np.array(embeddings[0], dtype=np.float32)
-                
+
             except requests.exceptions.Timeout as e:
                 self._record_timeout()
                 if attempt < max_retries - 1:
@@ -770,7 +767,7 @@ class OllamaProvider:
                 else:
                     logger.error(f"Embedding failed: Timeout after {max_retries} attempts")
                     raise RuntimeError(f"Embedding timeout after {max_retries} retries: {e}") from e
-                    
+
             except requests.exceptions.ConnectionError as e:
                 self._record_timeout()
                 if attempt < max_retries - 1:
@@ -783,10 +780,10 @@ class OllamaProvider:
                 else:
                     logger.error(f"Embedding failed: Connection error after {max_retries} attempts")
                     raise RuntimeError(f"Embedding connection failed: {e}") from e
-                    
+
             except Exception as e:
                 logger.error(f"Embedding failed: {type(e).__name__}: {e}")
                 raise RuntimeError(f"Embedding error: {e}") from e
-        
+
         raise RuntimeError("Embedding failed: unknown error after all retries")
 

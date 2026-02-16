@@ -12,18 +12,15 @@ Key features:
 
 from __future__ import annotations
 
-import json
 import logging
-import re
-import uuid
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from pydantic import ValidationError
 
-from kgbuilder.core.models import ExtractedEntity, Evidence, generate_entity_id
+from kgbuilder.core.models import Evidence, ExtractedEntity, generate_entity_id
 from kgbuilder.core.protocols import LLMProvider
-from kgbuilder.extraction.schemas import EntityExtractionOutput, EntityItem
+from kgbuilder.extraction.schemas import EntityExtractionOutput
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +51,7 @@ class EntityExtractor(Protocol):
 @dataclass
 class OntologyPropertyDef:
     """Ontology property definition for entity attributes."""
-    
+
     name: str
     data_type: str  # "string", "date", "float", "integer", "boolean"
     description: str | None = None
@@ -98,7 +95,7 @@ class LLMEntityExtractor:
         self.confidence_threshold = confidence_threshold
         self.max_retries = max_retries
         logger.info(
-            f"✓ Initialized LLMEntityExtractor with {llm_provider.model_name} "
+            f"[OK] Initialized LLMEntityExtractor with {llm_provider.model_name} "
             f"(threshold={confidence_threshold})"
         )
 
@@ -173,7 +170,7 @@ class LLMEntityExtractor:
                 ]
 
                 logger.info(
-                    f"✓ Extracted {len(filtered)}/{len(entities)} entities "
+                    f"[OK] Extracted {len(filtered)}/{len(entities)} entities "
                     f"(confidence >= {self.confidence_threshold})"
                 )
                 return filtered
@@ -315,19 +312,19 @@ Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."
         """
         if not entity_label or not source_text:
             return -1, -1
-        
+
         # Try exact match
         pos = source_text.find(entity_label)
         if pos >= 0:
             return pos, pos + len(entity_label)
-        
+
         # Try case-insensitive match
         text_lower = source_text.lower()
         label_lower = entity_label.lower()
         pos = text_lower.find(label_lower)
         if pos >= 0:
             return pos, pos + len(entity_label)
-        
+
         # Try matching just the first word (handles partial matches)
         first_word = entity_label.split()[0] if entity_label.split() else ""
         if len(first_word) > 3:  # Only for reasonably long words
@@ -336,7 +333,7 @@ Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."
                 # Extend to end of nearby words for better context
                 end = pos + len(first_word)
                 return pos, end
-        
+
         # Not found
         return -1, -1
 
@@ -364,28 +361,28 @@ Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."
         for item in output.entities:
             # Try to find entity text position in source (more reliable than LLM offsets)
             start, end = self._find_entity_position(item.label, source_text)
-            
+
             # Fall back to LLM-provided positions if search fails
             if start < 0:
                 start_char = item.start_char
                 end_char = item.end_char
-                
+
                 if isinstance(start_char, str):
                     try:
                         start_char = int(eval(start_char))
                     except Exception:
                         start_char = 0
-                
+
                 if isinstance(end_char, str):
                     try:
                         end_char = int(eval(end_char))
                     except Exception:
                         end_char = start_char + len(item.label)
-                
+
                 # Validate character positions
                 start = max(0, min(start_char, len(source_text)))
                 end = min(len(source_text), end_char)
-                
+
                 if start >= end:
                     logger.debug(
                         f"Invalid char range for entity {item.label}: [{start}, {end}], "
@@ -395,7 +392,7 @@ Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."
 
             # Extract text span for evidence
             text_span = source_text[start:end].strip() if start < end else None
-            
+
             # Validate text span matches entity label
             if text_span and text_span.lower() != item.label.lower():
                 logger.debug(

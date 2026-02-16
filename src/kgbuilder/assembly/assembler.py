@@ -37,13 +37,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
-import uuid
 
 import structlog
 
-from kgbuilder.core.models import Evidence, ExtractedRelation
+from kgbuilder.core.models import ExtractedRelation
 from kgbuilder.extraction.synthesizer import SynthesizedEntity
-from kgbuilder.storage.protocol import GraphStore, Node, Edge, GraphStatistics
+from kgbuilder.storage.protocol import Edge, GraphStatistics, GraphStore, Node
 
 logger = structlog.get_logger(__name__)
 
@@ -67,7 +66,7 @@ class KGAssemblyResult:
         statistics: Graph statistics after assembly
         assembly_time_sec: Time taken for assembly
     """
-    
+
     nodes_created: int = 0
     edges_created: int = 0
     nodes_updated: int = 0
@@ -76,7 +75,7 @@ class KGAssemblyResult:
     warnings: list[str] = field(default_factory=list)
     statistics: GraphStatistics | None = None
     assembly_time_sec: float = 0.0
-    
+
     @property
     def success(self) -> bool:
         """True if assembly completed without errors."""
@@ -114,7 +113,7 @@ class KGAssembler:
         >>> print(f"Created {result.nodes_created} nodes")
         >>> print(store.to_json())  # Export to JSON
     """
-    
+
     def __init__(
         self,
         graph_store: GraphStore,
@@ -138,7 +137,7 @@ class KGAssembler:
             include_evidence=include_evidence,
             include_provenance=include_provenance,
         )
-    
+
     def assemble(
         self,
         entities: list[SynthesizedEntity],
@@ -165,16 +164,16 @@ class KGAssembler:
         """
         start_time = datetime.utcnow()
         result = KGAssemblyResult()
-        
+
         logger.info(
             "assembly_start",
             entity_count=len(entities),
             relation_count=len(relations) if relations else 0,
         )
-        
+
         # Track entity ID mapping (for relation resolution)
         entity_ids: set[str] = set()
-        
+
         # -----------------------------------------------------------------
         # Step 1: Create nodes from entities
         # -----------------------------------------------------------------
@@ -188,9 +187,9 @@ class KGAssembler:
                 error_msg = f"Failed to create node for entity {entity.id}: {e}"
                 result.errors.append(error_msg)
                 logger.error("node_creation_failed", entity_id=entity.id, error=str(e))
-        
+
         logger.info("nodes_created", count=result.nodes_created)
-        
+
         # -----------------------------------------------------------------
         # Step 2: Create edges from relations
         # -----------------------------------------------------------------
@@ -209,7 +208,7 @@ class KGAssembler:
                         f"Skipped relation {relation.id}: target {relation.target_entity_id} not found"
                     )
                     continue
-                
+
                 try:
                     edge = self._relation_to_edge(relation)
                     self._store.add_edge(edge)
@@ -218,18 +217,18 @@ class KGAssembler:
                     error_msg = f"Failed to create edge for relation {relation.id}: {e}"
                     result.errors.append(error_msg)
                     logger.error("edge_creation_failed", relation_id=relation.id, error=str(e))
-        
+
         logger.info("edges_created", count=result.edges_created, skipped=result.edges_skipped)
-        
+
         # -----------------------------------------------------------------
         # Step 3: Compute statistics
         # -----------------------------------------------------------------
         result.statistics = self._store.get_statistics()
-        
+
         # Calculate assembly time
         end_time = datetime.utcnow()
         result.assembly_time_sec = (end_time - start_time).total_seconds()
-        
+
         logger.info(
             "assembly_complete",
             nodes=result.nodes_created,
@@ -238,9 +237,9 @@ class KGAssembler:
             warnings=len(result.warnings),
             time_sec=result.assembly_time_sec,
         )
-        
+
         return result
-    
+
     def _entity_to_node(self, entity: SynthesizedEntity) -> Node:
         """Convert a SynthesizedEntity to a Node.
         
@@ -256,11 +255,11 @@ class KGAssembler:
             "description": entity.description,
             "merge_count": entity.merge_count,
         }
-        
+
         # Add aliases if present
         if hasattr(entity, "aliases") and entity.aliases:
             properties["aliases"] = entity.aliases
-        
+
         # Add evidence summaries
         if self._include_evidence and entity.evidence:
             properties["evidence_count"] = len(entity.evidence)
@@ -270,16 +269,16 @@ class KGAssembler:
             # Include first evidence text span as sample
             if entity.evidence[0].text_span:
                 properties["evidence_sample"] = entity.evidence[0].text_span[:200]
-        
+
         # Build metadata dict
         metadata: dict[str, Any] = {
             "created_at": datetime.utcnow().isoformat(),
         }
-        
+
         # Add provenance (merge history)
         if self._include_provenance and hasattr(entity, "merged_from"):
             metadata["merged_from"] = entity.merged_from
-        
+
         return Node(
             id=entity.id,
             label=entity.label,
@@ -287,7 +286,7 @@ class KGAssembler:
             properties=properties,
             metadata=metadata,
         )
-    
+
     def _relation_to_edge(self, relation: ExtractedRelation) -> Edge:
         """Convert an ExtractedRelation to an Edge.
         
@@ -300,13 +299,13 @@ class KGAssembler:
         properties: dict[str, Any] = {
             "confidence": relation.confidence,
         }
-        
+
         # Add evidence if available
         if self._include_evidence and relation.evidence:
             properties["evidence_count"] = len(relation.evidence)
             if relation.evidence[0].text_span:
                 properties["evidence_sample"] = relation.evidence[0].text_span[:200]
-        
+
         return Edge(
             id=relation.id,
             source_id=relation.source_entity_id,
@@ -343,7 +342,7 @@ def assemble_to_json(
         ...     f.write(json_kg)
     """
     from kgbuilder.storage.protocol import InMemoryGraphStore
-    
+
     store = InMemoryGraphStore()
     assembler = KGAssembler(store)
     assembler.assemble(entities, relations)
@@ -364,7 +363,7 @@ def assemble_to_dict(
         Dictionary with nodes, edges, and metadata
     """
     from kgbuilder.storage.protocol import InMemoryGraphStore
-    
+
     store = InMemoryGraphStore()
     assembler = KGAssembler(store)
     assembler.assemble(entities, relations)

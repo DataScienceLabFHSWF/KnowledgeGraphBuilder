@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from kgbuilder.versioning.service import (
     KGVersioningService,
-    VersionMetadata,
     VersionDiff,
+    VersionMetadata,
 )
 
 __all__ = [
@@ -20,6 +20,3 @@ __all__ = [
     "VersionMetadata",
     "VersionDiff",
 ]
-
-
-__all__ = ["KGVersionMetadata"]

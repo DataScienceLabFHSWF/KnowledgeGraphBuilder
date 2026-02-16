@@ -17,9 +17,7 @@ Examples:
 
 import argparse
 from pathlib import Path
-from typing import Optional
 from urllib.request import urlopen
-
 
 # Configuration
 GITHUB_ORG = "BharathMuppasani"
@@ -100,7 +98,7 @@ def download_ontology(
 
     # Skip if already exists (unless force)
     if filepath.exists() and not force:
-        print(f"✓ {filename} already exists (use --force to re-download)")
+        print(f"[OK] {filename} already exists (use --force to re-download)")
         return filepath
 
     # Download from GitHub
@@ -112,15 +110,15 @@ def download_ontology(
             content = response.read()
             filepath.parent.mkdir(parents=True, exist_ok=True)
             filepath.write_bytes(content)
-            print(f"✅ Downloaded {filename} ({len(content) / 1024:.1f} KB)")
+            print(f"[OK] Downloaded {filename} ({len(content) / 1024:.1f} KB)")
             return filepath
     except Exception as e:
-        raise IOError(f"Failed to download {ontology_key}: {e}") from e
+        raise OSError(f"Failed to download {ontology_key}: {e}") from e
 
 
 def list_ontologies() -> None:
     """List all available ontologies and versions."""
-    print("\n📚 Available Ontologies\n" + "=" * 40)
+    print("\nAvailable Ontologies\n" + "=" * 40)
 
     for ontology_key, config in ONTOLOGIES.items():
         print(f"\n{ontology_key.upper()}")
@@ -140,7 +138,7 @@ def list_downloaded() -> None:
         print("No ontologies found in data/ontology/")
         return
 
-    print("\n📦 Downloaded Ontologies\n" + "=" * 40)
+    print("\nDownloaded Ontologies\n" + "=" * 40)
     for filepath in files:
         size_kb = filepath.stat().st_size / 1024
         print(f"  {filepath.name:.<40} {size_kb:>6.1f} KB")
@@ -161,11 +159,11 @@ def cleanup_old_versions(ontology_key: str, keep_latest: int = 2) -> None:
     files = sorted(DATA_DIR.glob(pattern), reverse=True)
 
     if len(files) <= keep_latest:
-        print(f"✓ Already have {len(files)} versions (keeping {keep_latest})")
+        print(f"[OK] Already have {len(files)} versions (keeping {keep_latest})")
         return
 
     for filepath in files[keep_latest:]:
-        print(f"🗑️  Removing {filepath.name}")
+        print(f"Removing {filepath.name}")
         filepath.unlink()
 
 
@@ -231,9 +229,9 @@ def main() -> int:
             version=args.version,
             force=args.force,
         )
-        print(f"\n💾 Saved to: {filepath}")
-    except (ValueError, IOError) as e:
-        print(f"❌ Error: {e}")
+        print(f"\nSaved to: {filepath}")
+    except (OSError, ValueError) as e:
+        print(f"[ERROR] Error: {e}")
         return 1
 
     return 0

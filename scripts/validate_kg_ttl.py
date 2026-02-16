@@ -12,15 +12,14 @@ Usage:
 """
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
-import rdflib
 import logging
+from pathlib import Path
 
+import rdflib
 from pyshacl import validate
 
 from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("validate_kg_ttl")

@@ -76,7 +76,7 @@ class SHACLShapeGenerator:
         """
         try:
             import rdflib
-            from rdflib import Namespace, URIRef, BNode
+            from rdflib import BNode, Namespace, URIRef
             from rdflib.namespace import RDF, RDFS, XSD
         except Exception as e:
             raise RuntimeError("rdflib is required for SHACL shape generation") from e
@@ -189,8 +189,6 @@ class SHACLShapeGenerator:
         full = self.generate()
         try:
             import rdflib
-            from rdflib import Namespace
-            from rdflib.namespace import RDF
         except Exception as e:
             raise RuntimeError("rdflib is required for SHACL shape generation") from e
 

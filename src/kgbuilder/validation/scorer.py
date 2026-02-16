@@ -98,12 +98,15 @@ class _FileOntologyService:
             self._classes.append({"uri": str(cls_uri), "label": label, "parent_uri": parent, "description": "", "properties": []})
 
     def get_all_classes(self) -> list[dict[str, Any]]:
+        """Return all OWL classes parsed from the ontology."""
         return self._classes
 
     def get_class_properties(self, class_label: str) -> list[dict[str, Any]]:
+        """Return datatype properties for a given class label."""
         return []
 
     def get_special_properties(self) -> list[dict[str, Any]]:
+        """Return special OWL properties (functional, transitive, etc.)."""
         return []
 
 

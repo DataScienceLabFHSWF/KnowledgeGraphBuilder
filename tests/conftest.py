@@ -16,10 +16,11 @@ failures and CI flakiness.
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 
 
-def pytest_collection_modifyitems(session: "pytest.Session", config: "pytest.Config", items: list["pytest.Item"]) -> None:  # type: ignore[override]
+def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config, items: list[pytest.Item]) -> None:  # type: ignore[override]
     """Fail fast when multiple test files share the same basename.
 
     Pytest's import system can import a module from the first matching

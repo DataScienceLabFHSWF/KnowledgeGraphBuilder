@@ -13,14 +13,13 @@ This module implements a comprehensive document processing pipeline that combine
 from __future__ import annotations
 
 import hashlib
-import os
 import traceback
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import structlog
-from PIL import Image
 
 try:
     import fitz  # PyMuPDF
@@ -37,7 +36,6 @@ except ImportError:
 from kgbuilder.core.config import ProcessingConfig
 from kgbuilder.core.models import ChunkMetadata
 from kgbuilder.document.loaders.pdf import PDFLoader
-
 
 logger = structlog.get_logger(__name__)
 

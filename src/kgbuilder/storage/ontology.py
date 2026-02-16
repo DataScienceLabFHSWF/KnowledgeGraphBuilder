@@ -7,8 +7,6 @@ to guide KG construction and question generation.
 
 from __future__ import annotations
 
-from typing import Any
-
 import structlog
 
 from kgbuilder.storage.rdf import FusekiStore
@@ -37,7 +35,7 @@ class FusekiOntologyService:
             password: Optional password for HTTP Basic Auth
         """
         self.store = FusekiStore(
-            url=fuseki_url, 
+            url=fuseki_url,
             dataset_name=dataset_name,
             username=username,
             password=password
@@ -91,7 +89,7 @@ class FusekiOntologyService:
                     # Use label if available, otherwise extract from URI
                     if not label:
                         label = class_uri.split("#")[-1].split("/")[-1]
-                    
+
                     classes.append(label)
 
             self._classes_cache = classes
@@ -115,7 +113,7 @@ class FusekiOntologyService:
             List of (property_name, property_type_string, description) tuples
         """
         try:
-            # More robust SPARQL: 
+            # More robust SPARQL:
             # 1. Matches class by label OR by URI local name
             # 2. Makes property label optional (fallbacks to URI fragment in python code)
             sparql = f"""
@@ -142,24 +140,24 @@ class FusekiOntologyService:
             }}
             ORDER BY ?propLabel
             """
-            
+
             result = self.store.query_sparql(sparql)
             properties = []
-            
+
             for binding in result.get("results", {}).get("bindings", []):
                 prop_uri = binding.get("prop", {}).get("value", "")
                 prop_label = binding.get("propLabel", {}).get("value")
-                
+
                 # Fallback for property label
                 if not prop_label and prop_uri:
                     prop_label = prop_uri.split("#")[-1].split("/")[-1]
-                
+
                 if not prop_label:
                     continue
-                    
+
                 range_uri = binding.get("range", {}).get("value", "xsd:string")
                 comment = binding.get("comment", {}).get("value", "")
-                
+
                 # Map XSD types to simple strings
                 type_map = {
                     "xsd:string": "string",
@@ -176,12 +174,12 @@ class FusekiOntologyService:
                     "http://www.w3.org/2001/XMLSchema#nonNegativeInteger": "integer",
                 }
                 data_type = type_map.get(range_uri, "string")
-                
+
                 properties.append((prop_label, data_type, comment))
-            
+
             logger.info("class_properties_loaded", class_label=class_label, count=len(properties))
             return properties
-            
+
         except Exception as e:
             logger.warning("class_properties_load_failed", class_label=class_label, error=str(e))
             return []
@@ -312,7 +310,7 @@ class FusekiOntologyService:
                 "symmetric": "owl:SymmetricProperty",
                 "functional": "owl:FunctionalProperty",
             }
-            
+
             results = {}
             for key, owl_type in characteristics.items():
                 sparql = f"""
@@ -335,7 +333,7 @@ class FusekiOntologyService:
                     if label:
                         props.append(label)
                 results[key] = props
-                
+
             # Inverse properties are different
             sparql = """
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
@@ -354,7 +352,7 @@ class FusekiOntologyService:
                 l2 = b.get("p2Label", {}).get("value") or b.get("p2", {}).get("value").split("#")[-1]
                 inverses.append((l1, l2))
             results["inverse"] = inverses
-            
+
             return results
         except Exception as e:
             logger.warning("special_properties_load_failed", error=str(e))

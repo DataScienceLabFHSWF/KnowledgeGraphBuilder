@@ -14,15 +14,14 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.chat_models import ChatOllama
 from langchain_core.runnables import Runnable
 from langchain_text_splitters import CharacterTextSplitter
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Document
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.chains import ExtractionChains
 from kgbuilder.storage.graph import Neo4jStore
 from kgbuilder.storage.vector import QdrantStore
@@ -144,9 +143,9 @@ class SimpleKGAssembler:
 
         # Statistics
         self._stats = GraphStatistics()
-        
+
         logger.info(
-            f"✓ Initialized SimpleKGAssembler (Neo4j + "
+            f"[OK] Initialized SimpleKGAssembler (Neo4j + "
             f"{'Qdrant' if vector_store else 'no vector store'})"
         )
 
@@ -176,7 +175,7 @@ class SimpleKGAssembler:
         # Build pipeline using LCEL
         # Note: Full implementation would compose all stages
         # For now, return the entity extraction chain as starting point
-        logger.info("✓ Built extraction pipeline with entity and relation chains")
+        logger.info("[OK] Built extraction pipeline with entity and relation chains")
         return entity_chain
 
     def assemble(
@@ -218,13 +217,13 @@ class SimpleKGAssembler:
             )
 
             logger.info(
-                f"✓ Assembled KG: {len(deduplicated_entities)} entities, "
+                f"[OK] Assembled KG: {len(deduplicated_entities)} entities, "
                 f"{len(relations)} relations, "
                 f"{self._stats.duplicates_removed} duplicates removed"
             )
 
         except Exception as e:
-            logger.error(f"✗ Assembly failed: {e}")
+            logger.error(f"[FAIL] Assembly failed: {e}")
             raise
 
     def _deduplicate_entities(

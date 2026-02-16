@@ -37,13 +37,11 @@ Usage (Local):
 
 from __future__ import annotations
 
-import sys
-import os
 import argparse
-
-from pathlib import Path
-from typing import Any
+import os
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # --- Load .env automatically for all runs ---
 try:
@@ -78,24 +76,26 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 # COMPONENT IMPORTS (All IMPLEMENTED and TESTED)
 # =============================================================================
 
-from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
+from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.assembly.kg_builder import KGBuilder, KGBuilderConfig
 from kgbuilder.assembly.simple_kg_assembler import SimpleKGAssembler
-from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
-from kgbuilder.extraction.entity import OntologyClassDef
-from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
-from kgbuilder.storage.ontology import FusekiOntologyService
-from kgbuilder.storage.vector import QdrantStore
-from kgbuilder.storage.neo4j_store import Neo4jGraphStore
-from kgbuilder.storage.protocol import Node, Edge
-from kgbuilder.retrieval import FusionRAGRetriever
-from kgbuilder.extraction.entity import LLMEntityExtractor
-from kgbuilder.embedding import OllamaProvider
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
-from kgbuilder.validation import SHACLValidator, RulesEngine, ConsistencyChecker, ReportGenerator, ValidationResult
+from kgbuilder.embedding import OllamaProvider
+from kgbuilder.extraction.entity import LLMEntityExtractor, OntologyClassDef
+from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
+from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
+from kgbuilder.retrieval import FusionRAGRetriever
+from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+from kgbuilder.storage.ontology import FusekiOntologyService
+from kgbuilder.storage.protocol import Edge, Node
+from kgbuilder.storage.vector import QdrantStore
+from kgbuilder.validation import (
+    ConsistencyChecker,
+    ReportGenerator,
+    ValidationResult,
+)
 from kgbuilder.validation.validators import CompetencyQuestionValidator
-
 
 # =============================================================================
 # CLI ARGUMENT PARSING
@@ -107,7 +107,7 @@ def parse_arguments() -> argparse.Namespace:
         description="Knowledge Graph Construction - Full Discovery & Assembly Pipeline",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    
+
     # Core hyperparameters
     parser.add_argument(
         "--questions-per-class",
@@ -115,35 +115,35 @@ def parse_arguments() -> argparse.Namespace:
         default=3,
         help="Number of questions to generate per ontology class"
     )
-    
+
     parser.add_argument(
         "--max-iterations",
         type=int,
         default=2,
         help="Maximum iterations for discovery loop per question"
     )
-    
+
     parser.add_argument(
         "--classes-limit",
         type=int,
         default=None,
         help="Limit ontology classes to process (None = all classes)"
     )
-    
+
     parser.add_argument(
         "--confidence-threshold",
         type=float,
         default=0.6,
         help="Minimum confidence for extracted entities (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--similarity-threshold",
         type=float,
         default=0.85,
         help="Entity deduplication similarity threshold (0.0-1.0)"
     )
-    
+
     # Retrieval hyperparameters
     parser.add_argument(
         "--dense-weight",
@@ -151,21 +151,21 @@ def parse_arguments() -> argparse.Namespace:
         default=0.7,
         help="Weight for dense vector retrieval in FusionRAG (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--sparse-weight",
         type=float,
         default=0.3,
         help="Weight for sparse keyword retrieval in FusionRAG (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--top-k",
         type=int,
         default=10,
         help="Number of documents to retrieve per query"
     )
-    
+
     # Validation & Quality Gating
     parser.add_argument(
         "--validate",
@@ -173,35 +173,35 @@ def parse_arguments() -> argparse.Namespace:
         default=True,
         help="Enable validation phase (SHACL, rules, consistency)"
     )
-    
+
     parser.add_argument(
         "--check-competency-questions",
         action="store_true",
         default=False,
         help="Check if competency questions are answered before finishing"
     )
-    
+
     parser.add_argument(
         "--cq-coverage-threshold",
         type=float,
         default=0.8,
         help="Minimum coverage of competency questions (0.0-1.0) before stopping"
     )
-    
+
     parser.add_argument(
         "--validation-report-dir",
         type=str,
         default="./validation_reports",
         help="Directory to save validation reports (JSON/Markdown/HTML)"
     )
-    
+
     # Logging
     parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose debug logging"
     )
-    
+
     return parser.parse_args()
 
 
@@ -430,7 +430,7 @@ def extract_relations_from_entities(
     """
     all_relations: list[ExtractedRelation] = []
     processed_pairs: set[tuple[str, str]] = set()
-    
+
     # Convert synthesized entities to extracted entities for the extractor
     entities_for_extraction = [
         ExtractedEntity(
@@ -443,18 +443,18 @@ def extract_relations_from_entities(
         )
         for se in synthesized_entities
     ]
-    
+
     # Build entity lookup by label for quick matching
     entity_labels = {e.label.lower(): e for e in entities_for_extraction}
-    
+
     # Process entities in batches - query for chunks that might contain relations
     for i, entity in enumerate(synthesized_entities):
         # Query for chunks mentioning this entity
         query = f"{entity.label} relationships connections"
-        
+
         try:
             results = retriever.retrieve(query=query, top_k=top_k)
-            
+
             for result in results:
                 # Check which other entities appear in this chunk
                 chunk_text = result.content.lower()
@@ -462,28 +462,28 @@ def extract_relations_from_entities(
                     e for e in entities_for_extraction
                     if e.label.lower() in chunk_text and e.id != entity.id
                 ]
-                
+
                 if entities_in_chunk:
                     # Extract relations from this chunk
                     try:
                         relations = relation_extractor.extract(
                             text=result.content,
                             entities=[
-                                e for e in entities_for_extraction 
+                                e for e in entities_for_extraction
                                 if e.label.lower() in chunk_text
                             ],
                             ontology_relations=ontology_relations,
                         )
-                        
+
                         for rel in relations:
                             # Avoid duplicate relations
                             pair_key = (rel.source_entity_id, rel.target_entity_id, rel.predicate)
                             reverse_key = (rel.target_entity_id, rel.source_entity_id, rel.predicate)
-                            
+
                             if pair_key not in processed_pairs and reverse_key not in processed_pairs:
                                 all_relations.append(rel)
                                 processed_pairs.add(pair_key)
-                                
+
                     except Exception as e:
                         logger.warning(
                             "relation_extraction_chunk_failed",
@@ -491,7 +491,7 @@ def extract_relations_from_entities(
                             error=str(e)
                         )
                         continue
-                        
+
         except Exception as e:
             logger.warning(
                 "relation_retrieval_failed",
@@ -499,7 +499,7 @@ def extract_relations_from_entities(
                 error=str(e)
             )
             continue
-        
+
         # Log progress every 10 entities
         if (i + 1) % 10 == 0:
             logger.info(
@@ -508,7 +508,7 @@ def extract_relations_from_entities(
                 total_entities=len(synthesized_entities),
                 relations_found=len(all_relations)
             )
-    
+
     return all_relations
 
 
@@ -518,21 +518,21 @@ def extract_relations_from_entities(
 
 def main() -> None:
     """Run the complete KG construction pipeline."""
-    
+
     args = parse_arguments()
     start_time = datetime.now()
-    
+
     # Print banner
     print("\n" + "="*80)
     print("KNOWLEDGE GRAPH CONSTRUCTION PIPELINE")
     print("Full Discovery + Assembly to Neo4j")
     print("="*80)
-    print(f"\nService Configuration:")
+    print("\nService Configuration:")
     print(f"  Fuseki:     {FUSEKI_URL}/{FUSEKI_DATASET}")
     print(f"  Qdrant:     {QDRANT_URL}")
     print(f"  Ollama:     {OLLAMA_URL} (model: {OLLAMA_MODEL})")
     print(f"  Neo4j:      {NEO4J_URI}")
-    print(f"\nHyperparameters:")
+    print("\nHyperparameters:")
     print(f"  Questions per class:     {args.questions_per_class}")
     print(f"  Max iterations:          {args.max_iterations}")
     print(f"  Classes limit:           {args.classes_limit or 'All'}")
@@ -559,9 +559,9 @@ def main() -> None:
 
         # Apply class limit if specified
         classes = all_classes[:args.classes_limit] if args.classes_limit else all_classes
-        
+
         logger.info("ontology_loaded", total_classes=len(all_classes), classes_to_process=len(classes))
-        print(f"✓ Loaded {len(classes)} ontology classes (from {len(all_classes)} total)")
+        print(f"[OK] Loaded {len(classes)} ontology classes (from {len(all_classes)} total)")
         print(f"  Classes: {', '.join(classes[:5])}{'...' if len(classes) > 5 else ''}\n")
 
         # =====================================================================
@@ -581,10 +581,10 @@ def main() -> None:
                 max_questions=args.questions_per_class
             )
             all_questions.extend(questions)
-            print(f"  ✓ {len(questions)} questions from class '{class_name}'")
+            print(f"  [OK] {len(questions)} questions from class '{class_name}'")
 
         logger.info("questions_generated", total_count=len(all_questions))
-        print(f"\n✓ Generated {len(all_questions)} research questions\n")
+        print(f"\n[OK] Generated {len(all_questions)} research questions\n")
 
         # =====================================================================
         # PHASE 3: ITERATIVE DISCOVERY
@@ -619,9 +619,9 @@ def main() -> None:
 
         if not discovery_result.success:
             logger.warning("discovery_warning", message=discovery_result.error_message)
-            print(f"⚠ Discovery completed with warnings: {discovery_result.error_message}")
+            print(f"[WARN] Discovery completed with warnings: {discovery_result.error_message}")
         else:
-            print(f"✓ Discovery completed successfully")
+            print("[OK] Discovery completed successfully")
 
         discovered_entities = discovery_result.entities
         logger.info(
@@ -660,7 +660,7 @@ def main() -> None:
             merged=merge_count,
             merge_rate=merge_rate
         )
-        print(f"✓ Deduplicated entities")
+        print("[OK] Deduplicated entities")
         print(f"  - Before: {len(discovered_entities)}")
         print(f"  - After:  {len(synthesized_entities)}")
         print(f"  - Merged: {merge_count} ({merge_rate:.1%})\n")
@@ -695,9 +695,9 @@ def main() -> None:
             "relation_extraction_complete",
             relations_extracted=len(extracted_relations)
         )
-        print(f"✓ Relation extraction complete")
+        print("[OK] Relation extraction complete")
         print(f"  - Relations extracted: {len(extracted_relations)}")
-        
+
         # Show relation type distribution
         if extracted_relations:
             relation_types = {}
@@ -714,13 +714,13 @@ def main() -> None:
         print("-" * 80)
 
         logger.info("assembly_starting", entity_count=len(synthesized_entities), relation_count=len(extracted_relations))
-        
+
         # Initialize Neo4j graph store (Phase 7 multi-store support)
         neo4j_store = Neo4jGraphStore(
             uri=NEO4J_URI,
             auth=(NEO4J_USER, NEO4J_PASSWORD)
         )
-        
+
         # Create KGBuilder with Neo4j as primary store
         builder = KGBuilder(
             primary_store=neo4j_store,
@@ -731,7 +731,7 @@ def main() -> None:
                 auto_retry=True
             )
         )
-        
+
         # Convert SynthesizedEntity to Node format
         nodes = [
             Node(
@@ -746,7 +746,7 @@ def main() -> None:
             )
             for entity in synthesized_entities
         ]
-        
+
         # Convert ExtractedRelation to Edge format
         edges = [
             Edge(
@@ -760,7 +760,7 @@ def main() -> None:
             )
             for rel in extracted_relations
         ]
-        
+
         # Build graph using new orchestrator
         build_result = builder.build(entities=nodes, relations=edges)
 
@@ -781,139 +781,139 @@ def main() -> None:
             relationships_created=assembly_result.relationships_created,
             errors=len(assembly_result.errors)
         )
-        print(f"✓ Knowledge graph assembled in Neo4j")
+        print("[OK] Knowledge graph assembled in Neo4j")
         print(f"  - Nodes created: {assembly_result.nodes_created}")
         print(f"  - Relationships created: {assembly_result.relationships_created}")
-        
+
         if assembly_result.errors:
             print(f"  - Errors: {len(assembly_result.errors)}")
             for error in assembly_result.errors[:5]:
                 logger.error("assembly_error", error=error)
-                print(f"    ✗ {error}")
+                print(f"    [FAIL] {error}")
             if len(assembly_result.errors) > 5:
                 print(f"    ... and {len(assembly_result.errors) - 5} more errors")
-        
+
         print()
 
         # =====================================================================
         # PHASE 7: VALIDATION & QUALITY ASSESSMENT
         # =====================================================================
-        
+
         validation_passed = True
         validation_report = None
-        
+
         if args.validate:
             print("PHASE 7: Knowledge Graph Validation & Quality Assessment")
             print("-" * 80)
-            
+
             try:
                 # Run consistency checking
                 logger.info("validation_starting")
                 consistency_checker = ConsistencyChecker()
                 consistency_report = consistency_checker.check_consistency(neo4j_store)
-                
+
                 logger.info(
                     "consistency_check_complete",
                     conflicts=consistency_report.conflict_count,
                     duplicates=len(consistency_report.duplicates)
                 )
-                print(f"✓ Consistency check complete")
+                print("[OK] Consistency check complete")
                 print(f"  - Conflicts detected: {consistency_report.conflict_count}")
                 print(f"  - Potential duplicates: {len(consistency_report.duplicates)}")
                 print(f"  - Conflict rate: {consistency_report.conflict_rate:.2%}")
-                
+
                 if consistency_report.recommendations:
                     print(f"  - Recommendations: {consistency_report.recommendations[0]}")
-                
+
                 # Generate validation reports
                 if args.validation_report_dir:
                     report_dir = Path(args.validation_report_dir)
                     report_dir.mkdir(parents=True, exist_ok=True)
-                    
+
                     # Create a synthetic validation result for reporting
                     validation_report = ValidationResult()
                     validation_report.node_count = assembly_result.nodes_created
                     validation_report.edge_count = assembly_result.relationships_created
                     validation_report.valid = consistency_report.conflict_count == 0
-                    
+
                     reporter = ReportGenerator(title="KG Validation Report")
                     reporter.to_json(validation_report, report_dir / "validation_report.json")
                     reporter.to_markdown(validation_report, report_dir / "validation_report.md")
                     reporter.to_html(validation_report, report_dir / "validation_report.html")
-                    
+
                     logger.info("validation_reports_generated", directory=str(report_dir))
                     print(f"  - Reports saved to: {report_dir}")
-                
+
                 validation_passed = consistency_report.conflict_count == 0
-                
+
             except Exception as e:
                 logger.warning("validation_phase_failed", error=str(e))
-                print(f"⚠ Validation phase encountered error: {e}")
+                print(f"[WARN] Validation phase encountered error: {e}")
                 validation_passed = False
-            
+
             print()
 
         # =====================================================================
         # PHASE 8: COMPETENCY QUESTION VALIDATION (Stopping Criterion)
         # =====================================================================
-        
+
         cq_validation_passed = True
-        
+
         if args.check_competency_questions:
             print("PHASE 8: Competency Question Coverage Check (Stopping Criterion)")
             print("-" * 80)
-            
+
             try:
                 logger.info("competency_question_check_starting")
-                
+
                 # Check which questions are answered by the KG
                 cq_validator = CompetencyQuestionValidator(
                     ontology_service=ontology_service,
                     graph_store=neo4j_store
                 )
-                
+
                 # Use the questions generated in Phase 2
                 cq_results = cq_validator.validate_questions(all_questions)
-                
+
                 answerable_count = sum(1 for result in cq_results if result["answerable"])
                 cq_coverage = answerable_count / max(len(all_questions), 1) if all_questions else 0.0
-                
+
                 logger.info(
                     "competency_questions_checked",
                     total=len(all_questions),
                     answerable=answerable_count,
                     coverage=cq_coverage
                 )
-                
-                print(f"✓ Competency Question Coverage Analysis")
+
+                print("[OK] Competency Question Coverage Analysis")
                 print(f"  - Total questions: {len(all_questions)}")
                 print(f"  - Answerable: {answerable_count}")
                 print(f"  - Coverage: {cq_coverage:.1%}")
                 print(f"  - Threshold: {args.cq_coverage_threshold:.1%}")
-                
+
                 # Check if we meet the stopping criterion
                 if cq_coverage >= args.cq_coverage_threshold:
-                    print(f"  ✓ STOPPING CRITERION MET - Coverage above threshold")
+                    print("  [OK] STOPPING CRITERION MET - Coverage above threshold")
                     cq_validation_passed = True
                 else:
-                    print(f"  ✗ STOPPING CRITERION NOT MET - Coverage below threshold")
+                    print("  [FAIL] STOPPING CRITERION NOT MET - Coverage below threshold")
                     print(f"     Need {int((args.cq_coverage_threshold - cq_coverage) * len(all_questions))} more questions answered")
                     cq_validation_passed = False
-                
+
                 # List unanswered questions for guidance
                 unanswerable = [q for q, result in zip(all_questions, cq_results) if not result["answerable"]]
                 if unanswerable:
-                    print(f"\n  Unanswered questions to address:")
+                    print("\n  Unanswered questions to address:")
                     for q in unanswerable[:5]:
                         print(f"    - {q}")
                     if len(unanswerable) > 5:
                         print(f"    ... and {len(unanswerable) - 5} more")
-                
+
             except Exception as e:
                 logger.warning("competency_question_check_failed", error=str(e))
-                print(f"⚠ Competency question check failed: {e}")
+                print(f"[WARN] Competency question check failed: {e}")
                 cq_validation_passed = False
-            
+
             print()
 
         # =====================================================================
@@ -924,40 +924,40 @@ def main() -> None:
         print("="*80)
         print("PIPELINE EXECUTION SUMMARY")
         print("="*80)
-        
-        overall_status = "SUCCESS ✓"
+
+        overall_status = "SUCCESS [OK]"
         if not validation_passed:
-            overall_status = "VALIDATION WARNINGS ⚠"
+            overall_status = "VALIDATION WARNINGS [WARN]"
         if args.check_competency_questions and not cq_validation_passed:
-            overall_status = "STOPPING CRITERION NOT MET ✗"
-        
+            overall_status = "STOPPING CRITERION NOT MET [FAIL]"
+
         print(f"Status:                  {overall_status}")
         print(f"Total time:              {elapsed:.1f}s")
-        print(f"\nOntology:")
+        print("\nOntology:")
         print(f"  Classes processed:     {len(classes)}")
         print(f"  Questions generated:   {len(all_questions)}")
-        print(f"\nKnowledge Discovery:")
+        print("\nKnowledge Discovery:")
         print(f"  Entities discovered:   {len(discovered_entities)}")
         print(f"  Entities synthesized:  {len(synthesized_entities)}")
         print(f"  Merge rate:            {merge_rate:.1%}")
-        print(f"\nRelation Extraction:")
+        print("\nRelation Extraction:")
         print(f"  Relations extracted:   {len(extracted_relations)}")
-        print(f"\nNeo4j Graph:")
+        print("\nNeo4j Graph:")
         print(f"  Nodes created:         {assembly_result.nodes_created}")
         print(f"  Relationships created: {assembly_result.relationships_created}")
         print(f"  Assembly errors:       {len(assembly_result.errors)}")
-        
+
         if args.validate:
-            print(f"\nValidation:")
-            print(f"  Status:                {'✓ PASSED' if validation_passed else '⚠ WARNINGS'}")
+            print("\nValidation:")
+            print(f"  Status:                {'[OK] PASSED' if validation_passed else '[WARN] WARNINGS'}")
             print(f"  Conflicts detected:    {consistency_report.conflict_count if consistency_report else 'N/A'}")
-        
+
         if args.check_competency_questions:
-            print(f"\nCompetency Questions (Stopping Criterion):")
+            print("\nCompetency Questions (Stopping Criterion):")
             print(f"  Coverage:              {cq_coverage:.1%}")
             print(f"  Threshold:             {args.cq_coverage_threshold:.1%}")
-            print(f"  Status:                {'✓ MET' if cq_validation_passed else '✗ NOT MET'}")
-        
+            print(f"  Status:                {'[OK] MET' if cq_validation_passed else '[FAIL] NOT MET'}")
+
 
         print(f"\nDatabase: {NEO4J_URI}")
         print("="*80 + "\n")
@@ -970,16 +970,16 @@ def main() -> None:
             print(f"[Token Usage] Could not log Ollama token usage: {e}")
 
         if assembly_result.errors:
-            print("⚠ Some entities could not be assembled. Check logs for details.\n")
-        
+            print("[WARN] Some entities could not be assembled. Check logs for details.\n")
+
         if args.check_competency_questions and not cq_validation_passed:
-            print("✗ STOPPING CRITERION NOT MET")
+            print("[FAIL] STOPPING CRITERION NOT MET")
             print(f"  Competency question coverage ({cq_coverage:.1%}) is below threshold ({args.cq_coverage_threshold:.1%})")
-            print(f"  Please add more data or extend discovery to answer remaining questions.\n")
+            print("  Please add more data or extend discovery to answer remaining questions.\n")
 
     except Exception as e:
         logger.error("pipeline_failed", error=str(e), exc_info=True)
-        print(f"\n✗ PIPELINE FAILED")
+        print("\n[FAIL] PIPELINE FAILED")
         print(f"Error: {e}\n")
         raise
 

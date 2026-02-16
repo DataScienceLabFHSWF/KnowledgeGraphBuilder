@@ -24,19 +24,19 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Iterator
 import json
+from collections.abc import Iterator
+from typing import Any
 
 import structlog
-from neo4j import GraphDatabase, Session
+from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
 from kgbuilder.storage.protocol import (
-    GraphStore,
-    Node,
     Edge,
-    QueryResult,
     GraphStatistics,
+    Node,
+    QueryResult,
 )
 
 logger = structlog.get_logger(__name__)

@@ -19,11 +19,10 @@ import json
 import os
 import re
 from collections import defaultdict
-from typing import Dict, List, Set, Tuple
 
 import structlog
-from neo4j import GraphDatabase
 from dotenv import load_dotenv
+from neo4j import GraphDatabase
 
 # Load environment variables
 load_dotenv()
@@ -47,7 +46,7 @@ class KGLawLinker:
         self.neo4j_password = os.environ.get("NEO4J_PASSWORD", "changeme")
         self.database = database
         self.link_prefix = link_prefix
-        
+
         # Configurable law patterns - can be extended
         self.law_patterns = {
             'AtG': {
@@ -75,7 +74,7 @@ class KGLawLinker:
                 'full_name': 'Strahlenschutzverordnung'
             }
         }
-        
+
         # Entity type to relationship mapping
         self.governance_mappings = {
             'Facility': 'GOVERNED_BY',
@@ -89,7 +88,7 @@ class KGLawLinker:
             'Regulation': 'GOVERNED_BY',
         }
 
-    def get_decommissioning_entities(self) -> List[Dict]:
+    def get_decommissioning_entities(self) -> list[dict]:
         """Retrieve all decommissioning KG entities."""
         driver = GraphDatabase.driver(
             self.neo4j_uri,
@@ -114,44 +113,44 @@ class KGLawLinker:
         finally:
             driver.close()
 
-    def find_law_references_in_text(self, text: str) -> List[Dict]:
+    def find_law_references_in_text(self, text: str) -> list[dict]:
         """Find explicit law references in text with context."""
         references = []
-        
+
         # Pattern for German law citations - ordered from most specific to least
         citation_patterns = [
             # § 7 Abs. 3 AtG (paragraph, subsection, law)
-            (re.compile(r'§\s*(\d+[\w]*)\s+Abs\.?\s*(\d+[\w]*)\s+([A-Z][A-Za-z]+)', re.IGNORECASE), 
+            (re.compile(r'§\s*(\d+[\w]*)\s+Abs\.?\s*(\d+[\w]*)\s+([A-Z][A-Za-z]+)', re.IGNORECASE),
              lambda m: (f"{m.group(1)} Abs. {m.group(2)}", self._normalize_law_code(m.group(3)))),
-            
+
             # § 4 Absatz 1 (paragraph, subsection)
             (re.compile(r'§\s*(\d+[\w]*)\s+Absatz\s+(\d+[\w]*)', re.IGNORECASE),
              lambda m: (f"{m.group(1)} Abs. {m.group(2)}", None)),
-             
+
             # § 7 AtG (paragraph, law)
             (re.compile(r'§\s*(\d+[\w]*)\s+([A-Z][A-Za-z]+)', re.IGNORECASE),
              lambda m: (m.group(1), self._normalize_law_code(m.group(2)))),
-             
+
             # § 29 StrlSchV (paragraph, ordinance)
             (re.compile(r'§\s*(\d+[\w]*)\s+([A-Z][A-Za-z]+)', re.IGNORECASE),
              lambda m: (m.group(1), self._normalize_law_code(m.group(2)))),
-             
+
             # Art. 12 BBergG (article, law)
             (re.compile(r'Art\.?\s*(\d+[\w]*)\s+([A-Z][A-Za-z]+)', re.IGNORECASE),
              lambda m: (f"Art. {m.group(1)}", self._normalize_law_code(m.group(2)))),
-             
+
             # Law codes and full names
             (re.compile(r'\b(Strahlenschutzgesetz|Atomgesetz|Berggesetz|Immissionsschutzgesetz|Kreislaufwirtschaftsgesetz)\b', re.IGNORECASE),
              lambda m: (None, self._normalize_law_code(m.group(1)))),
-             
+
             (re.compile(r'\b(AtG|BBergG|BImSchG|KrWG|StrlSchG|StrSchG|StrVG|AtVfV|UVPG|StrlSchV)\b', re.IGNORECASE),
              lambda m: (None, self._normalize_law_code(m.group(1)))),
         ]
-        
+
         for pattern, extractor in citation_patterns:
             for match in pattern.finditer(text):
                 section, law_code = extractor(match)
-                
+
                 # Only include if it's a recognized law or we have a section reference
                 if law_code and (law_code in self.law_patterns or law_code == 'StrlSchV'):
                     references.append({
@@ -171,7 +170,7 @@ class KGLawLinker:
                         'confidence': 0.7,  # Lower confidence for inferred law
                         'type': 'explicit_citation'
                     })
-        
+
         return references
 
     def _normalize_law_code(self, code: str) -> str:
@@ -179,7 +178,7 @@ class KGLawLinker:
         code = code.upper()
         mappings = {
             'STRSCHG': 'StrlSchG',
-            'STRVG': 'StrVG', 
+            'STRVG': 'StrVG',
             'ATVFV': 'AtVfV',
             'UVPG': 'UVPG',
         }
@@ -199,7 +198,7 @@ class KGLawLinker:
         else:
             return 'GOVERNED_BY'
 
-    def create_links(self, dry_run: bool = True) -> Dict:
+    def create_links(self, dry_run: bool = True) -> dict:
         """Create cross-domain links between KG entities and laws with prefixed relationships."""
         entities = self.get_decommissioning_entities()
         links_created = []
@@ -216,7 +215,7 @@ class KGLawLinker:
                     entity_id = entity['id']
                     entity_label = entity['label']
                     entity_type = entity['entity_type']
-                    
+
                     # Collect all text sources for explicit law reference detection
                     text_sources = [entity_label]
                     if entity.get('properties'):
@@ -240,13 +239,13 @@ class KGLawLinker:
                         if text:
                             refs = self.find_law_references_in_text(text)
                             explicit_refs.extend(refs)
-                    
+
                     # Create links for explicit references
                     for ref in explicit_refs:
                         relationship_type = self.determine_relationship_type(
                             entity_type, ref.get('context', '')
                         )
-                        
+
                         link = {
                             'source_entity': entity_id,
                             'target_law': ref['law_code'],
@@ -279,10 +278,10 @@ class KGLawLinker:
         logger.info(f"Cross-domain linking complete: {len(links_created)} links created")
         return result
 
-    def _create_relationship(self, session, link: Dict):
+    def _create_relationship(self, session, link: dict):
         """Create a relationship in Neo4j with prefixed relationship types."""
         relationship_type = f"{self.link_prefix}{link['relationship']}"
-        
+
         if link['relationship'] in ['REFERENCES', 'GOVERNED_BY', 'DEFINED_IN', 'REQUIRES']:
             # All relationship types link to law codes (Gesetzbuch nodes)
             query = f"""
@@ -296,7 +295,7 @@ class KGLawLinker:
                 query = query.replace("SET r.reason = $reason", "SET r.reason = $reason, r.section = $section")
             if link.get('context'):
                 query = query.replace("SET r.reason = $reason", "SET r.reason = $reason, r.context = $context")
-            
+
             params = {
                 'entity_id': link['source_entity'],
                 'law_code': link['target_law'],
@@ -307,7 +306,7 @@ class KGLawLinker:
                 params['section'] = link['section']
             if link.get('context'):
                 params['context'] = link['context']
-                
+
             session.run(query, **params)
 
         else:
@@ -324,7 +323,7 @@ LIMIT 100
         """
         return query.strip()
 
-    def get_link_statistics(self) -> Dict:
+    def get_link_statistics(self) -> dict:
         """Get statistics about existing cross-domain links with prefixed relationship types."""
         driver = GraphDatabase.driver(
             self.neo4j_uri,
@@ -336,7 +335,7 @@ LIMIT 100
                 # Use prefixed relationship types
                 prefixed_types = [f"{self.link_prefix}{t}" for t in ['REFERENCES', 'GOVERNED_BY', 'DEFINED_IN', 'REQUIRES']]
                 rel_types_str = '|'.join(prefixed_types)
-                
+
                 query = f"""
                 MATCH (n)-[r:{rel_types_str}]->(law)
                 WHERE NOT any(l IN labels(n) WHERE l IN ['Paragraf', 'Abschnitt', 'Gesetzbuch'])

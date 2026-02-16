@@ -11,16 +11,16 @@ See Planning/FUSIONRAG_INTEGRATION.md Section 2 for design.
 
 from __future__ import annotations
 
-import structlog
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 import ollama
+import structlog
 from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder
 
 from kgbuilder.core import get_base_url
-from sentence_transformers import CrossEncoder
 
 logger = structlog.get_logger(__name__)
 
@@ -319,7 +319,7 @@ class EnhancedFusionRAGRetriever:
                 })
 
             return docs
-        except Exception as e:
+        except Exception:
             logger.exception("dense_retrieval_failed")
             return []
 
@@ -344,7 +344,7 @@ class EnhancedFusionRAGRetriever:
                     })
 
             return docs
-        except Exception as e:
+        except Exception:
             logger.exception("sparse_retrieval_failed")
             return []
 
@@ -427,6 +427,6 @@ class EnhancedFusionRAGRetriever:
             )
 
             return candidates[:top_k]
-        except Exception as e:
+        except Exception:
             logger.exception("reranking_failed")
             return candidates

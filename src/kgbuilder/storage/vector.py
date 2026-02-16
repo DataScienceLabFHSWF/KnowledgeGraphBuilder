@@ -182,7 +182,6 @@ class QdrantStore:
         Returns:
             List of (id, score, metadata)
         """
-        import json
 
         # Use REST API for search
         search_request = {

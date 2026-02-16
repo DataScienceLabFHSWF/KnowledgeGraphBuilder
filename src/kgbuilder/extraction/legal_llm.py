@@ -25,8 +25,8 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence, generate_entity_id
-from kgbuilder.extraction.aligner import TextAligner, AlignmentStatus
+from kgbuilder.core.models import Evidence, ExtractedEntity, ExtractedRelation, generate_entity_id
+from kgbuilder.extraction.aligner import AlignmentStatus, TextAligner
 
 
 class LLMProvider(Protocol):
@@ -371,10 +371,10 @@ class LegalLLMExtractor:
             # Verify evidence span if source text provided
             alignment = None
             confidence = item.confidence
-            
+
             if source_text and self.config.verify_evidence:
                 alignment = self._aligner.align(item.evidence_span, source_text)
-                
+
                 # Boost/Penalize confidence based on alignment
                 if alignment.status == AlignmentStatus.EXACT:
                     confidence = min(1.0, confidence + 0.1)
@@ -387,7 +387,7 @@ class LegalLLMExtractor:
                     confidence = confidence * 0.5
 
             entity_id = generate_entity_id(item.label, item.entity_type)
-            
+
             evidence_metadata = {
                 "paragraph_id": paragraph_id,
                 "description": item.description

@@ -22,11 +22,10 @@ from typing import Any
 import structlog
 
 from kgbuilder.storage.protocol import (
+    Edge,
     GraphStore,
     Node,
-    Edge,
     QueryResult,
-    GraphStatistics,
 )
 
 logger = structlog.get_logger(__name__)

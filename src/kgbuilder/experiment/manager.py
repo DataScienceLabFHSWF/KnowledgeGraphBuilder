@@ -12,7 +12,6 @@ Key Design Decisions:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 import uuid
@@ -90,7 +89,7 @@ class ExperimentRun:
             "error": self.error,
             "metadata": self.metadata,
         }
-    
+
     def save_metadata(self, output_dir: Path) -> Path:
         """Save run metadata to JSON file.
         
@@ -102,11 +101,11 @@ class ExperimentRun:
         """
         run_dir = output_dir / self.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
-        
+
         metadata_path = run_dir / "run_metadata.json"
         with open(metadata_path, "w") as f:
             json.dump(self.to_dict(), f, indent=2, default=str)
-        
+
         logger.debug("run_metadata_saved", path=str(metadata_path), run_id=self.run_id)
         return metadata_path
 
@@ -320,17 +319,18 @@ class ConfigRunner:
             KG metrics (nodes, edges, build_time, etc.)
         """
         import os
-        from kgbuilder.agents.question_generator import QuestionGenerationAgent
+
         from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
-        from kgbuilder.storage.ontology import FusekiOntologyService
-        from kgbuilder.storage.vector import QdrantStore
-        from kgbuilder.storage.neo4j_store import Neo4jGraphStore
-        from kgbuilder.retrieval import FusionRAGRetriever
-        from kgbuilder.embedding import OllamaProvider
+        from kgbuilder.agents.question_generator import QuestionGenerationAgent
         from kgbuilder.assembly.kg_builder import KGBuilder, KGBuilderConfig
-        from kgbuilder.storage.protocol import Node
+        from kgbuilder.embedding import OllamaProvider
         from kgbuilder.extraction.entity import LLMEntityExtractor, OntologyPropertyDef
         from kgbuilder.extraction.relation import LLMRelationExtractor, OntologyRelationDef
+        from kgbuilder.retrieval import FusionRAGRetriever
+        from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+        from kgbuilder.storage.ontology import FusekiOntologyService
+        from kgbuilder.storage.protocol import Node
+        from kgbuilder.storage.vector import QdrantStore
 
         build_start = time.time()
 
@@ -347,29 +347,29 @@ class ConfigRunner:
 
             # Initialize services
             logger.info("kg_build_initializing_services", run_id=run_id)
-            
+
             # Log initialization to wandb
             if wandb_run is not None:
                 wandb_run.log({"status": "initializing_services"})
-            
+
             # Ontology service
             ontology_service = FusekiOntologyService(
                 fuseki_url=fuseki_url,
                 dataset_name=fuseki_dataset
             )
-            
+
             # Vector store
             vector_store = QdrantStore(
                 url=qdrant_url,
                 collection_name=qdrant_collection
             )
-            
+
             # LLM & Embeddings
             llm = OllamaProvider(
                 model=variant.params.model,
                 base_url=ollama_url
             )
-            
+
             # Retriever
             retriever = FusionRAGRetriever(
                 qdrant_store=vector_store,
@@ -377,7 +377,7 @@ class ConfigRunner:
                 dense_weight=0.7,
                 sparse_weight=0.3
             )
-            
+
             # Build sparse index from Qdrant for hybrid retrieval
             logger.info("building_sparse_index_for_retrieval", run_id=run_id)
             retriever._build_sparse_index_from_qdrant()
@@ -387,35 +387,35 @@ class ConfigRunner:
                     run_id=run_id,
                     document_count=len(retriever._documents)
                 )
-            
+
             # Question generation
             question_gen = QuestionGenerationAgent(
                 ontology_service=ontology_service
             )
-            
+
             # Entity extractor
             entity_extractor = LLMEntityExtractor(
                 llm_provider=llm,
                 confidence_threshold=variant.params.confidence_threshold
             )
-            
+
             # Relation extractor (NEW - Phase 5)
             relation_extractor = LLMRelationExtractor(
                 llm_provider=llm,
                 confidence_threshold=variant.params.confidence_threshold
             )
-            
+
             # Neo4j store
             neo4j_store = Neo4jGraphStore(
                 uri=neo4j_uri,
                 auth=(neo4j_user, neo4j_password)
             )
-            
+
             # Get ontology classes with properties for extraction guidance (RICH SCHEMA)
             from kgbuilder.extraction.entity import OntologyClassDef
             class_labels = ontology_service.get_all_classes()
             ontology_classes = []
-            
+
             for label in class_labels:
                 # Load properties for each class from ontology (NEW)
                 properties_tuples = ontology_service.get_class_properties(label)
@@ -427,7 +427,7 @@ class ConfigRunner:
                     )
                     for prop_name, prop_type, prop_desc in properties_tuples
                 ]
-                
+
                 ontology_classes.append(
                     OntologyClassDef(
                         uri=f"http://ontology#/{label}",
@@ -436,9 +436,9 @@ class ConfigRunner:
                         properties=properties,  # NEW: Rich schema
                     )
                 )
-            
+
             logger.info("ontology_classes_loaded", count=len(ontology_classes), run_id=run_id)
-            
+
             # Get ontology relations for extraction (NEW - Phase 5)
             ontology_relations = []
             try:
@@ -455,9 +455,9 @@ class ConfigRunner:
             except Exception as e:
                 logger.warning("ontology_relations_load_failed", error=str(e))
                 ontology_relations = []
-            
+
             logger.info("ontology_relations_loaded", count=len(ontology_relations), run_id=run_id)
-            
+
             # Discovery loop
             discovery_loop = IterativeDiscoveryLoop(
                 retriever=retriever,
@@ -467,10 +467,10 @@ class ConfigRunner:
                 relation_extractor=relation_extractor,  # NEW: Wire Phase 5
                 ontology_relations=ontology_relations,  # NEW: Wire Phase 5
             )
-            
+
             # Run discovery loop with continuous wandb logging
             logger.info("kg_build_starting_discovery", run_id=run_id)
-            
+
             # Log initial state to wandb
             if wandb_run is not None:
                 wandb_run.log({
@@ -478,7 +478,7 @@ class ConfigRunner:
                     "ontology_classes": len(ontology_classes),
                     "max_iterations": variant.params.max_iterations,
                 })
-            
+
             discover_result = discovery_loop.run_discovery(
                 max_iterations=variant.params.max_iterations,
                 coverage_target=0.85,
@@ -486,11 +486,11 @@ class ConfigRunner:
                 ontology_classes=ontology_classes,
                 extract_relations=True,  # NEW: One-pass entity + relation extraction
             )
-            
+
             # Get entities and relations from discovery result (dataclass, not dict)
             entities = discover_result.entities
             relations = getattr(discover_result, 'relations', [])  # NEW: Get extracted relations
-            
+
             # Log discovery results to wandb continuously
             if wandb_run is not None:
                 wandb_run.log({
@@ -500,7 +500,7 @@ class ConfigRunner:
                     "discovery_coverage": discover_result.final_coverage,
                     "discovery_time_sec": discover_result.total_time_sec,
                 })
-            
+
             logger.info(
                 "kg_build_discovery_complete",
                 run_id=run_id,
@@ -508,7 +508,7 @@ class ConfigRunner:
                 success=discover_result.success,
                 coverage=discover_result.final_coverage,
             )
-            
+
             # CHECKPOINT: Save extraction results before building KG
             # This enables semantic enrichment and skips re-extraction if needed
             logger.info("checkpointing_extraction_results", run_id=run_id)
@@ -528,10 +528,10 @@ class ConfigRunner:
                 run_id=run_id,
                 checkpoint_path=str(checkpoint_path),
             )
-            
+
             # Build KG with KGBuilder
             logger.info("kg_build_assembling", run_id=run_id)
-            
+
             # Convert ExtractedEntity to Node format
             nodes = [
                 Node(
@@ -546,7 +546,7 @@ class ConfigRunner:
                 )
                 for e in entities
             ]
-            
+
             # Build graph with BOTH entities and relations (NEW - Phase 5)
             builder = KGBuilder(
                 primary_store=neo4j_store,
@@ -555,16 +555,16 @@ class ConfigRunner:
                     batch_size=1000,
                 )
             )
-            
+
             # Log relation count if we extracted relations
             if relations:
                 logger.info("kg_build_with_relations", relation_count=len(relations), run_id=run_id)
-            
+
             # Build with relations (NOW includes Phase 5 output!)
             build_result = builder.build(entities=nodes, relations=relations if relations else None)
-            
+
             build_time = time.time() - build_start
-            
+
             # Log KG build results to wandb
             if wandb_run is not None:
                 wandb_run.log({
@@ -573,7 +573,7 @@ class ConfigRunner:
                     "edges_created": build_result.edges_created,
                     "build_time_seconds": round(build_time, 2),
                 })
-            
+
             logger.info(
                 "kg_build_complete",
                 run_id=run_id,
@@ -581,7 +581,7 @@ class ConfigRunner:
                 edges_created=build_result.edges_created,
                 build_time=build_time
             )
-            
+
             return {
                 "nodes": build_result.nodes_created,
                 "edges": build_result.edges_created,
@@ -601,10 +601,11 @@ class ConfigRunner:
 
         Returns a dict with scorer metrics or ``None`` on failure.
         """
-        import os, shutil
+        import os
+        import shutil
         try:
-            from kgbuilder.validation.scorer import KGQualityScorer
             from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+            from kgbuilder.validation.scorer import KGQualityScorer
 
             neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
             neo4j_user = os.getenv("NEO4J_USER", "neo4j")
@@ -753,7 +754,7 @@ class ExperimentManager:
 
         # Aggregate metrics
         results.aggregate_metrics = self._aggregate_metrics(runs)
-        
+
         # Save experiment-level metadata
         self._save_experiment_metadata(results)
 
@@ -767,7 +768,7 @@ class ExperimentManager:
         )
 
         return results
-    
+
     def _save_experiment_metadata(self, results: ExperimentResults) -> Path:
         """Save experiment-level metadata to JSON.
         
@@ -779,7 +780,7 @@ class ExperimentManager:
         """
         output_dir = Path(self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         metadata = {
             "experiment_id": self.experiment_id,
             "experiment_name": self.config.name,
@@ -792,11 +793,11 @@ class ExperimentManager:
             "run_ids": [r.run_id for r in results.runs],
             "aggregate_metrics": results.aggregate_metrics,
         }
-        
+
         metadata_path = output_dir / f"{self.experiment_id}_metadata.json"
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=2, default=str)
-        
+
         logger.info("experiment_metadata_saved", path=str(metadata_path))
         return metadata_path
 

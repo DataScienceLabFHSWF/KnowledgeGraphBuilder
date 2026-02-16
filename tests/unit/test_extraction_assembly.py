@@ -7,14 +7,15 @@ Tests cover:
 - End-to-end document-to-KG pipeline
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+import pytest
+
+from kgbuilder.assembly.core import GraphStatistics, SimpleKGAssembler
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.chains import ExtractionChains
 from kgbuilder.extraction.entity import OntologyClassDef
 from kgbuilder.extraction.relation import OntologyRelationDef
-from kgbuilder.assembly.core import SimpleKGAssembler, GraphStatistics
 
 
 class TestExtractionChains:

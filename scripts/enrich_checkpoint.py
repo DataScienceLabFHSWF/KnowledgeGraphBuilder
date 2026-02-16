@@ -44,7 +44,7 @@ def load_embedding_provider(model: str = "nomic-embed-text", base_url: str | Non
         EmbeddingProvider instance
     """
     from kgbuilder.embedding.ollama import OllamaEmbeddingProvider
-    
+
     return OllamaEmbeddingProvider(model=model, base_url=base_url)
 
 
@@ -61,7 +61,7 @@ def load_llm_provider(model: str = "qwen3:8b", base_url: str | None = None):
         LLMProvider instance
     """
     from kgbuilder.embedding.ollama import OllamaProvider
-    
+
     return OllamaProvider(model=model, base_url=base_url)
 
 
@@ -85,20 +85,20 @@ def enrich_checkpoint(
         Path to enriched results file
     """
     logger.info("enrichment_starting", checkpoint=str(checkpoint_path))
-    
+
     # Load checkpoint
     checkpoint_manager = CheckpointManager(checkpoint_dir=checkpoint_path.parent)
     entities, relations, metadata = checkpoint_manager.load_extraction(checkpoint_path)
-    
+
     logger.info(
         "checkpoint_loaded",
         entities=len(entities),
         relations=len(relations),
     )
-    
+
     # Initialize enrichment pipeline
     logger.info("initializing_enrichment_pipeline")
-    
+
     try:
         llm_provider = load_llm_provider(llm_model)
         embedding_provider = load_embedding_provider(embedding_model)
@@ -110,25 +110,25 @@ def enrich_checkpoint(
         )
         llm_provider = None
         embedding_provider = None
-    
+
     pipeline = SemanticEnrichmentPipeline(
         llm_provider=llm_provider,
         embedding_provider=embedding_provider,
         confidence_threshold=confidence_threshold,
     )
-    
+
     # Enrich entities
     logger.info("enriching_entities")
     enriched_entities = pipeline.enrich_entities(entities)
-    
+
     # Enrich relations
     logger.info("enriching_relations")
     entity_map = {e.id: e for e in entities}
     enriched_relations = pipeline.enrich_relations(relations, entities=entity_map)
-    
+
     # Prepare output
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save enriched results
     enriched_data = {
         "metadata": asdict(metadata),
@@ -153,18 +153,18 @@ def enrich_checkpoint(
             for er in enriched_relations
         ],
     }
-    
+
     output_path = output_dir / f"enriched_{metadata.run_id}.json"
     with open(output_path, "w") as f:
         json.dump(enriched_data, f, indent=2, default=str)
-    
+
     logger.info(
         "enrichment_complete",
         output_path=str(output_path),
         enriched_entities=len(enriched_entities),
         enriched_relations=len(enriched_relations),
     )
-    
+
     return output_path
 
 
@@ -201,14 +201,14 @@ def main() -> None:
         default=0.5,
         help="Minimum confidence to retain entities"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Validate checkpoint file exists
     if not args.checkpoint.exists():
         print(f"Error: Checkpoint file not found: {args.checkpoint}")
         return
-    
+
     # Run enrichment
     start_time = time.time()
     output_path = enrich_checkpoint(
@@ -219,8 +219,8 @@ def main() -> None:
         confidence_threshold=args.confidence_threshold,
     )
     elapsed = time.time() - start_time
-    
-    print(f"\n✓ Enrichment complete in {elapsed:.1f}s")
+
+    print(f"\n[OK] Enrichment complete in {elapsed:.1f}s")
     print(f"  Output: {output_path}")
 
 

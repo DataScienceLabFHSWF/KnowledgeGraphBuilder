@@ -7,8 +7,10 @@ Download all paragraph/article HTMLs for each important law into a structured su
   - Download each linked HTML into the subdir as <PARA>.html (e.g., 1.html, 2.html, ... or §1.html)
 """
 from __future__ import annotations
+
 import re
 from pathlib import Path
+
 import requests
 from bs4 import BeautifulSoup
 

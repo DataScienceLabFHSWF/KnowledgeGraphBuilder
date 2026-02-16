@@ -14,16 +14,15 @@ Usage::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from kgbuilder.core.models import (
     Chunk,
     ChunkMetadata,
     Document,
     DocumentMetadata,
+    Evidence,
     ExtractedEntity,
     ExtractedRelation,
-    Evidence,
     FileType,
 )
 from kgbuilder.document.loaders.law_xml import CrossReference, LawDocument, Norm
@@ -310,7 +309,7 @@ class LawDocumentAdapter:
         """Parse paragraph number from enbez string like '§ 2', '§ 2a', 'Art. 1'."""
         if not enbez:
             return None
-        
+
         # Extract number after § or Art.
         import re
         match = re.search(r'(?:§|Art\.)\s*(\d+)', enbez)

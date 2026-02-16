@@ -138,7 +138,7 @@ class EvaluationReporter:
                 retrieved_count = len(result.get("retrieved_answers", []))
                 error = result.get("error", "")
 
-                error_str = f"❌ {error[:30]}..." if error else "✓"
+                error_str = f"[ERROR] {error[:30]}..." if error else "[OK]"
                 lines.append(
                     f"| {question_id} | {query_type} | {retrieved_count} | {error_str} |"
                 )

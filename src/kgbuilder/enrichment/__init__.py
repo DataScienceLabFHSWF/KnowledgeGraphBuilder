@@ -15,8 +15,8 @@ from kgbuilder.enrichment.enrichers import (
     EmbeddingEnricher,
     TypeConstraintEnricher,
 )
-from kgbuilder.enrichment.pipeline import SemanticEnrichmentPipeline, EnrichmentMetrics
-from kgbuilder.enrichment.protocols import Enricher, EnrichedEntity, EnrichedRelation
+from kgbuilder.enrichment.pipeline import EnrichmentMetrics, SemanticEnrichmentPipeline
+from kgbuilder.enrichment.protocols import EnrichedEntity, EnrichedRelation, Enricher
 
 __all__ = [
     "SemanticEnrichmentPipeline",

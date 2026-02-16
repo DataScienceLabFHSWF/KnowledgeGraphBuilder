@@ -20,19 +20,17 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from typing import Any
 from urllib.parse import urljoin
-import json
 
 import structlog
-from SPARQLWrapper import SPARQLWrapper, JSON, TURTLE, POST
+from SPARQLWrapper import JSON, POST, TURTLE, SPARQLWrapper
 
 from kgbuilder.storage.protocol import (
-    GraphStore,
-    Node,
     Edge,
-    QueryResult,
     GraphStatistics,
+    Node,
+    QueryResult,
 )
 
 logger = structlog.get_logger(__name__)

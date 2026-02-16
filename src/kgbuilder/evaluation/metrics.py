@@ -22,10 +22,10 @@ logger = structlog.get_logger(__name__)
 # Optional DeepEval import - gracefully degrade if not installed
 try:
     from deepeval.metrics import (
-        Faithfulness,
-        Relevance,
         AnswerRelevancy,
         Correctness,
+        Faithfulness,
+        Relevance,
     )
     from deepeval.test_case import LLMTestCase
 

@@ -25,11 +25,10 @@ Usage:
 
 from __future__ import annotations
 
-import sys
-import os
 import argparse
+import os
+import sys
 from pathlib import Path
-from typing import Any
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -42,17 +41,15 @@ logger = structlog.get_logger(__name__)
 # REAL COMPONENT IMPORTS
 # =============================================================================
 
-from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.agents.discovery_loop import IterativeDiscoveryLoop
+from kgbuilder.agents.question_generator import QuestionGenerationAgent
 from kgbuilder.assembly.simple_kg_assembler import SimpleKGAssembler
+from kgbuilder.embedding import OllamaProvider
+from kgbuilder.extraction.entity import LLMEntityExtractor, OntologyClassDef
 from kgbuilder.extraction.synthesizer import FindingsSynthesizer
-from kgbuilder.extraction.entity import OntologyClassDef
+from kgbuilder.retrieval import FusionRAGRetriever
 from kgbuilder.storage.ontology import FusekiOntologyService
 from kgbuilder.storage.vector import QdrantStore
-from kgbuilder.retrieval import FusionRAGRetriever
-from kgbuilder.extraction.entity import LLMEntityExtractor
-from kgbuilder.embedding import OllamaProvider
-from kgbuilder.core.models import ExtractedEntity
 
 # =============================================================================
 # ENVIRONMENT CONFIGURATION
@@ -83,7 +80,7 @@ def parse_arguments() -> argparse.Namespace:
         description="End-to-end KG construction pipeline with hyperparameter tuning",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    
+
     # Hyperparameters for ablation studies
     parser.add_argument(
         "--questions-per-class",
@@ -91,55 +88,55 @@ def parse_arguments() -> argparse.Namespace:
         default=3,
         help="Number of questions to generate per ontology class"
     )
-    
+
     parser.add_argument(
         "--max-iterations",
         type=int,
         default=5,
         help="Maximum iterations for the discovery loop"
     )
-    
+
     parser.add_argument(
         "--similarity-threshold",
         type=float,
         default=0.85,
         help="Entity deduplication similarity threshold (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--confidence-threshold",
         type=float,
         default=0.6,
         help="Minimum confidence for extracted entities (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--classes-limit",
         type=int,
         default=3,
         help="Limit ontology classes to process (for testing)"
     )
-    
+
     parser.add_argument(
         "--dense-weight",
         type=float,
         default=0.7,
         help="Weight for dense retrieval in FusionRAG (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--sparse-weight",
         type=float,
         default=0.3,
         help="Weight for sparse retrieval in FusionRAG (0.0-1.0)"
     )
-    
+
     parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose logging"
     )
-    
+
     return parser.parse_args()
 
 
@@ -250,10 +247,10 @@ def convert_class_names_to_definitions(
 
 def main() -> None:
     """Run the complete end-to-end KG construction pipeline."""
-    
+
     # Parse CLI arguments for hyperparameter control
     args = parse_arguments()
-    
+
     print("\n" + "="*80)
     print("KNOWLEDGE GRAPH CONSTRUCTION PIPELINE")
     print("="*80)
@@ -379,7 +376,7 @@ def main() -> None:
         # Assemble into Neo4j
         assembly_result = assembler.assemble(entities=synthesized_entities)
 
-        print(f"✓ Phase 4D: Created KG in Neo4j")
+        print("✓ Phase 4D: Created KG in Neo4j")
         print(f"  - Nodes created: {assembly_result.nodes_created}")
         print(f"  - Relationships created: {assembly_result.relationships_created}")
         print(f"  - Errors: {len(assembly_result.errors)}\n")

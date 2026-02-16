@@ -1,0 +1,98 @@
+site_name: KnowledgeGraphBuilder
+site_description: Ontology-driven Knowledge Graph construction pipeline
+site_url: https://datasciancelabfhswf.github.io/KnowledgeGraphBuilder/
+repo_url: https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder
+repo_name: DataScienceLabFHSWF/KnowledgeGraphBuilder
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            signature_crossrefs: true
+            separate_signature: true
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+  - tables
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: getting-started/quickstart.md
+      - Infrastructure: getting-started/infrastructure.md
+      - Configuration: getting-started/configuration.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Pipeline Layers: architecture/pipeline-layers.md
+      - Domain Pluggability: architecture/domain-pluggability.md
+  - User Guide:
+      - Full Pipeline: guide/full-pipeline.md
+      - Law Graph: guide/law-graph.md
+      - Experiments: guide/experiments.md
+      - Validation: guide/validation.md
+  - API Reference: reference/
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder

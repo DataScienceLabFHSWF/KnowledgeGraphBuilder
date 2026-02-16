@@ -1,8 +1,11 @@
 
-import pytest
-from unittest.mock import MagicMock
-from kgbuilder.extraction.legal_llm import LegalLLMExtractor, LegalEntityExtractionOutput, LegalEntityItem, LegalExtractionConfig
-from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.extraction.legal_llm import (
+    LegalEntityExtractionOutput,
+    LegalEntityItem,
+    LegalExtractionConfig,
+    LegalLLMExtractor,
+)
+
 
 class MockLLM:
     def generate_structured(self, prompt, schema, **kwargs):
@@ -29,26 +32,26 @@ def test_aligner_integration():
     ontology = MockOntology()
     config = LegalExtractionConfig(confidence_threshold=0.1)
     extractor = LegalLLMExtractor(llm, ontology, config)
-    
+
     # Text contains the evidence
     text = "This is some content where the entity Test Entity is found in text explicitly."
-    
+
     entities = extractor.extract_entities(text, paragraph_id="p1")
-    
+
     assert len(entities) == 1
     ent = entities[0]
     print(f"Entity: {ent.label}, Conf: {ent.confidence}")
     print(f"Evidence props: {ent.properties}")
-    
+
     # Check alignment metadata
     assert ent.properties["alignment"] == "exact"
     assert ent.properties["matched_span"] == "found in text"
-    
+
     # Test mismatch logic
     # Text DOES NOT contain the evidence
     text_mismatch = "This text has nothing to do with it."
     entities_mismatch = extractor.extract_entities(text_mismatch, paragraph_id="p1")
-    
+
     ent_mismatch = entities_mismatch[0]
     print(f"Entity Mismatch: {ent_mismatch.label}, Conf: {ent_mismatch.confidence}")
     assert ent_mismatch.properties["alignment"] == "missing"
