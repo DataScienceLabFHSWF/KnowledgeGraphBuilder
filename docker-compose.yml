@@ -70,6 +70,19 @@ services:
     networks:
       - kgbuilder-net
 
+  ollama:
+    image: ollama/ollama:0.14.3
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "18134:11434"
+    volumes:
+      - ./data/ollama:/var/lib/ollama
+    environment:
+      - OLLAMA_ALLOW_DOWNLOADS=true
+    networks:
+      - kgbuilder-net
+
 networks:
   kgbuilder-net:
     driver: bridge

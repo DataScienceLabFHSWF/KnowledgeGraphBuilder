@@ -269,13 +269,25 @@ class FusekiOntologyService:
             logger.warning("all_relations_load_failed", error=str(e))
             return []
 
-    def get_class_hierarchy(self) -> list[tuple[str, str]]:
-        """Get all subClassOf relationships in the ontology.
-        
+    def get_class_hierarchy(self, class_name: str | None = None) -> list[tuple[str, str]] | dict[str, any]:
+        """Get class hierarchy information.
+
+        Two behaviours are supported:
+        - No argument: return list of (child_label, parent_label) tuples for the
+          entire ontology (backwards-compatible behaviour).
+        - `class_name` provided: return a dict with 'parents', 'children' and
+          'depth' for the requested class (used by question generation).
+
+        Args:
+            class_name: Optional class label to query for (case-insensitive).
+
         Returns:
-            List of (child_label, parent_label) tuples
+            If `class_name` is None: list[tuple[child, parent]]
+            Otherwise: dict with keys: 'parents' (list[str]), 'children' (list[str]),
+                       'depth' (int)
         """
         try:
+            # Fetch full subclass graph once and reuse for both behaviours.
             sparql = """
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
@@ -288,15 +300,70 @@ class FusekiOntologyService:
             }
             """
             res = self.store.query_sparql(sparql)
-            hierarchy = []
+            hierarchy_pairs: list[tuple[str, str]] = []
             for binding in res.get("results", {}).get("bindings", []):
-                child = binding.get("childLabel", {}).get("value") or binding.get("child", {}).get("value").split("#")[-1]
-                parent = binding.get("parentLabel", {}).get("value") or binding.get("parent", {}).get("value").split("#")[-1]
-                hierarchy.append((child, parent))
-            return hierarchy
+                child = (
+                    binding.get("childLabel", {}).get("value")
+                    or binding.get("child", {}).get("value").split("#")[-1]
+                )
+                parent = (
+                    binding.get("parentLabel", {}).get("value")
+                    or binding.get("parent", {}).get("value").split("#")[-1]
+                )
+                hierarchy_pairs.append((child, parent))
+
+            # If no class requested, return full list (existing behaviour)
+            if class_name is None:
+                return hierarchy_pairs
+
+            # Build quick lookup maps
+            parents_map: dict[str, set[str]] = {}
+            children_map: dict[str, set[str]] = {}
+            nodes: set[str] = set()
+            for child, parent in hierarchy_pairs:
+                nodes.add(child)
+                nodes.add(parent)
+                parents_map.setdefault(child, set()).add(parent)
+                children_map.setdefault(parent, set()).add(child)
+
+            # Normalize requested class (try exact match first, then case-insensitive)
+            target = None
+            if class_name in nodes:
+                target = class_name
+            else:
+                lowered = {n.lower(): n for n in nodes}
+                target = lowered.get(class_name.lower())
+
+            if not target:
+                # Class not present in hierarchy — return empty info
+                return {"parents": [], "children": [], "depth": 0}
+
+            # Collect immediate parents and children
+            parents = sorted(list(parents_map.get(target, [])))
+            children = sorted(list(children_map.get(target, [])))
+
+            # Compute depth (distance to root = number of ancestor hops)
+            def _compute_depth(node: str, visited: set[str] | None = None) -> int:
+                visited = visited or set()
+                # If no parents -> root (depth 0)
+                if not parents_map.get(node):
+                    return 0
+                max_depth = 0
+                for p in parents_map.get(node, []):
+                    if p in visited:
+                        continue
+                    visited.add(p)
+                    d = 1 + _compute_depth(p, visited)
+                    max_depth = max(max_depth, d)
+                return max_depth
+
+            depth = _compute_depth(target)
+
+            return {"parents": parents, "children": children, "depth": depth}
+
         except Exception as e:
             logger.warning("hierarchy_load_failed", error=str(e))
-            return []
+            return [] if class_name is None else {"parents": [], "children": [], "depth": 0}
 
     def get_special_properties(self) -> dict[str, list[str]]:
         """Get properties with special OWL characteristics.

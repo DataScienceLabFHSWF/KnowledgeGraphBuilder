@@ -33,14 +33,12 @@ class OntologyService(Protocol):
         """
         ...
 
-    def get_class_hierarchy(self, class_name: str) -> dict[str, Any]:
-        """Get hierarchy information for a class.
+    def get_class_hierarchy(self, class_name: str | None = None) -> dict[str, Any] | list[tuple[str, str]]:
+        """Get class hierarchy information.
 
-        Args:
-            class_name: Class to query
-
-        Returns:
-            Dict with 'parents' (list[str]), 'children' (list[str]), 'depth' (int)
+        Supports two modes:
+        - `class_name` provided -> return dict with 'parents', 'children', 'depth'
+        - no argument -> return full list of (child, parent) tuples
         """
         ...
 
