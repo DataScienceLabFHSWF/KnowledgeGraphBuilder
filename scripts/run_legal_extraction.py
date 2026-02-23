@@ -424,7 +424,6 @@ def main() -> None:
 
         # Merge results (if both available, prefer LLM where overlap)
         all_results = rule_results  # Use rule as base
-        # TODO: When LegalEnsembleExtractor (Task 3) is done, use it here
 
         # Write to Neo4j
         print("\n--- Writing to Neo4j ---")

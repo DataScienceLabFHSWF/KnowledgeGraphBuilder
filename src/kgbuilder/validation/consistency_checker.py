@@ -221,8 +221,8 @@ class ConsistencyChecker:
                     if node1.node_type != node2.node_type:
                         continue
 
-                    # Compute similarity
-                    similarity = self._compute_similarity(node1.id, node2.id, store)
+                    # Compute similarity using helper that operates on nodes
+                    similarity = self.compute_similarity(node1, node2)
 
                     if similarity >= threshold:
                         duplicates.append(
@@ -397,70 +397,95 @@ class ConsistencyChecker:
 
         return conflicts
 
-    def _compute_similarity(
-        self, entity1_id: str, entity2_id: str, store: GraphStore
-    ) -> float:
-        """Compute similarity between two entities.
-
-        Uses multiple similarity metrics:
-        - String similarity (label/name using Levenshtein distance)
-        - Type similarity (compatible types)
-        - Property overlap (Jaccard similarity)
+    @staticmethod
+    def _get_node_by_id(store: GraphStore, node_id: str):
+        """Helper to retrieve a node from the store by ID.
 
         Args:
-            entity1_id: First entity ID
-            entity2_id: Second entity ID
-            store: GraphStore to query
+            store: GraphStore to query.
+            node_id: ID of the desired node.
 
         Returns:
-            Similarity score (0.0-1.0)
+            The matching :class:`~kgbuilder.storage.protocol.Node` or ``None`` if
+            not found.
         """
-        similarity = 0.0
+        for node in store.get_all_nodes():
+            if node.id == node_id:
+                return node
+        return None
 
+    @staticmethod
+    def compute_similarity(node1, node2) -> float:  # type: ignore[override]
+        """Compute similarity between two nodes.
+
+        This method is intentionally ``@staticmethod`` so that callers (and tests)
+        can operate on :class:`~kgbuilder.storage.protocol.Node` objects without
+        requiring a full ``GraphStore`` implementation.
+
+        The score aggregates three simple heuristics:
+        1. **Type similarity** – 1.0 if the nodes share the same type.
+        2. **Label similarity** – character overlap normalized by max length.
+        3. **Property overlap** – Jaccard similarity over property keys.
+
+        The final score is a weighted sum: ``0.3*type + 0.4*label + 0.3*props``.
+
+        Args:
+            node1: First node to compare.
+            node2: Second node to compare.
+
+        Returns:
+            Similarity score between 0.0 and 1.0.
+        """
         try:
-            nodes = store.get_all_nodes()
-            entity1 = None
-            entity2 = None
-
-            for node in nodes:
-                if node.id == entity1_id:
-                    entity1 = node
-                elif node.id == entity2_id:
-                    entity2 = node
-
-            if not entity1 or not entity2:
-                return 0.0
-
             # Type similarity (1.0 if same type, 0.0 if different)
-            type_similarity = 1.0 if entity1.node_type == entity2.node_type else 0.0
+            type_similarity = 1.0 if node1.node_type == node2.node_type else 0.0
 
-            # Label/name similarity (using simple character overlap)
+            # Label/name similarity (simple character overlap)
+            label1 = (node1.label or "").lower()
+            label2 = (node2.label or "").lower()
             label_similarity = 0.0
-            label1 = (entity1.label or "").lower()
-            label2 = (entity2.label or "").lower()
-
             if label1 and label2:
-                # Simple Levenshtein-like similarity
-                matches = sum(
-                    1 for c1, c2 in zip(label1, label2) if c1 == c2
-                )
+                matches = sum(1 for c1, c2 in zip(label1, label2) if c1 == c2)
                 max_len = max(len(label1), len(label2))
                 label_similarity = matches / max_len if max_len > 0 else 0.0
 
-            # Property overlap (Jaccard similarity)
-            props1_keys = set(entity1.properties.keys())
-            props2_keys = set(entity2.properties.keys())
+            # Property overlap (Jaccard similarity over keys)
+            props1_keys = set(node1.properties.keys())
+            props2_keys = set(node2.properties.keys())
             intersection = len(props1_keys & props2_keys)
             union = len(props1_keys | props2_keys)
             property_similarity = intersection / union if union > 0 else 0.0
 
-            # Aggregate: type * 0.3 + label * 0.4 + properties * 0.3
-            similarity = (
+            return (
                 type_similarity * 0.3
                 + label_similarity * 0.4
                 + property_similarity * 0.3
             )
+        except Exception as e:
+            logger.warning(
+                "similarity_computation_failed_static",
+                node1=node1.id if hasattr(node1, "id") else None,
+                node2=node2.id if hasattr(node2, "id") else None,
+                error=str(e),
+            )
+            return 0.0
 
+    def _compute_similarity(
+        self, entity1_id: str, entity2_id: str, store: GraphStore
+    ) -> float:
+        """Compute similarity between two entities by ID via the store.
+
+        This wrapper resolves the nodes and delegates to
+        :meth:`compute_similarity`.
+        """
+        similarity = 0.0
+        try:
+            entity1 = self._get_node_by_id(store, entity1_id)
+            entity2 = self._get_node_by_id(store, entity2_id)
+            if not entity1 or not entity2:
+                return 0.0
+
+            similarity = self.compute_similarity(entity1, entity2)
         except Exception as e:
             logger.warning(
                 "similarity_computation_failed",
@@ -468,5 +493,4 @@ class ConsistencyChecker:
                 entity2=entity2_id,
                 error=str(e),
             )
-
         return similarity

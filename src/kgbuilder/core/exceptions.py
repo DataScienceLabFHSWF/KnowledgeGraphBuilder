@@ -39,3 +39,7 @@ class StorageError(KGBuilderError):
 
 class VersioningError(KGBuilderError):
     """Error with KG versioning."""
+
+
+class LLMError(KGBuilderError):
+    """Error occurred during LLM interaction (generation or embeddings)."""

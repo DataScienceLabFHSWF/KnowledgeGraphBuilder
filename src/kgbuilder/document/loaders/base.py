@@ -2,14 +2,6 @@
 
 Implementation of Issue #2.1: Document Ingestion Interface
 
-TODO:
-- [x] Define DocumentLoader protocol
-- [x] Implement DocumentLoaderFactory for dynamic loader selection
-- [ ] Implement TXT and Markdown loaders (Issue #2.1)
-- [ ] Add batch processing with progress callbacks
-- [ ] Add error recovery and logging via structlog
-- [ ] Add unit tests (tests/document/test_loaders.py)
-
 See Planning/ISSUES_BACKLOG.md Issue #2.1 for acceptance criteria.
 """
 

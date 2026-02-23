@@ -2,17 +2,6 @@
 
 Implementation of Issue #2.4: Chunking Strategy System
 
-TODO:
-- [x] Implement FixedSizeChunker (basic character-based)
-- [x] Implement SemanticChunker (paragraph-based)
-- [x] Implement StructuralChunker (section-based with heading extraction)
-- [x] Implement HierarchicalChunker (nested chunks with parent-child relationships)
-- [ ] Improve token counting (use tiktoken or proper tokenizers instead of split())
-- [ ] Add configurable separators (\\n, \\n\\n, etc.)
-- [ ] Add overlap handling to preserve context at chunk boundaries
-- [x] Add metadata enrichment (heading levels, page ranges, section hierarchy)
-- [ ] Add unit tests for each strategy
-- [ ] Add benchmark tests for chunking performance
 
 See Planning/ISSUES_BACKLOG.md Issue #2.4 for acceptance criteria.
 """

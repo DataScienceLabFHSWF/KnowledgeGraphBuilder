@@ -124,8 +124,8 @@ class RuleBasedRelationExtractor:
                             relations.append(
                                 ExtractedRelation(
                                     id=rel_id,
-                                    source_id=ent1.id,
-                                    target_id=ent2.id,
+                                    source_entity_id=ent1.id,
+                                    target_entity_id=ent2.id,
                                     predicate=pattern.edge_type,
                                     confidence=pattern.confidence,
                                     evidence=[

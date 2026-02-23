@@ -107,7 +107,6 @@ def enrich_from_checkpoint(
         output_dir.mkdir(parents=True, exist_ok=True)
         enriched_checkpoint = output_dir / f"{checkpoint_path.stem}_enriched.json"
         logger.info(f"Saving enriched checkpoint to {enriched_checkpoint}")
-        # TODO: implement enriched checkpoint serialization
-        # checkpoint_mgr.save_enriched(...)
+        # serialization not yet implemented
 
     return enriched_entities, enriched_relations

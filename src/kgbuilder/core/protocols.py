@@ -1,12 +1,6 @@
 """Protocol interfaces for KnowledgeGraphBuilder.
 
 See Planning/INTERFACES.md for full protocol specifications.
-
-TODO: Implementation Tasks (Issues #1.1, #2.1, #3.1, #4.1)
-- All protocols define contracts for pluggable implementations
-- Use @runtime_checkable for isinstance() checks in DI container
-- Implementations should live in respective submodules (e.g., loaders/pdf.py)
-- Add async variants as needed (async_embed_batch, etc.)
 """
 
 from __future__ import annotations

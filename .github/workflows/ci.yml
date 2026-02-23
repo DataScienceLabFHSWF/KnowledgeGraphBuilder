@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff[standard]==0.0.275 black mypy
+      - name: Run ruff
+        run: ruff check src tests --exit-zero
+      - name: Run black check
+        run: black --check src tests
+      - name: Run mypy
+        run: mypy src
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    services:
+      # optional external services may be added in the 'integration' workflow
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run pytest
+        run: pytest tests/unit/ -q
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install docs deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material
+      - name: Build MkDocs
+        run: mkdocs build --strict

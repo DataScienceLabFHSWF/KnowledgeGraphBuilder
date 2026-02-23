@@ -207,7 +207,7 @@ class KGValidationOrchestrator:
                 "issues": [],
             }
 
-            # TODO: Sample recent extraction results from database
+            # (placeholder) sample recent extraction results from database
             # Check confidence distributions
             # Check for anomalies in entity types
 

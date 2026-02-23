@@ -117,7 +117,6 @@ class AnalyticsPipeline:
             if self.skos_enricher:
                 logger.info("analytics_phase interval=3_skos_enrichment")
                 result.skos_enabled = True
-                # TODO: Implement batch SKOS enrichment when ontology queries available
                 logger.info("skos_enrichment_deferred", reason="ontology_queries_needed")
 
             # Phase 4: Measure improvements

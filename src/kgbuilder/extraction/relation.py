@@ -287,170 +287,172 @@ Extract all valid relationships between entities. Return ONLY JSON.
 Only include relationships between entities in the provided list.
 Respect domain/range constraints strictly."""
 
+    @staticmethod
     def _format_entities_for_prompt(
-        self,
         entities: list[ExtractedEntity]
     ) -> str:
-        """Format entities for display in prompt.
-        
+        """Serialize entities into a human-readable list for prompting.
+
         Args:
-            entities: List of entities
-            
+            entities: Entities to include in the prompt
+
         Returns:
-            Formatted entity list string
+            A newline-separated string where each line describes one entity.
+
+        This helper is used both in prompt construction and in tests to verify
+        the formatting logic independently of any extractor instance.
         """
-        lines = []
+        lines: list[str] = []
         for entity in entities:
-            lines.append(f"- {entity.id}: {entity.label} ({entity.entity_type}) [Confidence: {entity.confidence:.2f}]")
+            lines.append(
+                f"- {entity.id}: {entity.label} ({entity.entity_type}) "
+                f"[Confidence: {entity.confidence:.2f}]"
+            )
         return "\n".join(lines)
 
+    @staticmethod
     def _find_entity_by_id(
-        self,
         entity_id: str,
         entities: list[ExtractedEntity]
     ) -> ExtractedEntity | None:
-        """Find entity by ID in the list.
-        
+        """Lookup an entity with the given ID within a list.
+
         Args:
-            entity_id: Entity ID to find
-            entities: List of entities
-            
+            entity_id: Identifier to search for.
+            entities: List of `ExtractedEntity` objects.
+
         Returns:
-            Entity if found, None otherwise
+            The matching entity or ``None`` if not found.
+
+        This is a simple linear search used during validation of LLM output.
+        Making it static allows individual testing without creating a full
+        `LLMRelationExtractor` instance.
         """
         for entity in entities:
             if entity.id == entity_id:
                 return entity
         return None
 
+    @staticmethod
     def _validate_domain_range(
-        self,
         source_entity: ExtractedEntity,
         target_entity: ExtractedEntity,
         ontology_def: OntologyRelationDef | None,
     ) -> bool:
-        """Validate domain/range constraints for a relation.
+        """Check that a candidate relation satisfies ontological constraints.
+
+        A relation is considered valid if:
+        1. ``ontology_def`` is ``None`` (no constraints)
+        2. ``source_entity.entity_type`` intersects ``ontology_def.domain`` (if
+           domain list is non-empty)
+        3. ``target_entity.entity_type`` intersects ``ontology_def.range`` (if
+           range list is non-empty)
 
         Args:
-            source_entity: Source entity
-            target_entity: Target entity
-            ontology_def: Ontology relation definition (None = no constraints)
+            source_entity: The prospective source of the relation.
+            target_entity: The prospective target of the relation.
+            ontology_def: Relation definition containing domain/range lists.
 
         Returns:
-            True if constraints satisfied
+            ``True`` if the constraint checks pass, ``False`` otherwise.
         """
-        # If no ontology definition, assume valid (permissive)
         if not ontology_def:
             return True
 
-        # Check domain (source must be in domain)
         if ontology_def.domain:
             source_types = {t.strip() for t in source_entity.entity_type.split("|")}
             domain_types = set(ontology_def.domain)
-
             if not source_types.intersection(domain_types):
-                self._logger.debug(
+                logger.debug(
                     "domain_check_failed",
                     expected=ontology_def.domain,
-                    actual=source_entity.entity_type
+                    actual=source_entity.entity_type,
                 )
                 return False
 
-        # Check range (target must be in range)
         if ontology_def.range:
             target_types = {t.strip() for t in target_entity.entity_type.split("|")}
             range_types = set(ontology_def.range)
-
             if not target_types.intersection(range_types):
-                self._logger.debug(
+                logger.debug(
                     "range_check_failed",
                     expected=ontology_def.range,
-                    actual=target_entity.entity_type
+                    actual=target_entity.entity_type,
                 )
                 return False
 
         return True
 
+    @staticmethod
     def _check_cardinality_constraints(
-        self,
         relations: list[ExtractedRelation],
         ontology_defs: dict[str, OntologyRelationDef],
     ) -> list[ExtractedRelation]:
-        """Filter relations by cardinality constraints.
+        """Filter a list of relations according to cardinality rules.
 
-        - is_functional: (source, predicate) can have at most 1 object
-        - is_inverse_functional: (object, predicate) can have at most 1 subject
+        The following constraints are supported:
+        * **functional** – each (source, predicate) pair appears at most once.
+        * **inverse_functional** – each (target, predicate) pair appears at most
+          once.
+
+        If a conflict is detected, the relation with higher confidence is
+        retained.  If no ontology definition exists for a predicate the relation
+        is kept unconditionally.
+
+        This method is static so it can be exercised in isolation by unit tests.
 
         Args:
-            relations: Extracted relations
-            ontology_defs: Ontology relation definitions by URI
+            relations: Candidate relations extracted from text.
+            ontology_defs: Map from predicate URI to its ontology definition.
 
         Returns:
-            Filtered relations respecting cardinality
+            A filtered list of relations honouring the specified constraints.
         """
-        filtered = []
+        filtered: list[ExtractedRelation] = []
 
         for relation in relations:
             onto_def = ontology_defs.get(relation.predicate)
 
             if not onto_def:
-                # No constraints, keep it
                 filtered.append(relation)
                 continue
 
-            # Check functional constraint
-            # (source, predicate) should not appear more than once
+            # functional constraint
             if onto_def.is_functional:
-                # Look for existing relation with same source and predicate
-                existing = None
-                existing_idx = None
                 for i, r in enumerate(filtered):
-                    if (r.source_entity_id == relation.source_entity_id and
-                        r.predicate == relation.predicate):
-                        existing = r
-                        existing_idx = i
+                    if r.source_entity_id == relation.source_entity_id and r.predicate == relation.predicate:
+                        logger.debug(
+                            "functional_constraint_check",
+                            source=relation.source_entity_id,
+                            predicate=relation.predicate,
+                            existing_confidence=r.confidence,
+                            new_confidence=relation.confidence,
+                        )
+                        if relation.confidence > r.confidence:
+                            filtered[i] = relation
                         break
+                else:
+                    filtered.append(relation)
+                continue
 
-                if existing:
-                    self._logger.debug(
-                        "functional_constraint_check",
-                        source=relation.source_entity_id,
-                        predicate=relation.predicate,
-                        existing_confidence=existing.confidence,
-                        new_confidence=relation.confidence
-                    )
-                    # Keep the one with higher confidence
-                    if relation.confidence > existing.confidence:
-                        filtered[existing_idx] = relation
-                    continue
-
-            # Check inverse functional constraint
-            # (target, predicate) should not appear more than once
+            # inverse functional constraint
             if onto_def.is_inverse_functional:
-                # Look for existing relation with same target and predicate
-                existing = None
-                existing_idx = None
                 for i, r in enumerate(filtered):
-                    if (r.target_entity_id == relation.target_entity_id and
-                        r.predicate == relation.predicate):
-                        existing = r
-                        existing_idx = i
+                    if r.target_entity_id == relation.target_entity_id and r.predicate == relation.predicate:
+                        logger.debug(
+                            "inverse_functional_constraint_check",
+                            target=relation.target_entity_id,
+                            predicate=relation.predicate,
+                            existing_confidence=r.confidence,
+                            new_confidence=relation.confidence,
+                        )
+                        if relation.confidence > r.confidence:
+                            filtered[i] = relation
                         break
+                else:
+                    filtered.append(relation)
+                continue
 
-                if existing:
-                    self._logger.debug(
-                        "inverse_functional_constraint_check",
-                        target=relation.target_entity_id,
-                        predicate=relation.predicate,
-                        existing_confidence=existing.confidence,
-                        new_confidence=relation.confidence
-                    )
-                    # Keep the one with higher confidence
-                    if relation.confidence > existing.confidence:
-                        filtered[existing_idx] = relation
-                    continue
-
-            # No constraint violation
             filtered.append(relation)
 
         return filtered

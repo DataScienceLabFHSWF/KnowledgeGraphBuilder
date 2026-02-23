@@ -89,11 +89,53 @@ class InversePropertyRule(SemanticRule):
                 f"Enforce inverse property: {self.property_uri} → {self.inverse_uri}"
             )
 
-    def check(self, store: GraphStore) -> list[RuleViolation]:
-        """Check inverse property rule.
+    @staticmethod
+    def _find_missing_inverses(
+        edges: list[Any],
+        property_uri: str,
+        inverse_uri: str,
+        rule_name: str,
+        rule_description: str,
+    ) -> list[RuleViolation]:
+        """Helper to identify missing inverse edges.
 
-        For each (A, property, B) triple, verifies that (B, inverse, A)
-        exists. Creates violations for missing inverse relations.
+        Args:
+            edges: List of Edge objects
+            property_uri: URI being checked
+            inverse_uri: URI of the expected inverse
+            rule_name: Name for violation records
+            rule_description: Description for violation records
+
+        Returns:
+            List of RuleViolation instances for each missing inverse edge.
+        """
+        violations: list[RuleViolation] = []
+        for edge in edges:
+            if edge.edge_type != property_uri:
+                continue
+
+            inverse_exists = any(
+                other.edge_type == inverse_uri
+                and other.source_id == edge.target_id
+                and other.target_id == edge.source_id
+                for other in edges
+            )
+
+            if not inverse_exists:
+                violations.append(
+                    RuleViolation(
+                        rule_name=rule_name,
+                        rule_description=rule_description,
+                        subject_id=edge.target_id,
+                        predicate=inverse_uri,
+                        object_id=edge.source_id,
+                        reason=f"Missing inverse relation: {inverse_uri}({edge.target_id}, {edge.source_id})",
+                    )
+                )
+        return violations
+
+    def check(self, store: GraphStore) -> list[RuleViolation]:
+        """Check inverse property rule using helper.
 
         Args:
             store: GraphStore to check
@@ -101,55 +143,25 @@ class InversePropertyRule(SemanticRule):
         Returns:
             Violations where inverse property is missing
         """
-        violations: list[RuleViolation] = []
-
         if not self.enabled:
-            return violations
+            return []
 
         try:
             logger.debug("checking_inverse_property", rule=self.name)
-
-            # Get all edges with the property
-            edges = store.get_all_edges()
-            for edge in edges:
-                if edge.edge_type != self.property_uri:
-                    continue
-
-                # Check if inverse relation exists
-                inverse_exists = False
-                for other_edge in edges:
-                    if (
-                        other_edge.edge_type == self.inverse_uri
-                        and other_edge.source_id == edge.target_id
-                        and other_edge.target_id == edge.source_id
-                    ):
-                        inverse_exists = True
-                        break
-
-                if not inverse_exists:
-                    violations.append(
-                        RuleViolation(
-                            rule_name=self.name,
-                            rule_description=self.description,
-                            subject_id=edge.target_id,
-                            predicate=self.inverse_uri,
-                            object_id=edge.source_id,
-                            reason=f"Missing inverse relation: {self.inverse_uri}({edge.target_id}, {edge.source_id})",
-                        )
-                    )
-
+            violations = InversePropertyRule._find_missing_inverses(
+                store.get_all_edges(), self.property_uri, self.inverse_uri, self.name, self.description
+            )
             logger.info(
                 "inverse_property_checked",
                 rule=self.name,
                 violation_count=len(violations),
             )
-
+            return violations
         except Exception as e:
             logger.warning(
                 "inverse_property_check_failed", rule=self.name, error=str(e)
             )
-
-        return violations
+            return []
 
 
 @dataclass
@@ -177,69 +189,67 @@ class TransitiveRule(SemanticRule):
         if not self.description:
             self.description = f"Enforce transitive property: {self.property_uri}"
 
+    @staticmethod
+    def _find_missing_transitives(
+        edges: list[Any],
+        property_uri: str,
+        rule_name: str,
+        rule_description: str,
+    ) -> list[RuleViolation]:
+        """Detect missing transitive closures among a list of edges.
+
+        Looks for patterns A->B and B->C without a direct A->C edge.
+        """
+        violations: list[RuleViolation] = []
+        prop_edges = [e for e in edges if e.edge_type == property_uri]
+        for e1 in prop_edges:
+            for e2 in prop_edges:
+                if e1.target_id != e2.source_id:
+                    continue
+                direct_exists = any(
+                    de.source_id == e1.source_id
+                    and de.target_id == e2.target_id
+                    for de in prop_edges
+                )
+                if not direct_exists:
+                    violations.append(
+                        RuleViolation(
+                            rule_name=rule_name,
+                            rule_description=rule_description,
+                            subject_id=e1.source_id,
+                            predicate=property_uri,
+                            object_id=e2.target_id,
+                            reason=(
+                                f"Missing transitive closure: {property_uri}"
+                                f"({e1.source_id}, {e2.target_id}) via {e1.target_id}"
+                            ),
+                        )
+                    )
+        return violations
+
     def check(self, store: GraphStore) -> list[RuleViolation]:
         """Check transitive rule.
 
-        Finds all paths of length 2: A -[property]-> B -[property]-> C
-        For each such path, verifies that a direct edge A -[property]-> C exists.
-
-        Args:
-            store: GraphStore to check
-
-        Returns:
-            Violations where transitive implication is missing
+        Delegates the heavy lifting to the static helper `_find_missing_transitives`.
         """
-        violations: list[RuleViolation] = []
-
         if not self.enabled:
-            return violations
+            return []
 
         try:
             logger.debug("checking_transitive_property", rule=self.name)
-
-            # Get all edges with the property
-            edges = store.get_all_edges()
-            property_edges = [e for e in edges if e.edge_type == self.property_uri]
-
-            # Find 2-step paths: A -> B -> C
-            for edge1 in property_edges:
-                for edge2 in property_edges:
-                    # Check if target of edge1 is source of edge2
-                    if edge1.target_id != edge2.source_id:
-                        continue
-
-                    # Check if direct edge exists: edge1.source -> edge2.target
-                    direct_exists = False
-                    for direct_edge in property_edges:
-                        if (
-                            direct_edge.source_id == edge1.source_id
-                            and direct_edge.target_id == edge2.target_id
-                        ):
-                            direct_exists = True
-                            break
-
-                    if not direct_exists:
-                        violations.append(
-                            RuleViolation(
-                                rule_name=self.name,
-                                rule_description=self.description,
-                                subject_id=edge1.source_id,
-                                predicate=self.property_uri,
-                                object_id=edge2.target_id,
-                                reason=f"Missing transitive closure: {self.property_uri}({edge1.source_id}, {edge2.target_id}) via {edge1.target_id}",
-                            )
-                        )
-
+            violations = TransitiveRule._find_missing_transitives(
+                store.get_all_edges(), self.property_uri, self.name, self.description
+            )
             logger.info(
                 "transitive_checked",
                 rule=self.name,
                 violation_count=len(violations),
             )
+            return violations
 
         except Exception as e:
             logger.warning("transitive_check_failed", rule=self.name, error=str(e))
-
-        return violations
+            return []
 
 
 @dataclass

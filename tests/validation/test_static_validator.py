@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import subprocess
 
 from kgbuilder.validation.static_validator import (
     StaticValidationResult,
@@ -138,3 +139,39 @@ class TestStaticValidator:
             pr.return_value = type("P", (), {"stdout": "VALID (contained)"})()
             cont = validator.check_containment(a, b)
             assert isinstance(cont, StaticValidationResult)
+
+    def test_invoke_jar_fails_when_jar_missing(
+        self, validator: StaticValidator, tmp_path: Path
+    ) -> None:
+        validator._config.jar_path = tmp_path / "nonexistent.jar"
+        with pytest.raises(FileNotFoundError):
+            validator._invoke_jar(tmp_path / "a", None, "satisfiability", tmp_path)
+
+    def test_invoke_jar_timeout_raises(self, validator: StaticValidator, tmp_path: Path, monkeypatch) -> None:
+        # create dummy jar file
+        validator._config.jar_path.parent.mkdir(parents=True, exist_ok=True)
+        validator._config.jar_path.write_text("")
+
+        def fake_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd="x", timeout=1)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(RuntimeError):
+            validator._invoke_jar(tmp_path / "a", None, "satisfiability", tmp_path)
+
+    def test_parse_output_variants(self):
+        v = StaticValidator()
+        # satisfiability positive
+        res = v._parse_output("Is satisfiable? true", "satisfiability")
+        assert res.valid is True
+        # satisfiability negative
+        res = v._parse_output("Is satisfiable? false", "satisfiability")
+        assert res.valid is False
+        # action validation positive
+        res = v._parse_output("Is validation of the shape graph maintained after performing the actions? true", "staticValidation")
+        assert res.valid is True
+        # action validation negative with counterexample text
+        msg = "Is validation of the shape graph maintained after performing the actions? false\ncounterexample found"
+        res = v._parse_output(msg, "staticValidation")
+        assert res.valid is False
+        assert "counterexample" in res.counterexample.lower()

@@ -24,6 +24,7 @@ import numpy as np
 import requests
 import structlog
 from pydantic import BaseModel, ValidationError
+from kgbuilder.core.exceptions import LLMError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -354,7 +355,7 @@ class OllamaProvider:
                         f"Generation failed: Timeout after {max_retries} attempts. "
                         f"Ollama may be overloaded or unresponsive."
                     )
-                    raise RuntimeError(f"LLM generation timeout after {max_retries} retries: {e}") from e
+                    raise LLMError(f"LLM generation timeout after {max_retries} retries: {e}") from e
 
             except requests.exceptions.ConnectionError as e:
                 self._record_timeout()
@@ -367,14 +368,14 @@ class OllamaProvider:
                     time.sleep(delay)
                 else:
                     logger.error(f"Generation failed: Connection error after {max_retries} attempts")
-                    raise RuntimeError(f"LLM connection failed: {e}") from e
+                    raise LLMError(f"LLM connection failed: {e}") from e
 
             except Exception as e:
                 logger.error(f"Generation failed: {type(e).__name__}: {e}")
-                raise RuntimeError(f"LLM generation error: {e}") from e
+                raise LLMError(f"LLM generation error: {e}") from e
 
         # Shouldn't reach here due to exceptions, but just in case
-        raise RuntimeError("Generation failed: Unknown error after all retries")
+        raise LLMError("Generation failed: Unknown error after all retries")
     @classmethod
     def log_total_token_usage(cls) -> None:
         """Log total token usage for all OllamaProvider calls."""
@@ -485,17 +486,17 @@ class OllamaProvider:
                     continue
                 else:
                     logger.error(f"JSON parsing failed after {max_retries} retries: {e}")
-                    raise RuntimeError(f"JSON parsing failed: {e}") from e
+                    raise LLMError(f"JSON parsing failed: {e}") from e
 
             except Exception as e:
                 last_error = e
                 logger.error(f"Structured generation failed: {e}")
-                raise RuntimeError(f"Structured generation error: {e}") from e
+                raise LLMError(f"Structured generation error: {e}") from e
 
         # Should not reach here, but as safety net
         if last_error:
-            raise RuntimeError(f"Structured generation failed after {max_retries} retries") from last_error
-        raise RuntimeError("Structured generation failed: unknown error")
+            raise LLMError(f"Structured generation failed after {max_retries} retries") from last_error
+        raise LLMError("Structured generation failed: unknown error")
 
     def _extract_json_from_response(self, response: str) -> str:
         """Extract JSON from response, handling markdown and extra text."""
@@ -747,7 +748,7 @@ class OllamaProvider:
                 embeddings = result.get("embeddings", [])
 
                 if not embeddings or not embeddings[0]:
-                    raise RuntimeError("No embeddings returned from Ollama")
+                    raise LLMError("No embeddings returned from Ollama")
 
                 # Record success
                 self._record_success()
@@ -766,7 +767,7 @@ class OllamaProvider:
                     time.sleep(delay)
                 else:
                     logger.error(f"Embedding failed: Timeout after {max_retries} attempts")
-                    raise RuntimeError(f"Embedding timeout after {max_retries} retries: {e}") from e
+                    raise LLMError(f"Embedding timeout after {max_retries} retries: {e}") from e
 
             except requests.exceptions.ConnectionError as e:
                 self._record_timeout()
@@ -779,11 +780,11 @@ class OllamaProvider:
                     time.sleep(delay)
                 else:
                     logger.error(f"Embedding failed: Connection error after {max_retries} attempts")
-                    raise RuntimeError(f"Embedding connection failed: {e}") from e
+                    raise LLMError(f"Embedding connection failed: {e}") from e
 
             except Exception as e:
                 logger.error(f"Embedding failed: {type(e).__name__}: {e}")
-                raise RuntimeError(f"Embedding error: {e}") from e
+                raise LLMError(f"Embedding error: {e}") from e
 
-        raise RuntimeError("Embedding failed: unknown error after all retries")
+        raise LLMError("Embedding failed: unknown error after all retries")
 

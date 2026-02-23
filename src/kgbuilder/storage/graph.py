@@ -68,21 +68,8 @@ class GraphStore(Protocol):
 class Neo4jStore:
     """Neo4j property graph store implementation.
 
-    TODO (Implementation):
-    - [ ] Implement __init__() with Neo4j connection
-    - [ ] Implement add_node() with entity creation
-    - [ ] Implement add_edge() with relation creation
-    - [ ] Implement query() for Cypher execution
-    - [ ] Implement batch operations for efficiency
-    - [ ] Implement transaction management
-    - [ ] Implement schema/index creation
-    - [ ] Add error handling and retry logic
-    - [ ] Add unit tests with Neo4j test container
-
-    Dependencies: neo4j>=5.0.0
-
-    See Planning/INTERFACES.md Section 6.2 for protocol definition.
-    See Planning/ISSUES_BACKLOG.md Issue #6.2 for acceptance criteria.
+    This class wraps the Neo4j Python driver and implements the
+    GraphStore protocol for node/edge creation, querying, and export.
     """
 
     def __init__(

@@ -65,20 +65,8 @@ class VectorStore(Protocol):
 class QdrantStore:
     """Qdrant vector database store implementation.
 
-    TODO (Implementation):
-    - [ ] Implement __init__() with Qdrant connection
-    - [ ] Implement store() to upsert embeddings
-    - [ ] Implement search() with cosine similarity
-    - [ ] Implement delete() with ID batching
-    - [ ] Implement collection lifecycle (create, list, delete)
-    - [ ] Add batch operations for efficiency
-    - [ ] Add error handling and retry logic
-    - [ ] Add unit tests with mock Qdrant server
-
-    Dependencies: qdrant-client>=2.0.0
-
-    See Planning/INTERFACES.md Section 6.1 for protocol definition.
-    See Planning/ISSUES_BACKLOG.md Issue #6.1 for acceptance criteria.
+    This class provides a thin wrapper around qdrant-client; see
+    the module for full method implementations and protocol conformance.
     """
 
     def __init__(

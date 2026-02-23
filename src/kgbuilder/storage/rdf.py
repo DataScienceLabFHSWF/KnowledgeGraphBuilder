@@ -54,21 +54,8 @@ class RDFStore(Protocol):
 class FusekiStore:
     """Apache Fuseki RDF triple store implementation.
 
-    TODO (Implementation):
-    - [ ] Implement __init__() with Fuseki connection
-    - [ ] Implement add_triple() using HTTP API
-    - [ ] Implement query_sparql() for query execution
-    - [ ] Implement export_rdf() in multiple formats
-    - [ ] Implement batch operations
-    - [ ] Implement transaction management
-    - [ ] Implement ontology loading
-    - [ ] Add error handling and retry logic
-    - [ ] Add unit tests with Fuseki test container
-
-    Dependencies: requests>=2.28.0, rdflib>=6.0.0
-
-    See Planning/INTERFACES.md Section 6.3 for protocol definition.
-    See Planning/ISSUES_BACKLOG.md Issue #6.3 for acceptance criteria.
+    Implements RDFStore protocol with HTTP-based operations for triples and
+    SPARQL queries.  See module docstring for details.
     """
 
     def __init__(

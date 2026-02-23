@@ -180,12 +180,14 @@ class SemanticEnrichmentPipeline:
                 target_label = ""
 
                 if entities:
-                    source_label = entities.get(relation.source_entity_id, ExtractedEntity(
-                        id="?", label="", entity_type=""
-                    )).label
-                    target_label = entities.get(relation.target_entity_id, ExtractedEntity(
-                        id="?", label="", entity_type=""
-                    )).label
+                    source_label = entities.get(
+                        relation.source_entity_id,
+                        ExtractedEntity(id="?", label="", entity_type="", description=""),
+                    ).label
+                    target_label = entities.get(
+                        relation.target_entity_id,
+                        ExtractedEntity(id="?", label="", entity_type="", description=""),
+                    ).label
 
                 # Generate description
                 description = self._generate_relation_description(

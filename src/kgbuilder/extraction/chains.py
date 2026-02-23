@@ -34,6 +34,46 @@ class ExtractionChains:
     """
 
     @staticmethod
+    def _fix_json_arithmetic(text: str) -> str:
+        """Convert simple arithmetic expressions in JSON values to numeric results.
+
+        Some LLMs output things like ``"end_char": 266 + 18`` which is invalid
+        JSON.  This helper finds occurrences of unquoted arithmetic and evaluates
+        them safely, leaving the rest of the text untouched.
+        """
+        import re
+
+        pattern = r'("[^"]+"\s*:\s*)(\d+(?:\s*[+\-*/]\s*\d+)+)(\s*[,}\n])'
+
+        def replace_expr(match):
+            prefix = match.group(1)
+            expr = match.group(2)
+            suffix = match.group(3)
+            try:
+                expr_clean = expr.replace(" ", "")
+                if all(c in "0123456789+-*/" for c in expr_clean):
+                    result = int(eval(expr_clean))
+                    return f"{prefix}{result}{suffix}"
+            except Exception:
+                return match.group(0)
+            return match.group(0)
+
+        return re.sub(pattern, replace_expr, text)
+
+    @staticmethod
+    def _safe_parse(parser, x):
+        """Wrapper around output parser that fixes arithmetic expressions first.
+
+        Returns an empty output on failure instead of raising.
+        """
+        try:
+            json_text = ExtractionChains._fix_json_arithmetic(x.content)
+            return parser.parse(json_text)
+        except Exception as e:
+            logger.warning(f"JSON parsing failed, returning empty: {str(e)[:100]}")
+            return EntityExtractionOutput(entities=[])
+
+    @staticmethod
     def create_entity_extraction_chain(
         model: str | None = None,
         base_url: str | None = None,
@@ -105,50 +145,7 @@ Return ONLY valid JSON matching this format:
         ).partial(format_instructions=parser.get_format_instructions())
 
         # Build chain with error handling
-        import re
-
-        def fix_json_arithmetic(text: str) -> str:
-            """Fix invalid JSON arithmetic expressions like 'end_char: 266 + 18'.
-            
-            Converts unquoted arithmetic expressions to their computed values.
-            This is needed because some LLMs output arithmetic in JSON values.
-            
-            Examples:
-              '"end_char": 266 + 18,' -> '"end_char": 284,'
-              '"end_char": 266 - 12 + 8,' -> '"end_char": 262,'
-            """
-            # Pattern: "key": number +/- number (possibly with spaces and multiple operations)
-            pattern = r'(\"[^\"]+\"\\s*:\\s*)(\\d+(?:\\s*[+\\-*/]\\s*\\d+)+)(\\s*[,}\\n])'
-
-            def replace_expr(match):
-                prefix = match.group(1)
-                expr = match.group(2)
-                suffix = match.group(3)
-                try:
-                    # Safely evaluate the arithmetic expression
-                    expr_clean = expr.replace(' ', '')
-                    # Only allow basic arithmetic
-                    if all(c in '0123456789+-*/' for c in expr_clean):
-                        result = int(eval(expr_clean))  # Safe: validated characters only
-                        return f'{prefix}{result}{suffix}'
-                except Exception:
-                    return match.group(0)
-                return match.group(0)
-
-            fixed = re.sub(pattern, replace_expr, text)
-            return fixed
-
-        def safe_parse(x):
-            try:
-                # First, fix arithmetic expressions in the JSON
-                json_text = fix_json_arithmetic(x.content)
-                return parser.parse(json_text)
-            except Exception as e:
-                logger.warning(f"JSON parsing failed, returning empty: {str(e)[:100]}")
-                # Return empty result on parse error
-                return EntityExtractionOutput(entities=[])
-
-        chain = prompt | llm | (lambda x: safe_parse(x))
+        chain = prompt | llm | (lambda x: ExtractionChains._safe_parse(parser, x))
 
         logger.info(f"[OK] Created entity extraction chain ({model})")
         return chain

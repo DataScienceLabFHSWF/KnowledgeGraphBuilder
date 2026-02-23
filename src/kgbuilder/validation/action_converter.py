@@ -191,6 +191,31 @@ class ActionConverter:
     # Public API
     # ------------------------------------------------------------------
 
+    # helper extraction methods ------------------------------------------------
+
+    @staticmethod
+    def _get_entity_type(ent: Any) -> str | None:
+        """Return the entity type string for an object, handling legacy attr names.
+
+        The converter accepts many duck-typed objects coming from the
+        extraction pipeline; this helper centralizes the lookup logic and makes
+        it easier to test in isolation.
+        """
+        return getattr(ent, "entity_type", None) or getattr(ent, "type", None)
+
+    @staticmethod
+    def _get_relation_type(rel: Any) -> str | None:
+        """Return the relation/predicate type string for an object.
+
+        Looks for ``relation_type``, ``predicate`` or ``type`` attributes in
+        that order, returning ``None`` if none are available.
+        """
+        return (
+            getattr(rel, "relation_type", None)
+            or getattr(rel, "predicate", None)
+            or getattr(rel, "type", None)
+        )
+
     def from_entities(self, entities: list[Any], operation: str = "add") -> ActionSet:
         """Convert extracted entities to SHACL2FOL actions.
 
@@ -210,7 +235,7 @@ class ActionConverter:
         action_set = ActionSet()
         seen: set[str] = set()
         for ent in entities:
-            ent_type = getattr(ent, "entity_type", None) or getattr(ent, "type", None)
+            ent_type = self._get_entity_type(ent)
             if not ent_type or ent_type in seen:
                 continue
             seen.add(ent_type)
@@ -243,7 +268,7 @@ class ActionConverter:
         action_set = ActionSet()
         seen: set[str] = set()
         for rel in relations:
-            rel_type = getattr(rel, "relation_type", None) or getattr(rel, "predicate", None) or getattr(rel, "type", None)
+            rel_type = self._get_relation_type(rel)
             if not rel_type or rel_type in seen:
                 continue
             seen.add(rel_type)

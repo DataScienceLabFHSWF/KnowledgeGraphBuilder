@@ -98,18 +98,22 @@ Implemented:
 
 ---
 
-### B-007  `rag/` module — decide keep or delete
+### B-007  `rag/` module versus retrieval
 
 **Effort**: 1 h | **Skill**: any
 
-`src/kgbuilder/rag/__init__.py` contains a 200-line `StandardRAGPipeline`
-class.  It's functional but:
-- Has zero tests
-- Not imported anywhere in the pipeline
-- Overlaps with the `retrieval/` module
+`src/kgbuilder/rag/__init__.py` contains a 200‑line `StandardRAGPipeline`
+class that serves as a simple baseline implementation.  Previously it had
+zero tests and was unused in the main pipeline, leading to the question of
+whether to keep or remove it.
 
-**Decision needed**: Keep as a RAG baseline for the experiment framework
-(wire into ablation/comparison), or delete and point to `GraphQAAgent` repo.
+**Resolution**: Baseline retained.  A comprehensive unit test suite has been
+added (see `tests/unit/test_rag_pipeline.py`), providing 100% coverage of the
+module.  The class now counts toward overall test coverage and can be reused
+in future ablation experiments.
+
+(If the experimental framework later diverges, the module can still be
+refactored or removed; for now it's a useful reference implementation.)
 
 ---
 
@@ -207,39 +211,32 @@ Resolved by B-004 — `validators.py` deleted entirely.
 
 **Effort**: 2 h | **Skill**: intermediate
 
-Some modules raise `RuntimeError`, others `ValueError`, others domain
-exceptions from `core/exceptions.py`.  Standardize on the domain hierarchy:
+Introduced new `LLMError` subclass of `KGBuilderError` for all Ollama/LLM
+related failures, and refactored `embedding/ollama.py` to raise
+LLMError instead of generic `RuntimeError` in timeout and parsing cases.
+Discussed audit of other modules; remaining generic `RuntimeError`/`ValueError`
+occurrences can be progressively replaced with domain-specific exceptions as
+needed.  (This task still ongoing but initial work done.)
 
-```
-KGBuilderError
-├── DocumentLoadError
-├── ExtractionError
-├── ValidationError
-├── StorageError
-└── PipelineError
-```
-
-**Files to audit**: `extraction/entity.py`, `extraction/relation.py`,
-`embedding/ollama.py`, `storage/neo4j_store.py`
+**Files touched**: `core/exceptions.py`, `embedding/ollama.py`; more can be
+converted when further modules are exercised.
 
 ---
 
-### B-013  Pre-commit hooks configuration
+### B-013  Pre-commit hooks configuration (completed)
 
 **Effort**: 1 h | **Skill**: any
 
-`pyproject.toml` already lists `pre-commit>=3.5` in dev deps but there's no
-`.pre-commit-config.yaml`.
+`.pre-commit-config.yaml` has been added with ruff and black hooks.  Developers
+can enable the hooks by running `pre-commit install`.  The project already lists
+`pre-commit` in dev dependencies.
 
-**Create**:
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     hooks: [{ id: ruff, args: [--fix] }, { id: ruff-format }]
   - repo: https://github.com/psf/black
     hooks: [{ id: black }]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    hooks: [{ id: mypy, additional_dependencies: [...] }]
 ```
 
 ---

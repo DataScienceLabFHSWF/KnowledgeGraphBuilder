@@ -7,6 +7,10 @@ Ingests documents (PDF, DOCX, PPTX, XML), extracts entities and relations guided
 by an OWL ontology, assembles a validated knowledge graph in Neo4j, and exports
 it in multiple standard formats (JSON-LD, RDF/Turtle, YARRRML, Cypher).
 
+A minimal sample dataset is available at `data/smoke_test/` (ontology + text
+file) for quick local experiments and to exercise the `scripts/quickstart.py`
+workflow.
+
 Part of a three-repository research ecosystem:
 
 | Repository | Purpose |
