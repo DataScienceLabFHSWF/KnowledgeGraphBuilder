@@ -19,6 +19,68 @@ from pathlib import Path
 
 import pytest
 
+import warnings
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Configure global warning filters to keep test output clean.
+
+    Many third-party dependencies emit deprecation or runtime warnings
+    during our unit tests (e.g. powerlaw, torch_geometric, plotly).
+    We suppress those messages here rather than updating each test
+    individually.
+    """
+    # ignore noisy powerlaw warnings (user/runtime/optimize)
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        module=r"powerlaw\..*",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        category=RuntimeWarning,
+        module=r"powerlaw\..*",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        category=ImportWarning,
+        module=r"powerlaw\..*",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message=r".*torch\.jit\.script.*",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        module=r"torch_geometric\..*",
+    )
+    # also ignore any generic torch deprecation
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        module=r"torch\..*",
+    )
+    # plotly deprecation messages
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        module=r"plotly\..*",
+    )
+    # networkx runtime warnings
+    warnings.filterwarnings(
+        "ignore",
+        category=RuntimeWarning,
+        module=r"networkx\..*",
+    )
+    # catch-anyother misc deprecations from powerlaw
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        module=r"powerlaw\..*",
+    )
+
 
 def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config, items: list[pytest.Item]) -> None:  # type: ignore[override]
     """Fail fast when multiple test files share the same basename.

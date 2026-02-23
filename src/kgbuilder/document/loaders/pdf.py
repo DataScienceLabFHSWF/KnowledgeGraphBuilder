@@ -2,16 +2,6 @@
 
 Implementation of Issue #2.2: PDF Document Loader
 
-TODO:
-- [x] Extract text using pdfplumber
-- [ ] Preserve page-level metadata (page numbers, sections)
-- [ ] Handle multi-column layouts (optional: use layout detection)
-- [ ] Extract tables as structured data (optional: use pdfplumber tables API)
-- [ ] Add OCR fallback for scanned PDFs (optional: requires pytesseract)
-- [ ] Improve text normalization (remove excessive whitespace, unicode issues)
-- [ ] Add unit tests with sample PDFs
-- [ ] Add progress/logging callbacks for large PDFs
-
 See Planning/ISSUES_BACKLOG.md Issue #2.2 for acceptance criteria.
 """
 

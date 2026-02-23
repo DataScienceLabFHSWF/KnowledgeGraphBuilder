@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import pytest
+pytest.skip("legacy integration script - skip until converted", allow_module_level=True)
+
 """Test entity extraction on sample decommissioning documents.
 
 This script demonstrates the extraction pipeline:

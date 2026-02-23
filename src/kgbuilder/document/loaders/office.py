@@ -2,22 +2,6 @@
 
 Implementation of Issue #2.3: Office Document Loaders
 
-TODO (DOCX):
-- [x] Extract text from paragraphs
-- [ ] Preserve document structure (headings, lists, bold/italic)
-- [ ] Extract tables as structured data
-- [ ] Handle embedded images and shapes
-- [ ] Extract headers/footers
-- [ ] Add unit tests
-
-TODO (PPTX):
-- [x] Extract text from slides
-- [ ] Extract speaker notes
-- [ ] Preserve slide order and hierarchy
-- [ ] Extract embedded images
-- [ ] Handle slide transitions/timing (optional)
-- [ ] Add unit tests
-
 See Planning/ISSUES_BACKLOG.md Issue #2.3 for acceptance criteria.
 """
 

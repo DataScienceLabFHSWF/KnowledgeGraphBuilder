@@ -221,6 +221,10 @@ class TestValidationModels:
 class TestSHACLValidator:
     """Test SHACL Validator."""
 
+    def test_constructor_raises_on_none(self) -> None:
+        with pytest.raises(ValueError):
+            SHACLValidator(None)  # type: ignore[arg-type]
+
     @patch("kgbuilder.validation.shacl_validator.validate")
     def test_validator_creation(self, mock_validate: Mock) -> None:
         """Test SHACLValidator initialization."""
@@ -246,20 +250,31 @@ class TestSHACLValidator:
         assert len(result.violations) == 0
 
     def test_validate_node_missing_id(self) -> None:
-        """Test validate_node detects missing ID."""
+        """Test validate_node detects missing ID and other fields."""
         import rdflib
 
         shapes = rdflib.Graph()
         validator = SHACLValidator(shapes)
 
-        node = Node(id="", node_type="Person", label="", properties={})
+        node = Node(id="", node_type="", label="", properties={})
         result = validator.validate_node(node)
 
-        assert len(result.violations) > 0
-        assert any("id" in v.path for v in result.violations)
+        assert len(result.violations) >= 2
+        paths = {v.path for v in result.violations}
+        assert "id" in paths
+        assert "node_type" in paths
+
+    def test_validate_node_warning_on_missing_label(self) -> None:
+        import rdflib
+        shapes = rdflib.Graph()
+        validator = SHACLValidator(shapes)
+        node = Node(id="x", node_type="Person", label="", properties={})
+        result = validator.validate_node(node)
+        assert any(v.severity == ViolationSeverity.WARNING for v in result.violations)
+        assert any("label" in v.path for v in result.violations)
 
     def test_validate_edge_confidence_validation(self) -> None:
-        """Test validate_edge checks confidence range."""
+        """Test validate_edge checks confidence range and missing fields."""
         import rdflib
 
         shapes = rdflib.Graph()
@@ -283,6 +298,16 @@ class TestSHACLValidator:
         result = validator.validate_edge(edge)
         assert len(result.violations) > 0
 
+        # Non-numeric confidence
+        edge.properties["confidence"] = "high"
+        result = validator.validate_edge(edge)
+        assert any("confidence" in v.path for v in result.violations)
+
+        # Missing required fields
+        bad = Edge(id="", source_id="", target_id="", edge_type="", properties={})
+        result = validator.validate_edge(bad)
+        assert len(result.violations) >= 4
+
     def test_convert_store_to_rdf(self, mock_graph_store: GraphStore) -> None:
         """Test RDF conversion from GraphStore."""
         import rdflib
@@ -294,6 +319,81 @@ class TestSHACLValidator:
 
         # Check that triples were created
         assert len(rdf_graph) > 0
+
+    def test_parse_shacl_results_parses_violations(self) -> None:
+        """Directly exercise the private parser utility."""
+        import rdflib
+        from rdflib.namespace import RDF
+
+        SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
+
+        g = rdflib.Graph()
+        res = rdflib.BNode()
+        g.add((res, RDF.type, SH.ValidationResult))
+        g.add((res, SH.resultSeverity, SH.Warning))
+        g.add((res, SH.resultMessage, rdflib.Literal("test message")))
+        g.add((res, SH.resultPath, rdflib.Literal("/foo")))
+        g.add((res, SH.focusNode, rdflib.Literal("node1")))
+        g.add((res, SH.sourceShape, rdflib.Literal("shape1")))
+
+        validator = SHACLValidator(rdflib.Graph())
+        violations = validator._parse_shacl_results(g)
+        assert len(violations) == 1
+        v = violations[0]
+        assert v.severity == ViolationSeverity.WARNING
+        assert "test message" in v.message
+
+    @patch("kgbuilder.validation.shacl_validator.validate")
+    def test_validate_success_and_stats_fallback(self, mock_validate: Mock) -> None:
+        """Test validate() path including stats fallback and parsing failure."""
+        import rdflib
+
+        class FailingStore:
+            def get_all_nodes(self):
+                return []
+
+            def get_all_edges(self):
+                return []
+
+            def get_statistics(self):
+                raise RuntimeError("no stats")
+
+            def query(self, q: str):
+                # return object with records attribute
+                return SimpleNamespace(records=[{"cnt": 2}])
+
+        shapes = rdflib.Graph()
+        validator = SHACLValidator(shapes)
+
+        # simulate pyshacl returning non-conformant with results_graph
+        mock_validate.return_value = (
+            False,
+            rdflib.Graph(),
+            "dummy",
+        )
+
+        res = validator.validate(FailingStore())
+        assert res.valid is False
+        # stats fallback may set node_count or leave at default
+        assert res.node_count >= 0
+        assert isinstance(res, ValidationResult)
+
+    @patch("kgbuilder.validation.shacl_validator.validate")
+    def test_validate_handles_conversion_error(self, mock_validate: Mock) -> None:
+        """validate() should catch exceptions from store conversion."""
+        import rdflib
+
+        class BadStore:
+            pass
+
+        shapes = rdflib.Graph()
+        validator = SHACLValidator(shapes)
+
+        mock_validate.return_value = (True, rdflib.Graph(), "")
+        res = validator.validate(BadStore())
+        # when conversion fails, validator adds an error violation
+        assert not res.valid
+        assert any("SHACL validation failed" in v.message for v in res.violations)
 
 
 # ============================================================================
@@ -576,6 +676,20 @@ class TestReportGenerator:
             assert "<!DOCTYPE html>" in content
             assert "KG Validation Report" in content
             assert "SHACL Violations" in content
+
+    def test_report_generator_error_paths(self, validation_result: ValidationResult, tmp_path: Path) -> None:
+        """Simulate filesystem errors to hit exception handling."""
+        gen = ReportGenerator()
+        bad_path = tmp_path / "nonexistent_dir" / "out.json"
+        # make directory read-only to force error
+        bad_path.parent.mkdir(parents=True, exist_ok=True)
+        bad_path.parent.chmod(0o400)
+        with pytest.raises(Exception):
+            gen.to_json(validation_result, bad_path)
+        with pytest.raises(Exception):
+            gen.to_markdown(validation_result, bad_path)
+        with pytest.raises(Exception):
+            gen.to_html(validation_result, bad_path)
 
 
 # ============================================================================
