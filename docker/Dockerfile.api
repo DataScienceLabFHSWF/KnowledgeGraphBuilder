@@ -1,0 +1,26 @@
+# KGBuilder API — lightweight FastAPI wrapper
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential git libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Install FastAPI extras not already in requirements.txt
+RUN pip install --no-cache-dir \
+    "fastapi>=0.115" \
+    "uvicorn[standard]>=0.34" \
+    "httpx>=0.25"
+
+# Copy and install kgbuilder package
+COPY . /app
+RUN pip install --no-cache-dir -e .
+
+EXPOSE 8001
+
+CMD ["uvicorn", "kgbuilder.api.server:app", "--host", "0.0.0.0", "--port", "8001"]
