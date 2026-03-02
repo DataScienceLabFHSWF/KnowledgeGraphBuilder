@@ -40,7 +40,7 @@ class BuildRequest(BaseModel):
     dense_weight: float = Field(default=0.7, ge=0.0, le=1.0)
     sparse_weight: float = Field(default=0.3, ge=0.0, le=1.0)
     top_k: int = Field(default=10, ge=1, le=100)
-    validate: bool = True
+    run_validation: bool = Field(default=True, description="Run SHACL validation after build")
     link_laws: bool = True
     model: str = Field(default="qwen3:8b")
 

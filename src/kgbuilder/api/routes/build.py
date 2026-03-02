@@ -219,7 +219,7 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
         job["progress"] = 0.90
 
         # Phase 7: Validation (optional)
-        if request.validate:
+        if request.run_validation:
             job["current_phase"] = "validation"
             # TODO: wire full SHACL/rules/consistency validation
             job["progress"] = 0.95
