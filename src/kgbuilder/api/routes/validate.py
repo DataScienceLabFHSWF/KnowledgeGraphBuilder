@@ -75,16 +75,16 @@ async def validate_kg(request: ValidationRequest) -> ValidationResponse:
                 from kgbuilder.validation.rules_engine import RulesEngine
 
                 engine = RulesEngine()
-                rule_violations = engine.check_all(neo4j_store)
-                total_checks += len(rule_violations) + 10  # approximate
+                rules_result = engine.execute_rules(neo4j_store)
+                total_checks += len(rules_result.rule_violations) + 10
                 passed_checks += 10
-                for rv in rule_violations:
+                for rv in rules_result.rule_violations:
                     violations.append({
                         "type": "rule",
                         "severity": "warning",
-                        "path": rv.predicate if hasattr(rv, "predicate") else "",
-                        "message": rv.reason if hasattr(rv, "reason") else str(rv),
-                        "focus_node": rv.subject_id if hasattr(rv, "subject_id") else "",
+                        "path": rv.predicate,
+                        "message": rv.reason,
+                        "focus_node": rv.subject_id,
                     })
             except Exception as e:
                 logger.warning("rules_engine_error", error=str(e))
@@ -95,17 +95,17 @@ async def validate_kg(request: ValidationRequest) -> ValidationResponse:
                 from kgbuilder.validation.consistency_checker import ConsistencyChecker
 
                 checker = ConsistencyChecker()
-                conflicts = checker.check(neo4j_store)
-                conflicts_count = len(conflicts)
+                report = checker.check_consistency(neo4j_store)
+                conflicts_count = report.conflict_count
                 total_checks += conflicts_count + 10
                 passed_checks += 10
-                for c in conflicts:
+                for c in report.conflicts:
                     violations.append({
                         "type": "consistency",
                         "severity": "warning",
                         "path": "",
-                        "message": str(c),
-                        "focus_node": c.entity_id if hasattr(c, "entity_id") else "",
+                        "message": c.description,
+                        "focus_node": c.entity_id,
                     })
             except Exception as e:
                 logger.warning("consistency_check_error", error=str(e))

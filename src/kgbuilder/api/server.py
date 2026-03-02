@@ -15,6 +15,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from kgbuilder.api.middleware import ErrorHandlingMiddleware, RateLimitMiddleware
 from kgbuilder.api.routes.build import router as build_router
 from kgbuilder.api.routes.export import router as export_router
 from kgbuilder.api.routes.hitl import router as hitl_router
@@ -52,6 +53,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(RateLimitMiddleware, rate_limit=60, window_seconds=60)
 
 # Mount route modules
 app.include_router(status_router, prefix="/api/v1", tags=["status"])

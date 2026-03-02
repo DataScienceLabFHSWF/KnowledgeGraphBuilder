@@ -221,7 +221,28 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
         # Phase 7: Validation (optional)
         if request.run_validation:
             job["current_phase"] = "validation"
-            # TODO: wire full SHACL/rules/consistency validation
+            try:
+                from kgbuilder.validation.consistency_checker import ConsistencyChecker
+                from kgbuilder.validation.rules_engine import RulesEngine
+
+                engine = RulesEngine()
+                rules_result = engine.execute_rules(neo4j_store)
+                checker = ConsistencyChecker()
+                consistency_report = checker.check_consistency(neo4j_store)
+
+                total_violations = (
+                    len(rules_result.rule_violations)
+                    + consistency_report.conflict_count
+                )
+                if total_violations > 0:
+                    logger.warning(
+                        "build_validation_issues",
+                        job_id=job_id,
+                        rule_violations=len(rules_result.rule_violations),
+                        conflicts=consistency_report.conflict_count,
+                    )
+            except Exception as exc:
+                logger.warning("build_validation_skipped", job_id=job_id, error=str(exc))
             job["progress"] = 0.95
 
         # Done

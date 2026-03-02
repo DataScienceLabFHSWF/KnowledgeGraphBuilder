@@ -122,6 +122,9 @@ minversion = "7.0"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--cov=src/kgbuilder --cov-report=term-missing --cov-report=html"
+markers = [
+    "integration: marks tests that require running Docker services (deselect with '-m \"not integration\"')",
+]
 
 [tool.coverage.run]
 source = ["src/kgbuilder"]
