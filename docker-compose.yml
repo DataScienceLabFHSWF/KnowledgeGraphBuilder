@@ -43,14 +43,20 @@ services:
       - kgbuilder-net
 
   neo4j:
-    image: neo4j:5.19.0
+    image: neo4j:5.26.0
     container_name: neo4j
     restart: unless-stopped
     environment:
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
       - NEO4J_AUTH=neo4j/changeme
+      # Install APOC and Neosemantics (n10s) plugins
+      - NEO4J_PLUGINS=["apoc", "n10s"]
+      # Allow APOC to call external URLs and use import/export
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,n10s.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*,n10s.*
     volumes:
       - ./data/neo4j:/data
+      - neo4j-plugins:/plugins
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -82,6 +88,9 @@ services:
       - OLLAMA_ALLOW_DOWNLOADS=true
     networks:
       - kgbuilder-net
+
+volumes:
+  neo4j-plugins:
 
 networks:
   kgbuilder-net:
