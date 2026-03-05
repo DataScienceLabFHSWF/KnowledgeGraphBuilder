@@ -61,3 +61,41 @@ def get_langsmith_callbacks() -> list[Any] | None:
     except Exception as e:  # pragma: no cover - defensive
         logger.exception("Failed to create LangsmithTracer: %s", e)
         return None
+
+
+def tracing_context(
+    *,
+    enabled: bool | None = None,
+    metadata: dict[str, Any] | None = None,
+    project: str | None = None,
+) -> Any:
+    """Return a LangSmith tracing context manager or nullcontext.
+
+    Follows the same semantics as :func:`~kgrag.telemetry.langsmith.tracing_context`
+    in the GraphQAAgent project, allowing callers to group multiple LLM
+    invocations under a single session/run by wrapping them:
+
+    ```python
+    with tracing_context(metadata={"session_id": session_id}):
+        result = llm.invoke(...)
+    ```
+    """
+    import contextlib
+
+    if enabled is None:
+        enabled = _env_enabled("LANGSMITH_TRACING")
+    if not enabled:
+        return contextlib.nullcontext()
+
+    try:
+        import langsmith as ls
+    except Exception as e:  # pragma: no cover
+        logger.warning("langsmith not importable: %s", e)
+        return contextlib.nullcontext()
+
+    project_name = project or os.environ.get("LANGSMITH_PROJECT")
+    return ls.tracing_context(
+        enabled=True,
+        project_name=project_name,
+        metadata=metadata or {},
+    )
