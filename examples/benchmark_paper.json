@@ -1,0 +1,104 @@
+{
+  "name": "Nuclear Decommissioning Benchmark",
+  "description": "5-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law vs. nemotron-4b vs. nemotron-30b. 3 runs each for statistical reliability.",
+  "output_dir": "experiment_results/benchmark_paper",
+  "num_runs": 3,
+  "seed": 42,
+  "variants": [
+    {
+      "name": "A_single_pass",
+      "description": "Single iteration, no law graph — naive baseline",
+      "params": {
+        "model": "qwen3:8b",
+        "max_iterations": 1,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": false,
+        "top_k_docs": 5
+      }
+    },
+    {
+      "name": "B_multipass",
+      "description": "5 iterations, no law graph — shows value of iterative discovery",
+      "params": {
+        "model": "qwen3:8b",
+        "max_iterations": 5,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": false,
+        "top_k_docs": 5
+      }
+    },
+    {
+      "name": "C_multipass_law",
+      "description": "5 iterations + law graph context augmentation — full system",
+      "params": {
+        "model": "qwen3:8b",
+        "max_iterations": 5,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": true,
+        "top_k_docs": 5
+      }
+    },
+    {
+      "name": "D_nemotron_4b",
+      "description": "Multi-pass with nemotron-3-nano:4b — smaller/faster model ablation",
+      "params": {
+        "model": "nemotron-3-nano:4b",
+        "max_iterations": 5,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": false,
+        "top_k_docs": 5
+      }
+    },
+    {
+      "name": "E_nemotron_30b",
+      "description": "Multi-pass with nemotron-3-nano:30b — larger model ablation",
+      "params": {
+        "model": "nemotron-3-nano:30b",
+        "max_iterations": 5,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": false,
+        "top_k_docs": 5
+      }
+    }
+  ],
+  "evaluation": {
+    "qa_dataset_path": "data/evaluation/competency_questions.json",
+    "gold_standard_path": "data/evaluation/gold_standard/",
+    "metrics": [
+      "ontology_class_coverage",
+      "relation_coverage",
+      "entity_count",
+      "edge_count",
+      "avg_confidence",
+      "cq_answerability",
+      "graph_density",
+      "connected_components",
+      "avg_degree",
+      "clustering_coefficient",
+      "build_time_seconds"
+    ],
+    "per_iteration_tracking": true,
+    "similarity_threshold": 0.8,
+    "max_results": 10
+  },
+  "services": {
+    "neo4j_container": "kgplatform-neo4j",
+    "neo4j_uri": "bolt://localhost:7687",
+    "qdrant_container": "kgplatform-qdrant",
+    "qdrant_collection": "kgbuilder",
+    "ollama_container": "ollama-kgbuilder",
+    "ollama_url": "http://localhost:18134",
+    "fuseki_container": "kgplatform-fuseki",
+    "fuseki_url": "http://localhost:3030"
+  }
+}

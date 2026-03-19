@@ -50,6 +50,7 @@ class OllamaProvider:
         temperature: float = 0.7,
         top_p: float = 0.9,
         timeout: int = 600,
+        seed: int | None = None,
     ) -> None:
         """Initialize Ollama provider with resilient connection pooling and retry logic.
 
@@ -59,6 +60,7 @@ class OllamaProvider:
             temperature: Sampling temperature (0-2)
             top_p: Top-p nucleus sampling
             timeout: Request timeout in seconds (600s default for Docker Ollama)
+            seed: Fixed random seed for reproducible generation (None = non-deterministic)
 
         Raises:
             ConnectionError: If Ollama service is not running
@@ -68,6 +70,7 @@ class OllamaProvider:
         self.temperature = temperature
         self.top_p = top_p
         self.timeout = timeout
+        self.seed = seed
 
         # Circuit breaker state for fault tolerance
         self.consecutive_timeouts = 0
@@ -299,12 +302,18 @@ class OllamaProvider:
 
         # Simple token count: whitespace split
         prompt_tokens = len(prompt.split())
+        options: dict[str, Any] = {
+            "temperature": kwargs.get("temperature", self.temperature),
+            "top_p": kwargs.get("top_p", self.top_p),
+        }
+        effective_seed = kwargs.get("seed", self.seed)
+        if effective_seed is not None:
+            options["seed"] = effective_seed
         params = {
             "model": self.model,
             "prompt": prompt,
-            "temperature": kwargs.get("temperature", self.temperature),
-            "top_p": kwargs.get("top_p", self.top_p),
             "stream": False,
+            "options": options,
             "format": kwargs.get("format", None),  # Support native JSON format if specified
         }
 

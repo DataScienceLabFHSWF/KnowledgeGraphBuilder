@@ -448,7 +448,8 @@ class ConfigRunner:
             # LLM & Embeddings
             llm = OllamaProvider(
                 model=variant.params.model,
-                base_url=ollama_url
+                base_url=ollama_url,
+                seed=self.config.seed,
             )
 
             # Retriever
@@ -539,6 +540,25 @@ class ConfigRunner:
 
             logger.info("ontology_relations_loaded", count=len(ontology_relations), run_id=run_id)
 
+            # Law graph context provider (optional, controlled by variant param)
+            context_provider = None
+            if getattr(variant.params, "law_graph_enabled", False):
+                try:
+                    from kgbuilder.linking.law_context import LawContextProvider
+                    law_qdrant = QdrantStore(url=qdrant_url, collection_name="lawgraph")
+                    law_embedder = OllamaProvider(model=variant.params.model, base_url=ollama_url)
+                    context_provider = LawContextProvider(
+                        qdrant_store=law_qdrant,
+                        embedder=law_embedder,
+                    ).get_context
+                    logger.info("law_graph_context_enabled", run_id=run_id)
+                except Exception as _law_err:
+                    logger.warning(
+                        "law_graph_context_unavailable",
+                        run_id=run_id,
+                        error=str(_law_err),
+                    )
+
             # Discovery loop
             discovery_loop = IterativeDiscoveryLoop(
                 retriever=retriever,
@@ -547,10 +567,11 @@ class ConfigRunner:
                 ontology_classes=ontology_classes,
                 relation_extractor=relation_extractor,  # NEW: Wire Phase 5
                 ontology_relations=ontology_relations,  # NEW: Wire Phase 5
+                context_provider=context_provider,      # Law graph augmentation
             )
 
             # Run discovery loop with continuous wandb logging
-            logger.info("kg_build_starting_discovery", run_id=run_id)
+            logger.info("kg_build_starting_discovery", run_id=run_id, law_graph=context_provider is not None)
 
             # Log initial state to wandb
             if wandb_run is not None:
@@ -558,6 +579,7 @@ class ConfigRunner:
                     "status": "discovery_started",
                     "ontology_classes": len(ontology_classes),
                     "max_iterations": variant.params.max_iterations,
+                    "law_graph_enabled": context_provider is not None,
                 })
 
             discover_result = discovery_loop.run_discovery(
@@ -571,6 +593,42 @@ class ConfigRunner:
             # Get entities and relations from discovery result (dataclass, not dict)
             entities = discover_result.entities
             relations = getattr(discover_result, 'relations', [])  # NEW: Get extracted relations
+
+            # Persist per-iteration metrics for convergence analysis
+            if discover_result.iterations:
+                iter_metrics_path = output_dir / run_id / "iteration_metrics.json"
+                iter_metrics_path.parent.mkdir(parents=True, exist_ok=True)
+                iter_data = [
+                    {
+                        "iteration": it.iteration,
+                        "entities_discovered_this_iter": it.entities_discovered,
+                        "total_entities_cumulative": it.total_entities,
+                        "ontology_coverage": round(it.coverage, 4),
+                        "questions_processed": it.questions_processed,
+                        "new_entity_types": sorted(it.new_entity_types),
+                        "processing_time_sec": round(it.processing_time_sec, 2),
+                    }
+                    for it in discover_result.iterations
+                ]
+                import json as _json
+                with iter_metrics_path.open("w") as _f:
+                    _json.dump(iter_data, _f, indent=2)
+                logger.info(
+                    "iteration_metrics_saved",
+                    run_id=run_id,
+                    path=str(iter_metrics_path),
+                    iterations=len(iter_data),
+                )
+
+                # Log per-iteration to wandb
+                if wandb_run is not None:
+                    for it in discover_result.iterations:
+                        wandb_run.log({
+                            "iter_entities_new": it.entities_discovered,
+                            "iter_entities_cumulative": it.total_entities,
+                            "iter_coverage": it.coverage,
+                            "iter_time_sec": it.processing_time_sec,
+                        }, step=it.iteration)
 
             # Log discovery results to wandb continuously
             if wandb_run is not None:
@@ -669,6 +727,21 @@ class ConfigRunner:
                 "build_time_seconds": round(build_time, 2),
                 "model": variant.params.model,
                 "max_iterations": variant.params.max_iterations,
+                "final_coverage": round(discover_result.final_coverage, 4),
+                "total_discovery_iterations": discover_result.total_iterations,
+                "total_entities_discovered": len(entities),
+                "total_relations_extracted": len(relations),
+                "discovery_iterations": [
+                    {
+                        "iteration": it.iteration,
+                        "entities_new": it.entities_discovered,
+                        "entities_cumulative": it.total_entities,
+                        "coverage": round(it.coverage, 4),
+                        "new_entity_types_count": len(it.new_entity_types),
+                        "time_sec": round(it.processing_time_sec, 2),
+                    }
+                    for it in discover_result.iterations
+                ],
             }
 
         except Exception as e:

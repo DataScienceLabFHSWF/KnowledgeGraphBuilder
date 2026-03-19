@@ -13,11 +13,13 @@ workflow.
 
 Part of a three-repository research ecosystem:
 
-| Repository | Purpose |
-|-----------|---------|
-| **KnowledgeGraphBuilder** (this repo) | KG construction, validation, and export |
-| [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent) | Ontology-informed GraphRAG QA agent |
-| [OntologyExtender](https://github.com/DataScienceLabFHSWF/OntologyExtender) | Human-in-the-loop ontology extension |
+| Repository | Purpose | Branch |
+|-----------|---------|--------|
+| **KnowledgeGraphBuilder** (this repo) | KG construction, validation, and export | `fast-api` |
+| [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent) | Ontology-informed GraphRAG QA agent | `dev/fast-api-backend` |
+| [OntologyExtender](https://github.com/DataScienceLabFHSWF/OntologyExtender) | Human-in-the-loop ontology extension | `fast-api` |
+
+All three are orchestrated together via [KGPlatform](https://github.com/DataScienceLabFHSWF/KGPlatform), but each works standalone with its own `docker-compose.yml`.
 
 ---
 
@@ -133,18 +135,45 @@ extraction details, and stopping criteria.
 
 ## Quick Start
 
+### Option 1: Docker (Recommended)
+
 ```bash
-# 1. Clone and install
 git clone https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder.git
 cd KnowledgeGraphBuilder
-cp .env.example .env          # configure endpoints
+cp .env.example .env
+
+# Start everything — Neo4j + Qdrant + Fuseki + Ollama + API + auto model pull
+docker compose up -d --build
+
+# API: http://localhost:8001/docs
+# Neo4j: http://localhost:7474
+# Qdrant: http://localhost:6333/dashboard
+# Fuseki: http://localhost:3030
+```
+
+Container names are prefixed with `kgb-` to avoid conflicts with other stacks.
+
+### Option 2: As Part of KGPlatform
+
+```bash
+git clone --recurse-submodules https://github.com/DataScienceLabFHSWF/KGPlatform.git
+cd KGPlatform
+docker compose up -d  # starts all 3 APIs + shared infra
+```
+
+### Option 3: Local Development
+
+```bash
+git clone https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder.git
+cd KnowledgeGraphBuilder
+cp .env.example .env
 pip install -e ".[dev]"
 ./scripts/setup_shacl2fol.sh  # optional: download SHACL2FOL dependencies
 
-# 2. Start infrastructure
-docker-compose up -d neo4j qdrant fuseki ollama
+# Start infrastructure
+docker compose up -d kgb-neo4j kgb-qdrant kgb-fuseki kgb-ollama kgb-ollama-init
 
-# 3. Run the full pipeline (single iteration for quick test)
+# Run the full pipeline (single iteration for quick test)
 source .venv/bin/activate
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 python scripts/full_kg_pipeline.py --max-iterations 1
@@ -258,18 +287,23 @@ A JSON checkpoint with all entities and relations is also saved in
 
 ## Infrastructure
 
-All services run via Docker Compose:
+All services run via Docker Compose. Models are pulled automatically.
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Neo4j | 7474 / 7687 | Knowledge graph storage (Cypher queries) |
-| Qdrant | 6333 | Vector similarity search (384-dim embeddings) |
-| Fuseki | 3030 | RDF/SPARQL ontology store |
-| Ollama | 11434 | Local LLM inference and embedding generation |
+| Service | Container | Port | Purpose |
+|---------|-----------|------|---------|
+| Neo4j | kgb-neo4j | 7474 / 7687 | Knowledge graph storage (Cypher queries) |
+| Qdrant | kgb-qdrant | 6333 | Vector similarity search (384-dim embeddings) |
+| Fuseki | kgb-fuseki | 3030 | RDF/SPARQL ontology store |
+| Ollama | kgb-ollama | 11435 | Local LLM inference and embedding generation |
+| API | kgb-api | 8001 | FastAPI service for KG construction |
+
+When running as part of **KGPlatform**, infrastructure is shared across all
+three repos (KGBuilder, GraphQA, OntologyExtender) — this file's
+`docker-compose.yml` is not used.
 
 ---
 

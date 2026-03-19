@@ -39,6 +39,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx>=0.25",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
@@ -88,6 +93,7 @@ packages = ["kgbuilder"]
 
 [project.scripts]
 kgbuilder-cli = "kgbuilder.cli:main"
+kgbuilder-api = "uvicorn:main"
 
 [tool.black]
 line-length = 100
@@ -116,6 +122,9 @@ minversion = "7.0"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--cov=src/kgbuilder --cov-report=term-missing --cov-report=html"
+markers = [
+    "integration: marks tests that require running Docker services (deselect with '-m \"not integration\"')",
+]
 
 [tool.coverage.run]
 source = ["src/kgbuilder"]
