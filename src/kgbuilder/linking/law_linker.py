@@ -50,21 +50,10 @@ class KGLawLinker:
 
         # Configurable law patterns
         self.law_patterns: dict[str, dict[str, str | list[str]]] = {
+            # --- Core nuclear / radiation laws ---
             "AtG": {
                 "patterns": [r"\bAtG\b", r"\bAtomgesetz\b"],
                 "full_name": "Atomgesetz",
-            },
-            "BBergG": {
-                "patterns": [r"\bBBergG\b", r"\bBundesberggesetz\b"],
-                "full_name": "Bundesberggesetz",
-            },
-            "BImSchG": {
-                "patterns": [r"\bBImSchG\b", r"\bImmissionsschutzgesetz\b"],
-                "full_name": "Bundes-Immissionsschutzgesetz",
-            },
-            "KrWG": {
-                "patterns": [r"\bKrWG\b", r"\bKreislaufwirtschaftsgesetz\b"],
-                "full_name": "Kreislaufwirtschaftsgesetz",
             },
             "StrlSchG": {
                 "patterns": [r"\bStrlSchG\b", r"\bStrahlenschutzgesetz\b"],
@@ -73,6 +62,69 @@ class KGLawLinker:
             "StrlSchV": {
                 "patterns": [r"\bStrlSchV\b", r"\bStrahlenschutzverordnung\b"],
                 "full_name": "Strahlenschutzverordnung",
+            },
+            "StandAG": {
+                "patterns": [r"\bStandAG\b", r"\bStandortauswahlgesetz\b"],
+                "full_name": "Standortauswahlgesetz",
+            },
+            # --- Environmental / planning laws ---
+            "BImSchG": {
+                "patterns": [r"\bBImSchG\b", r"\bImmissionsschutzgesetz\b"],
+                "full_name": "Bundes-Immissionsschutzgesetz",
+            },
+            "UVPG": {
+                "patterns": [r"\bUVPG\b", r"\bUmweltverträglichkeitsprüfungsgesetz\b"],
+                "full_name": "Gesetz über die Umweltverträglichkeitsprüfung",
+            },
+            "BauGB": {
+                "patterns": [r"\bBauGB\b", r"\bBBauG\b", r"\bBaugesetzbuch\b"],
+                "full_name": "Baugesetzbuch",
+            },
+            "KrWG": {
+                "patterns": [r"\bKrWG\b", r"\bKreislaufwirtschaftsgesetz\b"],
+                "full_name": "Kreislaufwirtschaftsgesetz",
+            },
+            # --- Administrative / procedural laws ---
+            "VwVfG": {
+                "patterns": [r"\bVwVfG\b", r"\bVerwaltungsverfahrensgesetz\b"],
+                "full_name": "Verwaltungsverfahrensgesetz",
+            },
+            "VwGO": {
+                "patterns": [r"\bVwGO\b", r"\bVerwaltungsgerichtsordnung\b"],
+                "full_name": "Verwaltungsgerichtsordnung",
+            },
+            # --- Mining ---
+            "BBergG": {
+                "patterns": [r"\bBBergG\b", r"\bBundesberggesetz\b"],
+                "full_name": "Bundesberggesetz",
+            },
+            # --- Liability / financial security ---
+            "VVG": {
+                "patterns": [r"\bVVG\b", r"\bVersicherungsvertragsgesetz\b"],
+                "full_name": "Versicherungsvertragsgesetz",
+            },
+            "BGB": {
+                "patterns": [r"\bBGB\b", r"\bBürgerliches Gesetzbuch\b"],
+                "full_name": "Bürgerliches Gesetzbuch",
+            },
+            # --- Safety / enforcement ---
+            "SprengG": {
+                "patterns": [r"\bSprengG\b", r"\bSprengstoffgesetz\b"],
+                "full_name": "Gesetz über explosionsgefährliche Stoffe",
+            },
+            "OWiG": {
+                "patterns": [r"\bOWiG\b", r"\bOrdnungswidrigkeitengesetz\b"],
+                "full_name": "Gesetz über Ordnungswidrigkeiten",
+            },
+            # --- Tax / fiscal ---
+            "AO": {
+                "patterns": [r"\bAO\b(?!\s*\d)", r"\bAbgabenordnung\b"],
+                "full_name": "Abgabenordnung",
+            },
+            # --- Criminal / procedural ---
+            "StPO": {
+                "patterns": [r"\bStPO\b", r"\bStrafprozessordnung\b"],
+                "full_name": "Strafprozessordnung",
             },
         }
 
@@ -256,6 +308,105 @@ class KGLawLinker:
                 "GOVERNED_BY",
                 0.70,
             ),
+            # StandAG — nuclear waste site selection
+            (
+                re.compile(r"Endlager|Standortauswahl|Endlagersuche|Tiefenlagerung", re.I),
+                "StandAG",
+                None,
+                "GOVERNED_BY",
+                0.85,
+            ),
+            (
+                re.compile(r"Planfeststellungsverfahren.*Endlager|Endlager.*Standort", re.I),
+                "StandAG",
+                "§ 35",
+                "GOVERNED_BY",
+                0.80,
+            ),
+            # UVPG — environmental impact assessment
+            (
+                re.compile(r"Umweltverträglichkeitsprüfung|UVP(?!G)|UVP-Bericht|UVP-Pflicht", re.I),
+                "UVPG",
+                None,
+                "GOVERNED_BY",
+                0.85,
+            ),
+            (
+                re.compile(r"Umweltverträglichkeitsstudie|Scoping|UVP-Verfahren", re.I),
+                "UVPG",
+                None,
+                "GOVERNED_BY",
+                0.80,
+            ),
+            # VwVfG — administrative procedure
+            (
+                re.compile(r"Planfeststellung|Planfeststellungsbeschluss", re.I),
+                "VwVfG",
+                "§ 72",
+                "GOVERNED_BY",
+                0.85,
+            ),
+            (
+                re.compile(r"öffentliche Auslegung|Einwendungsverfahren|Erörterungstermin", re.I),
+                "VwVfG",
+                "§ 73",
+                "GOVERNED_BY",
+                0.80,
+            ),
+            (
+                re.compile(r"Verwaltungsakt|Widerspruchsverfahren|Anhörung", re.I),
+                "VwVfG",
+                None,
+                "GOVERNED_BY",
+                0.70,
+            ),
+            # VwGO — administrative court
+            (
+                re.compile(r"Verwaltungsgericht|Verwaltungsklage|Anfechtungsklage", re.I),
+                "VwGO",
+                None,
+                "GOVERNED_BY",
+                0.80,
+            ),
+            (
+                re.compile(r"einstweilige Verfügung|aufschiebende Wirkung", re.I),
+                "VwGO",
+                "§ 80",
+                "GOVERNED_BY",
+                0.75,
+            ),
+            # VVG — insurance / financial security
+            (
+                re.compile(r"Deckungsvorsorge|Haftpflichtversicherung", re.I),
+                "VVG",
+                None,
+                "GOVERNED_BY",
+                0.80,
+            ),
+            # BauGB — building / land use planning
+            (
+                re.compile(r"Bebauungsplan|Bauleitplan|Flächennutzungsplan", re.I),
+                "BauGB",
+                None,
+                "GOVERNED_BY",
+                0.80,
+            ),
+            # BGB — civil liability
+            (
+                re.compile(r"Schadensersatz|Haftung.*Betreiber|Eigentümer.*Haftung", re.I),
+                "BGB",
+                None,
+                "GOVERNED_BY",
+                0.70,
+            ),
+            # SprengG — explosives (demolition work)
+            (
+                re.compile(r"Sprengstoff|Sprengung|Sprengarbeiten|Pyrotechnik", re.I),
+                "SprengG",
+                None,
+                "GOVERNED_BY",
+                0.80,
+            ),
         ]
 
         # Entity-type-to-law defaults (fallback)
@@ -269,6 +420,8 @@ class KGLawLinker:
             "NuclearMaterial": [("AtG", "§ 2", "DEFINED_IN", 0.55)],
             "WasteCategory": [("StrlSchG", None, "DEFINED_IN", 0.50)],
             "Permit": [("AtG", "§ 7", "GOVERNED_BY", 0.55)],
+            "Process": [("VwVfG", None, "GOVERNED_BY", 0.45)],
+            "Activity": [("AtG", "§ 7 Abs. 3", "GOVERNED_BY", 0.45)],
         }
 
     # --------------------------------------------------------------------- #

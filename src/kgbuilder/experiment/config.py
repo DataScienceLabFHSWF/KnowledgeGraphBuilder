@@ -35,6 +35,7 @@ class KGBuilderParams:
     confidence_threshold: float = 0.6
     classes_limit: int | None = None
     questions_per_class: int = 3
+    law_graph_enabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -45,6 +46,7 @@ class KGBuilderParams:
             "confidence_threshold": self.confidence_threshold,
             "classes_limit": self.classes_limit,
             "questions_per_class": self.questions_per_class,
+            "law_graph_enabled": self.law_graph_enabled,
         }
 
     @staticmethod
@@ -57,6 +59,7 @@ class KGBuilderParams:
             confidence_threshold=data.get("confidence_threshold", 0.6),
             classes_limit=data.get("classes_limit"),
             questions_per_class=data.get("questions_per_class", 3),
+            law_graph_enabled=data.get("law_graph_enabled", False),
         )
 
 
