@@ -409,12 +409,26 @@ class BuildPipeline:
         answerable = min(total_cqs, 2 + iteration * 2)  # Increasing coverage
         coverage = (answerable / total_cqs * 100) if total_cqs > 0 else 0
 
+        type_breakdown: dict[str, int] = {}
+        for cq in competency_questions:
+            cq_type = str(cq.get("cq_type", "VCQ")).strip() if isinstance(cq, dict) else "VCQ"
+            type_breakdown[cq_type] = type_breakdown.get(cq_type, 0) + 1
+
+        details = {}
+        for idx, cq in enumerate(competency_questions):
+            cq_id = cq.get("id", f"CQ-{idx}") if isinstance(cq, dict) else f"CQ-{idx}"
+            details[cq_id] = {
+                "answerable": idx < answerable,
+                "cq_type": cq.get("cq_type", "VCQ") if isinstance(cq, dict) else "VCQ",
+            }
+
         return CompetencyQuestionResults(
             total_questions=total_cqs,
             answerable_questions=answerable,
             coverage_percentage=coverage,
             unanswerable=[f"CQ-{i}" for i in range(total_cqs - answerable)],
-            details={f"CQ-{i}": {"answerable": i < answerable} for i in range(total_cqs)},
+            details=details,
+            type_breakdown=type_breakdown,
         )
 
     def get_checker_summary(self) -> str:

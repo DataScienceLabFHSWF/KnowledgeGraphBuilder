@@ -118,6 +118,27 @@ def test_max_iterations_precedence():
     state = make_state(iter_count=3)
     stop, reason, _ = chk.check(state)
     assert stop
+
+
+def test_cq_checking_step_type_breakdown():
+    from kgbuilder.pipeline.orchestrator import BuildPipeline, BuildPipelineConfig
+
+    config = BuildPipelineConfig()
+    pipeline = BuildPipeline(config)
+
+    cqs = [
+        {"id": "CQ-1", "question": "Q1", "cq_type": "SCQ"},
+        {"id": "CQ-2", "question": "Q2", "cq_type": "RCQ"},
+    ]
+
+    results = pipeline._cq_checking_step(  # noqa: SLF001
+        None,
+        cqs,
+        iteration=1,
+    )
+
+    assert results.type_breakdown == {"SCQ": 1, "RCQ": 1}
+
     assert reason == StoppingReason.MAX_ITERATIONS_REACHED
 
 
