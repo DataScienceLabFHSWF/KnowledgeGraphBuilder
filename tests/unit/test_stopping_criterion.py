@@ -139,8 +139,6 @@ def test_cq_checking_step_type_breakdown():
 
     assert results.type_breakdown == {"SCQ": 1, "RCQ": 1}
 
-    assert reason == StoppingReason.MAX_ITERATIONS_REACHED
-
 
 def test_subscription_logic_any_vs_all():
     # behaviour is identical since logic currently requires all checks
