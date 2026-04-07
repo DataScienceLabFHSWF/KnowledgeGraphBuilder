@@ -42,7 +42,7 @@ class BuildRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=100)
     run_validation: bool = Field(default=True, description="Run SHACL validation after build")
     link_laws: bool = True
-    model: str = Field(default="qwen3:8b")
+    model: str = Field(default="gemma4:e2b")
 
 
 class BuildResponse(BaseModel):

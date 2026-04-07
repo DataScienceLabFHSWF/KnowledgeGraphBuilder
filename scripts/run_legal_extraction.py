@@ -27,7 +27,7 @@ Usage:
 Environment variables:
     NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD
     OLLAMA_BASE_URL     http://localhost:18134
-    OLLAMA_LLM_MODEL    qwen3:8b
+    OLLAMA_LLM_MODEL    gemma4:e2b
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ def run_llm_extraction(paragraphs: list[dict]) -> list[dict]:
         return []
 
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:18134")
-    model = os.getenv("OLLAMA_LLM_MODEL", "qwen3:8b")
+    model = os.getenv("OLLAMA_LLM_MODEL", "gemma4:e2b")
 
     try:
         llm = OllamaProvider(model=model, base_url=base_url)

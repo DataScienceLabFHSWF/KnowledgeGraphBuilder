@@ -4,7 +4,7 @@ Provides LLM capabilities through Ollama API for structured extraction.
 Supports:
 - Text generation (unstructured)
 - Structured JSON output with Pydantic validation
-- Multiple model support (QWEN3, qwen3-next, etc.)
+- Multiple model support (Gemma4, nemotron, etc.)
 - Embedding generation via embedding models
 - Resilient retry with exponential backoff + jitter
 - Connection pooling and circuit breaker
@@ -37,7 +37,7 @@ class OllamaProvider:
     total_completion_tokens: int = 0
     """Ollama-based LLM provider for local model inference.
 
-    Supports QWEN3, qwen3-next, and other Ollama-available models.
+    Supports Gemma4, nemotron, and other Ollama-available models.
     Provides both unstructured and structured (JSON) output generation.
     """
 
@@ -55,7 +55,7 @@ class OllamaProvider:
         """Initialize Ollama provider with resilient connection pooling and retry logic.
 
         Args:
-            model: Model name (default: OLLAMA_LLM_MODEL or qwen3:8b)
+            model: Model name (default: OLLAMA_LLM_MODEL or gemma4:e2b)
             base_url: Ollama API base URL
             temperature: Sampling temperature (0-2)
             top_p: Top-p nucleus sampling
@@ -65,7 +65,7 @@ class OllamaProvider:
         Raises:
             ConnectionError: If Ollama service is not running
         """
-        self.model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
+        self.model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "gemma4:e2b"))
         self.base_url = base_url or os.environ.get("OLLAMA_URL", self._DEFAULT_BASE_URL)
         self.temperature = temperature
         self.top_p = top_p

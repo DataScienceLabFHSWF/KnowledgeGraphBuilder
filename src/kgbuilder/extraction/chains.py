@@ -89,14 +89,14 @@ class ExtractionChains:
         4. Return ExtractedEntity objects
         
         Args:
-            model: Ollama model name (default: OLLAMA_MODEL env var or qwen3:8b)
+            model: Ollama model name (default: OLLAMA_MODEL env var or gemma4:e2b)
             base_url: Ollama API base URL
             temperature: LLM temperature (lower = more deterministic)
             
         Returns:
             LCEL Runnable chain for entity extraction
         """
-        model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
+        model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "gemma4:e2b"))
         base_url = get_base_url(base_url)
 
         # Initialize LLM with structured output (attach Langsmith callbacks if enabled)
@@ -165,14 +165,14 @@ Return ONLY valid JSON matching this format:
         4. Return ExtractedRelation objects with constraint checking
         
         Args:
-            model: Ollama model name (default: OLLAMA_MODEL env var or qwen3:8b)
+            model: Ollama model name (default: OLLAMA_MODEL env var or gemma4:e2b)
             base_url: Ollama API base URL
             temperature: LLM temperature
             
         Returns:
             LCEL Runnable chain for relation extraction
         """
-        model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
+        model = model or os.environ.get("OLLAMA_LLM_MODEL", os.environ.get("OLLAMA_MODEL", "gemma4:e2b"))
         base_url = get_base_url(base_url)
 
         # Initialize LLM (attach Langsmith callbacks if enabled)

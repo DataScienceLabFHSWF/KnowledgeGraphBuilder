@@ -1,0 +1,156 @@
+# =============================================================================
+# KnowledgeGraphBuilder Paper Experiments
+# "From Documents to Decisions: Ontology-Driven KG Construction"
+# =============================================================================
+#
+# Usage:
+#   make -f Makefile.paper check         # Verify infra + models ready
+#   make -f Makefile.paper benchmark     # Run full 6-condition benchmark (3 runs each)
+#   make -f Makefile.paper all           # Run everything
+#
+# Prerequisites:
+#   - KGPlatform infra running (make up from root)
+#   - Models pulled into ollama-kgbuilder container
+#   - Virtual environment with project installed
+# =============================================================================
+
+SHELL := /bin/bash
+.ONESHELL:
+
+# --- Configuration ---
+VENV         := .venv/bin/python
+OLLAMA_URL   := http://localhost:18134
+NEO4J_URI    := bolt://localhost:7687
+QDRANT_URL   := http://localhost:6333
+FUSEKI_URL   := http://localhost:3030
+RESULTS_DIR  := experiment_results/benchmark_paper
+MODELS       := gemma4:e2b gemma4:e4b gemma4:31b nemotron-3-nano
+
+.PHONY: all check check-ollama check-models check-neo4j check-qdrant check-fuseki check-venv \
+        benchmark setup-venv pull-models clean help
+
+# =============================================================================
+# Top-level targets
+# =============================================================================
+
+all: check benchmark
+	@echo ""
+	@echo "════════════════════════════════════════"
+	@echo "  All KGBuilder experiments done"
+	@echo "  Results: $(RESULTS_DIR)/"
+	@echo "════════════════════════════════════════"
+
+# =============================================================================
+# Dependency checks
+# =============================================================================
+
+check: check-venv check-ollama check-models check-neo4j check-qdrant check-fuseki
+	@echo "✓ All checks passed"
+
+check-venv:
+	@test -f .venv/bin/python || { echo "✗ .venv not found. Run: make -f Makefile.paper setup-venv"; exit 1; }
+	@$(VENV) -c "import kgbuilder" 2>/dev/null || { echo "✗ kgbuilder not installed. Run: .venv/bin/pip install -e ."; exit 1; }
+	@echo "✓ Virtual environment ready"
+
+check-ollama:
+	@curl -sf $(OLLAMA_URL)/api/tags > /dev/null || { echo "✗ Ollama not reachable at $(OLLAMA_URL)"; exit 1; }
+	@echo "✓ Ollama reachable at $(OLLAMA_URL)"
+
+check-models:
+	@for model in $(MODELS); do \
+		curl -sf $(OLLAMA_URL)/api/tags | python3 -c "import sys,json; models=[m['name'] for m in json.load(sys.stdin)['models']]; sys.exit(0 if any('$$model' in m for m in models) else 1)" \
+		|| { echo "✗ Model $$model not pulled. Run: docker exec ollama-kgbuilder ollama pull $$model"; exit 1; }; \
+	done
+	@echo "✓ All models available: $(MODELS)"
+
+check-neo4j:
+	@curl -sf http://localhost:7474 > /dev/null || { echo "✗ Neo4j not reachable at http://localhost:7474"; exit 1; }
+	@echo "✓ Neo4j reachable"
+
+check-qdrant:
+	@curl -sf $(QDRANT_URL)/collections > /dev/null || { echo "✗ Qdrant not reachable at $(QDRANT_URL)"; exit 1; }
+	@echo "✓ Qdrant reachable at $(QDRANT_URL)"
+
+check-fuseki:
+	@curl -sf $(FUSEKI_URL)/$$/ping > /dev/null || { echo "✗ Fuseki not reachable at $(FUSEKI_URL)"; exit 1; }
+	@echo "✓ Fuseki reachable at $(FUSEKI_URL)"
+
+# =============================================================================
+# Setup
+# =============================================================================
+
+setup-venv:
+	python3 -m venv .venv
+	.venv/bin/pip install -e .
+	@echo "✓ Virtual environment created and kgbuilder installed"
+
+pull-models:
+	@for model in $(MODELS); do \
+		echo "Pulling $$model..."; \
+		docker exec ollama-kgbuilder ollama pull $$model; \
+	done
+
+# =============================================================================
+# Paper Benchmark: 6 conditions × 3 runs
+# =============================================================================
+# Conditions:
+#   A_single_pass     — gemma4:e2b, 1 iter, no law graph (naive baseline)
+#   B_multipass        — gemma4:e2b, 5 iters, no law graph (iterative discovery)
+#   C_multipass_law    — gemma4:e2b, 5 iters, law graph (full system)
+#   D_gemma4b          — gemma4:e4b, 5 iters (medium model)
+#   E_gemma31b         — gemma4:31b, 5 iters (large model)
+#   F_nemotron_ablation— nemotron-3-nano, 5 iters (ablation)
+# =============================================================================
+
+benchmark: check
+	@echo ""
+	@echo "Running paper benchmark (6 conditions × 3 runs)..."
+	@echo "This will take many hours. Results are saved incrementally."
+	@mkdir -p $(RESULTS_DIR)
+	$(VENV) scripts/run_experiment.py \
+		--config examples/benchmark_paper.json \
+		--output $(RESULTS_DIR) \
+		--workers 1 \
+		--formats markdown json html
+	@echo "✓ Benchmark complete → $(RESULTS_DIR)/"
+
+benchmark-quick: check
+	@echo ""
+	@echo "Running quick single-variant test (A_single_pass only)..."
+	@mkdir -p experiment_results/quick_test
+	OLLAMA_MODEL=gemma4:e2b \
+	$(VENV) scripts/full_kg_pipeline.py \
+		--max-iterations 1 \
+		--questions-per-class 2
+	@echo "✓ Quick test done"
+
+# =============================================================================
+# Plot convergence (post-experiment)
+# =============================================================================
+
+plots: check-venv
+	@echo "Generating convergence plots..."
+	$(VENV) scripts/plot_convergence.py
+	@echo "✓ Plots generated"
+
+# =============================================================================
+# Utilities
+# =============================================================================
+
+clean:
+	@echo "This would remove experiment results. Are you sure? Run: rm -rf $(RESULTS_DIR)"
+
+help:
+	@echo "KnowledgeGraphBuilder Paper Experiments"
+	@echo ""
+	@echo "  make -f Makefile.paper check          Verify infra + models"
+	@echo "  make -f Makefile.paper setup-venv      Create venv + install"
+	@echo "  make -f Makefile.paper pull-models     Pull all required models"
+	@echo "  make -f Makefile.paper benchmark       Full benchmark (6×3 runs)"
+	@echo "  make -f Makefile.paper benchmark-quick Quick single-variant test"
+	@echo "  make -f Makefile.paper plots           Generate convergence plots"
+	@echo "  make -f Makefile.paper all             Everything"
+	@echo ""
+	@echo "Models: $(MODELS)"
+	@echo "Ollama: $(OLLAMA_URL)"
+	@echo "Neo4j:  $(NEO4J_URI)  Qdrant: $(QDRANT_URL)  Fuseki: $(FUSEKI_URL)"

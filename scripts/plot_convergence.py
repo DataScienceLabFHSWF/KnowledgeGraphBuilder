@@ -46,9 +46,9 @@ import numpy as np
 
 
 VARIANT_STYLES: dict[str, dict] = {
-    "A_single_pass":   {"color": "#E07B54", "label": "A: Single-pass (qwen3:8b)", "ls": "--"},
-    "B_multipass":     {"color": "#5B919B", "label": "B: Multi-pass (qwen3:8b)", "ls": "-"},
-    "C_multipass_law": {"color": "#3E6B48", "label": "C: Multi-pass + Law Graph (qwen3:8b)", "ls": "-"},
+    "A_single_pass":   {"color": "#E07B54", "label": "A: Single-pass (gemma4:e2b)", "ls": "--"},
+    "B_multipass":     {"color": "#5B919B", "label": "B: Multi-pass (gemma4:e2b)", "ls": "-"},
+    "C_multipass_law": {"color": "#3E6B48", "label": "C: Multi-pass + Law Graph (gemma4:e2b)", "ls": "-"},
     "D_nemotron_4b":   {"color": "#9B6B9B", "label": "D: Multi-pass (nemotron-3-nano:4b)", "ls": "-."},
     "E_nemotron_30b":  {"color": "#B59B3E", "label": "E: Multi-pass (nemotron-3-nano:30b)", "ls": ":"},
 }

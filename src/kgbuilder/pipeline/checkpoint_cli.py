@@ -31,7 +31,7 @@ def enrich_from_checkpoint(
     Args:
         checkpoint_path: Path to extraction checkpoint
         output_dir: Optional output directory for enriched checkpoint
-        llm_model: LLM model name (default: OLLAMA_LLM_MODEL or qwen3:8b)
+        llm_model: LLM model name (default: OLLAMA_LLM_MODEL or gemma4:e2b)
         embedding_model: Embedding model name (default: OLLAMA_EMBED_MODEL or qwen3-embedding)
         ollama_base_url: Ollama API base URL
 
@@ -42,7 +42,7 @@ def enrich_from_checkpoint(
         FileNotFoundError: If checkpoint doesn't exist
         RuntimeError: If enrichment fails
     """
-    llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "qwen3:8b")
+    llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "gemma4:e2b")
     embedding_model = embedding_model or os.environ.get("OLLAMA_EMBED_MODEL", "qwen3-embedding")
     # Load checkpoint
     checkpoint_mgr = CheckpointManager(checkpoint_path.parent)

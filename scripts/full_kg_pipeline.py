@@ -19,7 +19,7 @@ Environment Variables:
   QDRANT_URL          - Qdrant vector DB (default: http://localhost:6333)
   QDRANT_COLLECTION   - Qdrant collection name (default: kgbuilder)
     OLLAMA_URL          - Ollama LLM server (default: http://localhost:18134, GPU container)
-  OLLAMA_MODEL        - Ollama model name (default: qwen3:8b)
+  OLLAMA_MODEL        - Ollama model name (default: gemma4:e2b)
   NEO4J_URI           - Neo4j database URI (default: bolt://localhost:7687)
   NEO4J_USER          - Neo4j username (default: neo4j)
   NEO4J_PASSWORD      - Neo4j password (default: changeme)
@@ -69,7 +69,7 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "changeme")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "kgbuilder")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:18134")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
 
 
 # =============================================================================

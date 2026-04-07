@@ -21,7 +21,7 @@ class KGBuilderParams:
     """KG builder hyperparameters for a single experiment variant.
 
     Attributes:
-        model: LLM model name (e.g., "qwen3:8b")
+        model: LLM model name (e.g., "gemma4:e2b")
         max_iterations: Maximum iterations for discovery loop
         similarity_threshold: Entity deduplication threshold (0-1)
         confidence_threshold: Minimum extraction confidence (0-1)
@@ -29,7 +29,7 @@ class KGBuilderParams:
         questions_per_class: Number of questions to generate per class
     """
 
-    model: str = "qwen3:8b"
+    model: str = "gemma4:e2b"
     max_iterations: int = 2
     similarity_threshold: float = 0.8
     confidence_threshold: float = 0.6
@@ -53,7 +53,7 @@ class KGBuilderParams:
     def from_dict(data: dict[str, Any]) -> KGBuilderParams:
         """Create from dictionary."""
         return KGBuilderParams(
-            model=data.get("model", "qwen3:8b"),
+            model=data.get("model", "gemma4:e2b"),
             max_iterations=data.get("max_iterations", 2),
             similarity_threshold=data.get("similarity_threshold", 0.8),
             confidence_threshold=data.get("confidence_threshold", 0.6),

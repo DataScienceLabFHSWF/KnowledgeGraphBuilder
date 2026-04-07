@@ -123,7 +123,7 @@ class LLMRelationExtractor:
         ontology_dict = {r.uri: r for r in ontology_relations}
 
         # 2. Get LLM chain
-        model = getattr(self._llm, "model", "qwen3:8b")
+        model = getattr(self._llm, "model", "gemma4:e2b")
         base_url = getattr(self._llm, "base_url", None)
 
         chain = ExtractionChains.create_relation_extraction_chain(

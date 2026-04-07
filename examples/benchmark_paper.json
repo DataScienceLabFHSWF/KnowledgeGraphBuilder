@@ -1,15 +1,15 @@
 {
   "name": "Nuclear Decommissioning Benchmark",
-  "description": "5-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law vs. nemotron-4b vs. nemotron-30b. 3 runs each for statistical reliability.",
+  "description": "7-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law, 3 model sizes (gemma4:e2b, gemma4:e4b, nemotron ablation). 3 runs each for statistical reliability.",
   "output_dir": "experiment_results/benchmark_paper",
   "num_runs": 3,
   "seed": 42,
   "variants": [
     {
       "name": "A_single_pass",
-      "description": "Single iteration, no law graph — naive baseline",
+      "description": "Single iteration, no law graph — naive baseline (gemma4:e2b)",
       "params": {
-        "model": "qwen3:8b",
+        "model": "gemma4:e2b",
         "max_iterations": 1,
         "questions_per_class": 3,
         "similarity_threshold": 0.85,
@@ -20,9 +20,9 @@
     },
     {
       "name": "B_multipass",
-      "description": "5 iterations, no law graph — shows value of iterative discovery",
+      "description": "5 iterations, no law graph — shows value of iterative discovery (gemma4:e2b)",
       "params": {
-        "model": "qwen3:8b",
+        "model": "gemma4:e2b",
         "max_iterations": 5,
         "questions_per_class": 3,
         "similarity_threshold": 0.85,
@@ -33,9 +33,9 @@
     },
     {
       "name": "C_multipass_law",
-      "description": "5 iterations + law graph context augmentation — full system",
+      "description": "5 iterations + law graph context augmentation — full system (gemma4:e2b)",
       "params": {
-        "model": "qwen3:8b",
+        "model": "gemma4:e2b",
         "max_iterations": 5,
         "questions_per_class": 3,
         "similarity_threshold": 0.85,
@@ -45,10 +45,10 @@
       }
     },
     {
-      "name": "D_nemotron_4b",
-      "description": "Multi-pass with nemotron-3-nano:4b — smaller/faster model ablation",
+      "name": "D_gemma4b",
+      "description": "Multi-pass with gemma4:e4b — medium model comparison",
       "params": {
-        "model": "nemotron-3-nano:4b",
+        "model": "gemma4:e4b",
         "max_iterations": 5,
         "questions_per_class": 3,
         "similarity_threshold": 0.85,
@@ -58,10 +58,23 @@
       }
     },
     {
-      "name": "E_nemotron_30b",
-      "description": "Multi-pass with nemotron-3-nano:30b — larger model ablation",
+      "name": "E_gemma31b",
+      "description": "Multi-pass with gemma4:31b — large model comparison",
       "params": {
-        "model": "nemotron-3-nano:30b",
+        "model": "gemma4:31b",
+        "max_iterations": 5,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": false,
+        "top_k_docs": 5
+      }
+    },
+    {
+      "name": "F_nemotron_ablation",
+      "description": "Multi-pass with nemotron-3-nano — ablation model comparison",
+      "params": {
+        "model": "nemotron-3-nano",
         "max_iterations": 5,
         "questions_per_class": 3,
         "similarity_threshold": 0.85,

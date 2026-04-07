@@ -120,7 +120,7 @@ class SimpleKGAssembler:
         self.dedup_threshold = dedup_threshold
 
         # Resolve model and URL
-        llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "qwen3:8b")
+        llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "gemma4:e2b")
         llm_base_url = llm_base_url or os.environ.get("OLLAMA_URL", "http://localhost:18134")
 
         # Initialize LLM (attach Langsmith callbacks if enabled)
