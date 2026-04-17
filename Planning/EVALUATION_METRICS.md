@@ -51,11 +51,12 @@ single-pass (A), directly validating the deep-research-loop hypothesis.
 
 | Condition | Expected pattern |
 |---|---|
-| A – Single-pass | Low counts, high orphan rate, low entropy (few classes covered) |
-| B – Multi-pass | Higher counts, lower orphan rate, higher entropy |
-| C – Multi-pass + Law | Highest class/relation coverage; law entities reduce orphan rate by providing anchor points |
-| D – nemotron:4b | Lower counts than qwen3:8b; model capability ablation |
-| E – nemotron:30b | Approaches or exceeds qwen3:8b; model scale ablation |
+| A_single_pass — Single-pass (gemma4:e2b) | Low counts, high orphan rate, low entropy (few classes covered) |
+| B_multipass — Multi-pass (gemma4:e2b) | Higher counts, lower orphan rate, higher entropy |
+| C_multipass_law — Multi-pass + Law (gemma4:e2b) | Highest class/relation coverage; law entities reduce orphan rate |
+| D_gemma4b — Multi-pass (gemma4:e4b) | Medium model: between A and E |
+| E_gemma31b — Multi-pass (gemma4:31b) | Large model: approaches or exceeds e2b |
+| F_nemotron_ablation — Multi-pass (nemotron-nano) | Architecture ablation: different model family |
 
 ---
 

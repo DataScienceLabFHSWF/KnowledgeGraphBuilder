@@ -52,11 +52,12 @@ RADAR_METRICS: list[str] = [
 ]
 
 VARIANT_STYLES: dict[str, dict[str, str]] = {
-    "A": {"label": "A: Single-pass (qwen3:8b)",        "color": "#4878CF"},
-    "B": {"label": "B: Multi-pass (qwen3:8b)",         "color": "#6ACC65"},
-    "C": {"label": "C: Multi-pass + Law (qwen3:8b)",   "color": "#D65F5F"},
-    "D": {"label": "D: Multi-pass (nemotron:4b)",      "color": "#B47CC7"},
-    "E": {"label": "E: Multi-pass (nemotron:30b)",     "color": "#C4AD66"},
+    "A_single_pass":        {"label": "A: Single-pass (gemma4:e2b)",     "color": "#E07B54"},
+    "B_multipass":          {"label": "B: Multi-pass (gemma4:e2b)",      "color": "#5B919B"},
+    "C_multipass_law":      {"label": "C: Multi-pass + Law (gemma4:e2b)", "color": "#3E6B48"},
+    "D_gemma4b":            {"label": "D: Multi-pass (gemma4:e4b)",      "color": "#9B6B9B"},
+    "E_gemma31b":           {"label": "E: Multi-pass (gemma4:31b)",      "color": "#B59B3E"},
+    "F_nemotron_ablation":  {"label": "F: Multi-pass (nemotron-nano)",   "color": "#7B7B7B"},
 }
 
 

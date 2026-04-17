@@ -49,8 +49,9 @@ VARIANT_STYLES: dict[str, dict] = {
     "A_single_pass":   {"color": "#E07B54", "label": "A: Single-pass (gemma4:e2b)", "ls": "--"},
     "B_multipass":     {"color": "#5B919B", "label": "B: Multi-pass (gemma4:e2b)", "ls": "-"},
     "C_multipass_law": {"color": "#3E6B48", "label": "C: Multi-pass + Law Graph (gemma4:e2b)", "ls": "-"},
-    "D_nemotron_4b":   {"color": "#9B6B9B", "label": "D: Multi-pass (nemotron-3-nano:4b)", "ls": "-."},
-    "E_nemotron_30b":  {"color": "#B59B3E", "label": "E: Multi-pass (nemotron-3-nano:30b)", "ls": ":"},
+    "D_gemma4b":           {"color": "#9B6B9B", "label": "D: Multi-pass (gemma4:e4b)", "ls": "-."},
+    "E_gemma31b":           {"color": "#B59B3E", "label": "E: Multi-pass (gemma4:31b)", "ls": ":"},
+    "F_nemotron_ablation":  {"color": "#7B7B7B", "label": "F: Multi-pass (nemotron-nano)", "ls": "-."},
 }
 
 
