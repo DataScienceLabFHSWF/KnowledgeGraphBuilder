@@ -75,7 +75,7 @@ class LLMEntityExtractor:
     """LLM-based entity extractor with ontology guidance.
 
     Uses structured JSON extraction with Pydantic validation.
-    Integrates with QWEN3/qwen3-next via Ollama for local inference.
+    Integrates with Gemma4 via Ollama for local inference.
     """
 
     def __init__(

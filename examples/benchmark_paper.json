@@ -74,7 +74,7 @@
       "name": "F_nemotron_ablation",
       "description": "Multi-pass with nemotron-3-nano — ablation model comparison",
       "params": {
-        "model": "nemotron-3-nano:4b",
+        "model": "nemotron-3-nano",
         "max_iterations": 5,
         "questions_per_class": 3,
         "similarity_threshold": 0.85,

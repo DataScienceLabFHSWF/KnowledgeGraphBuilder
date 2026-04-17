@@ -63,7 +63,7 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "changeme")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "kgbuilder")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:18134")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
 
 
 # =============================================================================

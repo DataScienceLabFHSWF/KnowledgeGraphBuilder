@@ -394,7 +394,7 @@ def step_run_extraction(
     fuseki_url = os.getenv("FUSEKI_URL", "http://localhost:3030")
     qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:18134")
-    ollama_model = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
     neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     neo4j_user = os.getenv("NEO4J_USER", "neo4j")
     neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")

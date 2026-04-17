@@ -26,7 +26,7 @@ _QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "kgbuilder")
 _FUSEKI_URL = os.getenv("FUSEKI_URL", "http://localhost:3030")
 _FUSEKI_DATASET = os.getenv("FUSEKI_DATASET", "kgbuilder")
 _OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
 
 # Cross-service URLs
 _GRAPHQA_API_URL = os.getenv("GRAPHQA_API_URL", "http://graphqa-api:8002")

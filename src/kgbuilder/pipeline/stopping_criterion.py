@@ -128,6 +128,7 @@ class CompetencyQuestionResults:
     coverage_percentage: float = 0.0
     unanswerable: list[str] = field(default_factory=list)
     details: dict[str, dict[str, Any]] = field(default_factory=dict)
+    type_breakdown: dict[str, int] = field(default_factory=dict)
 
     def get_coverage_ratio(self) -> float:
         """Get coverage as ratio (0-1)."""

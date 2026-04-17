@@ -35,7 +35,7 @@ services:
       - FUSEKI_URL=http://kgb-fuseki:3030
       - FUSEKI_DATASET=${FUSEKI_DATASET:-kgbuilder}
       - OLLAMA_URL=http://kgb-ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:8b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:e2b}
       - GRAPHQA_API_URL=${GRAPHQA_API_URL:-}
       - ONTOLOGY_API_URL=${ONTOLOGY_API_URL:-}
     depends_on:
@@ -76,7 +76,7 @@ services:
       - FUSEKI_URL=http://kgb-fuseki:3030
       - FUSEKI_DATASET=${FUSEKI_DATASET:-kgbuilder}
       - OLLAMA_URL=http://kgb-ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:8b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:e2b}
     depends_on:
       kgb-ollama-init:
         condition: service_completed_successfully
@@ -174,7 +174,7 @@ services:
     command:
       - |
         echo "Pulling models for KGBuilder..."
-        ollama pull ${OLLAMA_MODEL:-qwen3:8b}
+        ollama pull ${OLLAMA_MODEL:-gemma4:e2b}
         ollama pull ${OLLAMA_EMBED_MODEL:-qwen3-embedding}
         echo "KGBuilder models ready."
     restart: "no"

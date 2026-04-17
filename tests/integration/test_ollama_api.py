@@ -15,7 +15,7 @@ import sys
 import requests
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:18134")
-MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e2b")
 
 
 def test_tags():

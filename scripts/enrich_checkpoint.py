@@ -48,7 +48,7 @@ def load_embedding_provider(model: str = "nomic-embed-text", base_url: str | Non
     return OllamaEmbeddingProvider(model=model, base_url=base_url)
 
 
-def load_llm_provider(model: str = "qwen3:8b", base_url: str | None = None):
+def load_llm_provider(model: str = "gemma4:e2b", base_url: str | None = None):
     if base_url is None:
         base_url = os.environ.get("OLLAMA_URL", "http://localhost:18134")
     """Load LLM provider from Ollama.
@@ -69,7 +69,7 @@ def enrich_checkpoint(
     checkpoint_path: Path,
     output_dir: Path,
     embedding_model: str = "nomic-embed-text",
-    llm_model: str = "qwen3:8b",
+    llm_model: str = "gemma4:e2b",
     confidence_threshold: float = 0.5,
 ) -> Path:
     """Load checkpoint and apply semantic enrichment.
@@ -192,7 +192,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--llm-model",
-        default="qwen3:8b",
+        default="gemma4:e2b",
         help="Ollama LLM model name"
     )
     parser.add_argument(
