@@ -134,8 +134,8 @@ class ExperimentReporter:
                     lines.append(f"| Final Value | {conv.final_value:.4f} |")
                     lines.append(f"| Mean | {conv.mean:.4f} |")
                     lines.append(f"| Std Dev | {conv.std_dev:.4f} |")
-                    lines.append(f"| Min | {conv.min_value:.4f} |")
-                    lines.append(f"| Max | {conv.max_value:.4f} |")
+                    lines.append(f"| Min | {conv.min_val:.4f} |")
+                    lines.append(f"| Max | {conv.max_val:.4f} |")
 
                     if conv.plateaued:
                         lines.append(f"| Plateau Detected | Yes (at run {conv.plateau_start}) |")
@@ -438,8 +438,8 @@ class ExperimentReporter:
                     html_parts.append(f"<tr><td>Final Value</td><td>{conv.final_value:.4f}</td></tr>")
                     html_parts.append(f"<tr><td>Mean</td><td>{conv.mean:.4f}</td></tr>")
                     html_parts.append(f"<tr><td>Std Dev</td><td>{conv.std_dev:.4f}</td></tr>")
-                    html_parts.append(f"<tr><td>Min</td><td>{conv.min_value:.4f}</td></tr>")
-                    html_parts.append(f"<tr><td>Max</td><td>{conv.max_value:.4f}</td></tr>")
+                    html_parts.append(f"<tr><td>Min</td><td>{conv.min_val:.4f}</td></tr>")
+                    html_parts.append(f"<tr><td>Max</td><td>{conv.max_val:.4f}</td></tr>")
 
                     plateau_text = f"Yes (run {conv.plateau_start})" if conv.plateaued else "No"
                     html_parts.append(f"<tr><td>Plateau</td><td>{plateau_text}</td></tr>")

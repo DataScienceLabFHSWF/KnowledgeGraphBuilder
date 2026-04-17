@@ -1,0 +1,192 @@
+{
+  "experiment_id": "exp_20260407_121045_61646d4c",
+  "experiment_name": "Nuclear Decommissioning Benchmark",
+  "started_at": "2026-04-07T12:10:45.615323",
+  "completed_at": "2026-04-07T12:35:05.958437",
+  "total_duration_seconds": 1460.343114,
+  "completed_runs": 18,
+  "failed_runs": 0,
+  "config": {
+    "name": "Nuclear Decommissioning Benchmark",
+    "description": "7-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law, 3 model sizes (gemma4:e2b, gemma4:e4b, nemotron ablation). 3 runs each for statistical reliability.",
+    "output_dir": "experiment_results/benchmark_paper",
+    "num_runs": 3,
+    "parallel_jobs": 1,
+    "seed": 42,
+    "variants": [
+      {
+        "name": "A_single_pass",
+        "description": "Single iteration, no law graph \u2014 naive baseline (gemma4:e2b)",
+        "params": {
+          "model": "gemma4:e2b",
+          "max_iterations": 1,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      },
+      {
+        "name": "B_multipass",
+        "description": "5 iterations, no law graph \u2014 shows value of iterative discovery (gemma4:e2b)",
+        "params": {
+          "model": "gemma4:e2b",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      },
+      {
+        "name": "C_multipass_law",
+        "description": "5 iterations + law graph context augmentation \u2014 full system (gemma4:e2b)",
+        "params": {
+          "model": "gemma4:e2b",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": true
+        },
+        "metadata": {}
+      },
+      {
+        "name": "D_gemma4b",
+        "description": "Multi-pass with gemma4:e4b \u2014 medium model comparison",
+        "params": {
+          "model": "gemma4:e4b",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      },
+      {
+        "name": "E_gemma31b",
+        "description": "Multi-pass with gemma4:31b \u2014 large model comparison",
+        "params": {
+          "model": "gemma4:31b",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      },
+      {
+        "name": "F_nemotron_ablation",
+        "description": "Multi-pass with nemotron-3-nano \u2014 ablation model comparison",
+        "params": {
+          "model": "nemotron-3-nano:4b",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      }
+    ],
+    "evaluation": {
+      "qa_dataset_path": "data/evaluation/competency_questions.json",
+      "metrics": [
+        "ontology_class_coverage",
+        "relation_coverage",
+        "entity_count",
+        "edge_count",
+        "avg_confidence",
+        "cq_answerability",
+        "graph_density",
+        "connected_components",
+        "avg_degree",
+        "clustering_coefficient",
+        "build_time_seconds"
+      ],
+      "similarity_threshold": 0.8,
+      "max_results": 10
+    },
+    "metadata": {}
+  },
+  "run_ids": [
+    "exp_20260407_121045_61646d4c_A_single_pass_1",
+    "exp_20260407_121045_61646d4c_A_single_pass_2",
+    "exp_20260407_121045_61646d4c_A_single_pass_3",
+    "exp_20260407_121045_61646d4c_B_multipass_1",
+    "exp_20260407_121045_61646d4c_B_multipass_2",
+    "exp_20260407_121045_61646d4c_B_multipass_3",
+    "exp_20260407_121045_61646d4c_C_multipass_law_1",
+    "exp_20260407_121045_61646d4c_C_multipass_law_2",
+    "exp_20260407_121045_61646d4c_C_multipass_law_3",
+    "exp_20260407_121045_61646d4c_D_gemma4b_1",
+    "exp_20260407_121045_61646d4c_D_gemma4b_2",
+    "exp_20260407_121045_61646d4c_D_gemma4b_3",
+    "exp_20260407_121045_61646d4c_E_gemma31b_1",
+    "exp_20260407_121045_61646d4c_E_gemma31b_2",
+    "exp_20260407_121045_61646d4c_E_gemma31b_3",
+    "exp_20260407_121045_61646d4c_F_nemotron_ablation_1",
+    "exp_20260407_121045_61646d4c_F_nemotron_ablation_2",
+    "exp_20260407_121045_61646d4c_F_nemotron_ablation_3"
+  ],
+  "aggregate_metrics": {
+    "A_single_pass": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    },
+    "B_multipass": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    },
+    "C_multipass_law": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    },
+    "D_gemma4b": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    },
+    "E_gemma31b": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    },
+    "F_nemotron_ablation": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    }
+  }
+}

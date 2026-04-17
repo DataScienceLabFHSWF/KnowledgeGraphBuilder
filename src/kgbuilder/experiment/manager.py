@@ -205,14 +205,17 @@ class ConfigRunner:
     directory defaults to a temporary directory.
     """
 
-    def __init__(self, variant_or_output: ConfigVariant | Path | str | None = None, output_dir: Path | None = None) -> None:
+    def __init__(self, variant_or_output: ConfigVariant | Path | str | None = None, output_dir: Path | None = None, config: ExperimentConfig | None = None) -> None:
         """Initialize runner.
 
         Args:
             variant_or_output: ConfigVariant (test compat) or output dir path.
             output_dir: Explicit output dir (used when first arg is a variant).
+            config: ExperimentConfig for seed and metadata access.
         """
         import tempfile
+
+        self.config = config
 
         if isinstance(variant_or_output, ConfigVariant):
             self.variant: ConfigVariant | None = variant_or_output
@@ -449,7 +452,7 @@ class ConfigRunner:
             llm = OllamaProvider(
                 model=variant.params.model,
                 base_url=ollama_url,
-                seed=self.config.seed,
+                seed=self.config.seed if self.config else 42,
             )
 
             # Retriever
@@ -721,6 +724,9 @@ class ConfigRunner:
                 build_time=build_time
             )
 
+            # Lightweight post-build graph richness metrics (best-effort)
+            richness = self._graph_richness_metrics(neo4j_store, run_id)
+
             return {
                 "nodes": build_result.nodes_created,
                 "edges": build_result.edges_created,
@@ -731,6 +737,7 @@ class ConfigRunner:
                 "total_discovery_iterations": discover_result.total_iterations,
                 "total_entities_discovered": len(entities),
                 "total_relations_extracted": len(relations),
+                "graph_richness": richness,
                 "discovery_iterations": [
                     {
                         "iteration": it.iteration,
@@ -747,6 +754,139 @@ class ConfigRunner:
         except Exception as e:
             logger.error("kg_build_failed", run_id=run_id, error=str(e))
             raise
+
+    def _graph_richness_metrics(
+        self,
+        neo4j_store: Any,
+        run_id: str,
+    ) -> dict[str, Any]:
+        """Query Neo4j for structural richness metrics scoped to this run.
+
+        Captures the metrics that prove the discovery loop makes the graph
+        richer with each additional pass: entity type distribution, relation
+        type diversity, orphan rate, and average degree.
+
+        All queries are scoped by the ``run_id`` property written onto every
+        node during assembly, so results are per-variant-run.
+
+        Returns:
+            Dict with richness metrics, or empty dict on failure.
+        """
+        try:
+            # ── Entity type distribution ────────────────────────────────────
+            type_dist_result = neo4j_store.query(
+                """
+                MATCH (n {run_id: $run_id})
+                WHERE n.node_type IS NOT NULL
+                RETURN n.node_type AS entity_type, count(n) AS cnt
+                ORDER BY cnt DESC
+                """,
+                {"run_id": run_id},
+            )
+            entity_type_distribution = {
+                row["entity_type"]: row["cnt"]
+                for row in type_dist_result.records
+                if row.get("entity_type")
+            }
+            entity_classes_populated = len(entity_type_distribution)
+
+            # ── Unique relation (predicate) types ───────────────────────────
+            pred_result = neo4j_store.query(
+                """
+                MATCH (a {run_id: $run_id})-[r]->(b {run_id: $run_id})
+                RETURN type(r) AS pred, count(r) AS cnt
+                ORDER BY cnt DESC
+                """,
+                {"run_id": run_id},
+            )
+            relation_type_distribution = {
+                row["pred"]: row["cnt"]
+                for row in pred_result.records
+                if row.get("pred")
+            }
+            unique_relation_types = len(relation_type_distribution)
+
+            # ── Degree stats + orphan rate ──────────────────────────────────
+            degree_result = neo4j_store.query(
+                """
+                MATCH (n {run_id: $run_id})
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS deg
+                RETURN
+                    avg(deg)          AS avg_degree,
+                    max(deg)          AS max_degree,
+                    sum(CASE WHEN deg = 0 THEN 1 ELSE 0 END) AS orphans,
+                    count(n)          AS total_nodes
+                """,
+                {"run_id": run_id},
+            )
+            deg_row = degree_result.records[0] if degree_result.records else {}
+            total_nodes = int(deg_row.get("total_nodes") or 0)
+            orphans = int(deg_row.get("orphans") or 0)
+            avg_degree = round(float(deg_row.get("avg_degree") or 0.0), 4)
+            max_degree = int(deg_row.get("max_degree") or 0)
+            orphan_rate = round(orphans / total_nodes, 4) if total_nodes > 0 else 0.0
+
+            # ── Derived quality metrics ─────────────────────────────────────────
+            # Shannon entropy over entity type distribution (higher = more diverse)
+            import math
+            total_typed = sum(entity_type_distribution.values()) or 1
+            entity_type_entropy = round(
+                -sum(
+                    (c / total_typed) * math.log2(c / total_typed)
+                    for c in entity_type_distribution.values()
+                    if c > 0
+                ),
+                4,
+            )
+
+            # Ontology coverage ratios (denominators from Fuseki: 18 classes, 26 relations)
+            ONTOLOGY_CLASS_COUNT = 18
+            ONTOLOGY_RELATION_COUNT = 26
+            ontology_class_coverage_pct = round(
+                entity_classes_populated / ONTOLOGY_CLASS_COUNT * 100, 1
+            )
+            ontology_relation_coverage_pct = round(
+                unique_relation_types / ONTOLOGY_RELATION_COUNT * 100, 1
+            )
+
+            # Relation density: edges per node (higher = more connected graph)
+            relation_density = round(
+                sum(relation_type_distribution.values()) / total_nodes, 4
+            ) if total_nodes > 0 else 0.0
+
+            metrics = {
+                "entity_classes_populated": entity_classes_populated,
+                "ontology_class_coverage_pct": ontology_class_coverage_pct,
+                "entity_type_distribution": entity_type_distribution,
+                "entity_type_entropy": entity_type_entropy,
+                "unique_relation_types": unique_relation_types,
+                "ontology_relation_coverage_pct": ontology_relation_coverage_pct,
+                "relation_type_distribution": relation_type_distribution,
+                "relation_density": relation_density,
+                "avg_degree": avg_degree,
+                "max_degree": max_degree,
+                "orphan_count": orphans,
+                "orphan_rate": orphan_rate,
+            }
+
+            logger.info(
+                "graph_richness_metrics_collected",
+                run_id=run_id,
+                entity_classes=entity_classes_populated,
+                ontology_class_coverage_pct=ontology_class_coverage_pct,
+                unique_relation_types=unique_relation_types,
+                ontology_relation_coverage_pct=ontology_relation_coverage_pct,
+                entity_type_entropy=entity_type_entropy,
+                relation_density=relation_density,
+                avg_degree=avg_degree,
+                orphan_rate=orphan_rate,
+            )
+            return metrics
+
+        except Exception as exc:
+            logger.warning("graph_richness_metrics_failed", run_id=run_id, error=str(exc))
+            return {}
 
     def _run_shacl_scoring(
         self, run_id: str, wandb_run: Any = None,
@@ -1005,7 +1145,7 @@ class ExperimentManager:
         """
         self.config = config
         self.experiment_id = generate_run_id()  # Master experiment ID
-        self.runner = ConfigRunner(config.get_output_dir())
+        self.runner = ConfigRunner(config.get_output_dir(), config=config)
         logger.info(
             "experiment_manager_initialized",
             name=config.name,
