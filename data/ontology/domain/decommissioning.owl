@@ -1,0 +1,1531 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+         xmlns:kg="https://kg-workbench.local/ontology#"
+         xml:base="https://example.com/ontology/">
+  <owl:Ontology rdf:about="https://example.com/ontology/">
+    <rdfs:label>Decommissioning</rdfs:label>
+    <owl:versionInfo>V2</owl:versionInfo>
+  </owl:Ontology>
+  <owl:AnnotationProperty rdf:about="https://kg-workbench.local/ontology#module"/>
+  <owl:AnnotationProperty rdf:about="https://kg-workbench.local/ontology#domainModule"/>
+  <owl:AnnotationProperty rdf:about="https://kg-workbench.local/ontology#rangeModule"/>
+  <owl:Class rdf:about="https://example.com/ontology/Activity">
+    <rdfs:label>Activity</rdfs:label>
+    <rdfs:comment>A planned decommissioning action or work item.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Activity-Inventory">
+    <rdfs:label>Activity Inventory</rdfs:label>
+    <rdfs:comment>An estimated or measured inventory of radioactivity.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Assessment-Aspect">
+    <rdfs:label>Assessment Aspect</rdfs:label>
+    <rdfs:comment>The discipline or aspect under which an assessment is performed.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Assessment-Result">
+    <rdfs:label>Assessment Result</rdfs:label>
+    <rdfs:comment>The conclusion or result of an assessment.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Asset">
+    <rdfs:label>Asset</rdfs:label>
+    <rdfs:comment>A physical or technical asset relevant for the measure.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Building">
+    <rdfs:label>Building</rdfs:label>
+    <rdfs:comment>A building that contains rooms and technical assets.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Change-Measure">
+    <rdfs:label>Change Measure</rdfs:label>
+    <rdfs:comment>A planned change performed on systems, components, or rooms.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Component">
+    <rdfs:label>Component</rdfs:label>
+    <rdfs:comment>A discrete technical component such as a vessel, line, or valve.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/Asset"/>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Constraint">
+    <rdfs:label>Constraint</rdfs:label>
+    <rdfs:comment>A technical or operational restriction arising from the assessment.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Contamination-Status">
+    <rdfs:label>Contamination Status</rdfs:label>
+    <rdfs:comment>A classified contamination state of an asset, room, or material.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Conversion-Measure">
+    <rdfs:label>Conversion Measure</rdfs:label>
+    <rdfs:comment>A concrete conversion or decommissioning change to the plant.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/Project-Measure"/>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Current-State">
+    <rdfs:label>Current State</rdfs:label>
+    <rdfs:comment>A description of the present technical or spatial state before the measure.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Dependency">
+    <rdfs:label>Dependency</rdfs:label>
+    <rdfs:comment>A dependency between workflow steps.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Disposal-Path">
+    <rdfs:label>Disposal Path</rdfs:label>
+    <rdfs:comment>A planned route or destination for disposal or further treatment.</rdfs:comment>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Document-Instance">
+    <rdfs:label>Document Instance</rdfs:label>
+    <rdfs:comment>One concrete NWA document created from a template.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Document-Template">
+    <rdfs:label>Document Template</rdfs:label>
+    <rdfs:comment>A recurring template for a specific NWA document family.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Document-To-Adapt">
+    <rdfs:label>Document To Adapt</rdfs:label>
+    <rdfs:comment>An existing document that must be adapted.</rdfs:comment>
+    <kg:module>Documentation and References</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/Referenced-Document"/>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Document-To-Submit">
+    <rdfs:label>Document To Submit</rdfs:label>
+    <rdfs:comment>A document that must be submitted later.</rdfs:comment>
+    <kg:module>Documentation and References</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Documentation-Change">
+    <rdfs:label>Documentation Change</rdfs:label>
+    <rdfs:comment>A required change to existing documentation caused by the measure.</rdfs:comment>
+    <kg:module>Documentation and References</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Dose-Rate">
+    <rdfs:label>Dose Rate</rdfs:label>
+    <rdfs:comment>A dose-rate value associated with a measurement or area.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Evidence-Item">
+    <rdfs:label>Evidence Item</rdfs:label>
+    <rdfs:comment>A supporting excerpt, table cell, or structured evidence element.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Execution-Condition">
+    <rdfs:label>Execution Condition</rdfs:label>
+    <rdfs:comment>A condition that must hold before or during a workflow step.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Field-Answer">
+    <rdfs:label>Field Answer</rdfs:label>
+    <rdfs:comment>A structured answer or extracted statement linked to a section.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Future-Use">
+    <rdfs:label>Future Use</rdfs:label>
+    <rdfs:comment>The planned future use of the affected room, area, or system.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Impact">
+    <rdfs:label>Impact</rdfs:label>
+    <rdfs:comment>A consequence of the planned measure on systems, activities, or safety.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Impact-Assessment">
+    <rdfs:label>Impact Assessment</rdfs:label>
+    <rdfs:comment>An assessment of the consequences caused by a change measure.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Material">
+    <rdfs:label>Material</rdfs:label>
+    <rdfs:comment>A handled material relevant for dismantling or waste generation.</rdfs:comment>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Measurement">
+    <rdfs:label>Measurement</rdfs:label>
+    <rdfs:comment>A concrete radiological measurement or survey event.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Measurement-Method">
+    <rdfs:label>Measurement Method</rdfs:label>
+    <rdfs:comment>A method used to obtain a sample or measurement.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Mitigation-Measure">
+    <rdfs:label>Mitigation Measure</rdfs:label>
+    <rdfs:comment>A measure needed to reduce or control a risk or impact.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Monitoring-Requirement">
+    <rdfs:label>Monitoring Requirement</rdfs:label>
+    <rdfs:comment>A required monitoring or surveillance activity.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Preparation-Measure">
+    <rdfs:label>Preparation Measure</rdfs:label>
+    <rdfs:comment>A preparatory action needed before the main dismantling work starts.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/Project-Measure"/>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Project-Measure">
+    <rdfs:label>Project Measure</rdfs:label>
+    <rdfs:comment>The overall undertaking described by the document.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Radiological-Characterization">
+    <rdfs:label>Radiological Characterization</rdfs:label>
+    <rdfs:comment>A radiological description or interpretation of an asset, material, or waste stream.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Radionuclide">
+    <rdfs:label>Radionuclide</rdfs:label>
+    <rdfs:comment>A nuclide relevant for characterization.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Raw-Waste-Estimate">
+    <rdfs:label>Raw Waste Estimate</rdfs:label>
+    <rdfs:comment>An estimated mass or quantity of raw waste.</rdfs:comment>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Reference-Citation">
+    <rdfs:label>Reference Citation</rdfs:label>
+    <rdfs:comment>A concrete citation of a referenced document inside a section.</rdfs:comment>
+    <kg:module>Documentation and References</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Referenced-Document">
+    <rdfs:label>Referenced Document</rdfs:label>
+    <rdfs:comment>A document cited or reused by the NWA.</rdfs:comment>
+    <kg:module>Documentation and References</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Room">
+    <rdfs:label>Room</rdfs:label>
+    <rdfs:comment>A room or spatial area referenced in the document.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Sample">
+    <rdfs:label>Sample</rdfs:label>
+    <rdfs:comment>A sample taken or defined for radiological assessment.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Sampling-Plan">
+    <rdfs:label>Sampling Plan</rdfs:label>
+    <rdfs:comment>A plan describing how samples are taken for characterization.</rdfs:comment>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Scope-Statement">
+    <rdfs:label>Scope Statement</rdfs:label>
+    <rdfs:comment>A statement defining the scope or boundary of the measure.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Section-Instance">
+    <rdfs:label>Section Instance</rdfs:label>
+    <rdfs:comment>One concrete occurrence of a section inside a document instance.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Section-Template">
+    <rdfs:label>Section Template</rdfs:label>
+    <rdfs:comment>A reusable template for an expected chapter or subsection.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Section-Type">
+    <rdfs:label>Section Type</rdfs:label>
+    <rdfs:comment>A semantic type for recurring sections such as workflow, waste, or safety assessment.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Source-Anchor">
+    <rdfs:label>Source Anchor</rdfs:label>
+    <rdfs:comment>A precise anchor into a source, such as a page, subsection, or table row.</rdfs:comment>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Storage-Need">
+    <rdfs:label>Storage Need</rdfs:label>
+    <rdfs:comment>A required storage volume, area, or capacity.</rdfs:comment>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Submission-Requirement">
+    <rdfs:label>Submission Requirement</rdfs:label>
+    <rdfs:comment>A requirement that a document or record be submitted.</rdfs:comment>
+    <kg:module>Documentation and References</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Subsystem">
+    <rdfs:label>Subsystem</rdfs:label>
+    <rdfs:comment>A smaller functional part of a system.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/System"/>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/System">
+    <rdfs:label>System</rdfs:label>
+    <rdfs:comment>A plant system relevant for operation, dismantling, or assessment.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/Asset"/>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Tagged-Item">
+    <rdfs:label>Tagged Item</rdfs:label>
+    <rdfs:comment>A source-system tag or identifier assigned to a component or system.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Target-State">
+    <rdfs:label>Target State</rdfs:label>
+    <rdfs:comment>A description of the intended technical or spatial state after the measure.</rdfs:comment>
+    <kg:module>Measure Description</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Technical-Assessment">
+    <rdfs:label>Technical Assessment</rdfs:label>
+    <rdfs:comment>A structured safety or technical assessment statement in the document.</rdfs:comment>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Technical-Discipline">
+    <rdfs:label>Technical Discipline</rdfs:label>
+    <rdfs:comment>A technical domain such as ventilation, fire protection, or electrical systems.</rdfs:comment>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Waste-Package">
+    <rdfs:label>Waste Package</rdfs:label>
+    <rdfs:comment>A package or container used for waste handling.</rdfs:comment>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Waste-Stream">
+    <rdfs:label>Waste Stream</rdfs:label>
+    <rdfs:comment>A classified waste category resulting from the measure.</rdfs:comment>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Workflow">
+    <rdfs:label>Workflow</rdfs:label>
+    <rdfs:comment>An ordered set of steps representing the planned execution.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/ontology/Workflow-Step">
+    <rdfs:label>Workflow Step</rdfs:label>
+    <rdfs:comment>One ordered execution step in the planned workflow.</rdfs:comment>
+    <kg:module>Workflow and Change Measures</kg:module>
+    <rdfs:subClassOf rdf:resource="https://example.com/ontology/Activity"/>
+  </owl:Class>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Activity-Inventory/activity-inventory-value">
+    <rdfs:label>activity inventory value</rdfs:label>
+    <rdfs:comment>Numeric value of the activity inventory.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Activity-Inventory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Activity-Inventory/activity-inventory-unit">
+    <rdfs:label>activity inventory unit</rdfs:label>
+    <rdfs:comment>Unit of the activity inventory value.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Activity-Inventory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Assessment-Result/result-label">
+    <rdfs:label>result label</rdfs:label>
+    <rdfs:comment>Short textual label of the assessment result.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Assessment-Result"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Asset/asset-identifier">
+    <rdfs:label>asset identifier</rdfs:label>
+    <rdfs:comment>Technical identifier used for an asset or component.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Asset"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Constraint/constraint-level">
+    <rdfs:label>constraint level</rdfs:label>
+    <rdfs:comment>Severity or binding level of a constraint.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Constraint"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Document-Instance/document-identifier">
+    <rdfs:label>document identifier</rdfs:label>
+    <rdfs:comment>Identifier of the concrete NWA document.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Documentation-Change/documentation-status">
+    <rdfs:label>documentation status</rdfs:label>
+    <rdfs:comment>Status of the required documentation change.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Documentation and References</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Dose-Rate/dose-rate-value">
+    <rdfs:label>dose rate value</rdfs:label>
+    <rdfs:comment>Numeric dose-rate value.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Dose-Rate"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Dose-Rate/dose-rate-unit">
+    <rdfs:label>dose rate unit</rdfs:label>
+    <rdfs:comment>Unit of the dose-rate value.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Dose-Rate"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Execution-Condition/condition-status">
+    <rdfs:label>condition status</rdfs:label>
+    <rdfs:comment>Indicates whether the condition is planned, confirmed, or pending.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Execution-Condition"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Field-Answer/review-status">
+    <rdfs:label>review status</rdfs:label>
+    <rdfs:comment>Review state of an extracted answer.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Field-Answer"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Future-Use/future-use-label">
+    <rdfs:label>future use label</rdfs:label>
+    <rdfs:comment>Human-readable label of the intended future use.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Future-Use"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Measure Description</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Project-Measure/measure-title">
+    <rdfs:label>measure title</rdfs:label>
+    <rdfs:comment>Short title of the undertaking.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Measure Description</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Radionuclide/name">
+    <rdfs:label>name</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radionuclide"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Radionuclide/elementSymbol">
+    <rdfs:label>elementSymbol</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radionuclide"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Radionuclide/atomicNumber">
+    <rdfs:label>atomicNumber</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radionuclide"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Radionuclide/massNumber">
+    <rdfs:label>massNumber</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radionuclide"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Radiological Characterization</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Raw-Waste-Estimate/estimated-mass-value">
+    <rdfs:label>estimated mass value</rdfs:label>
+    <rdfs:comment>Estimated raw waste mass value.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Raw-Waste-Estimate"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Raw-Waste-Estimate/estimated-mass-unit">
+    <rdfs:label>estimated mass unit</rdfs:label>
+    <rdfs:comment>Unit of the estimated raw waste mass.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Raw-Waste-Estimate"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Referenced-Document/document-number">
+    <rdfs:label>document number</rdfs:label>
+    <rdfs:comment>Identifier of a referenced or target document.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Referenced-Document"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Documentation and References</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Room/room-identifier">
+    <rdfs:label>room identifier</rdfs:label>
+    <rdfs:comment>Identifier of the room in the source document.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Room"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Scope-Statement/scope-note">
+    <rdfs:label>scope note</rdfs:label>
+    <rdfs:comment>Free-text boundary statement for the measure scope.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Scope-Statement"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Measure Description</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Section-Instance/section-order">
+    <rdfs:label>section order</rdfs:label>
+    <rdfs:comment>Numeric order of the section within the document.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Document Structure and Evidence</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Storage-Need/storage-volume-value">
+    <rdfs:label>storage volume value</rdfs:label>
+    <rdfs:comment>Required storage volume or capacity value.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Storage-Need"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Waste and Materials</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Submission-Requirement/submission-due-note">
+    <rdfs:label>submission due note</rdfs:label>
+    <rdfs:comment>Human-readable note about submission timing or trigger.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Submission-Requirement"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Documentation and References</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Technical-Assessment/assessment-status">
+    <rdfs:label>assessment status</rdfs:label>
+    <rdfs:comment>Status of the assessment statement.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Technical Safety Assessment</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Technical-Discipline/discipline-label">
+    <rdfs:label>discipline label</rdfs:label>
+    <rdfs:comment>Human-readable label of the technical discipline.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Discipline"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Assets and Locations</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Workflow-Step/step-code">
+    <rdfs:label>step code</rdfs:label>
+    <rdfs:comment>Number or code used in the document for a workflow step.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="https://example.com/ontology/Workflow-Step/step-order">
+    <rdfs:label>step order</rdfs:label>
+    <rdfs:comment>Order position of a workflow step within a workflow.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <kg:module>Workflow and Change Measures</kg:module>
+  </owl:DatatypeProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/affects-location">
+    <rdfs:label>affects location</rdfs:label>
+    <rdfs:comment>States which room or location is affected by a change measure.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Room"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-isLocationAffectedBy"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-isLocationAffectedBy">
+    <rdfs:label>rel:isLocationAffectedBy</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Room"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/affects-location"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/affects-system">
+    <rdfs:label>affects system</rdfs:label>
+    <rdfs:comment>States which system is affected by a planned change measure.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/System"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-isAffectedByMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-isAffectedByMeasure">
+    <rdfs:label>rel:isAffectedByMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/System"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/affects-system"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/anchored-in-source">
+    <rdfs:label>anchored in source</rdfs:label>
+    <rdfs:comment>Connects evidence to its exact source location.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Evidence-Item"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Source-Anchor"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-anchorForEvidence"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-anchorForEvidence">
+    <rdfs:label>rel:anchorForEvidence</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Source-Anchor"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Evidence-Item"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/anchored-in-source"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/applies-to-activity">
+    <rdfs:label>applies to activity</rdfs:label>
+    <rdfs:comment>Connects an assessment to a workflow step it concerns.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-activityEvaluatedByAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-activityEvaluatedByAssessment">
+    <rdfs:label>rel:activityEvaluatedByAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/applies-to-activity"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/applies-to-system">
+    <rdfs:label>applies to system</rdfs:label>
+    <rdfs:comment>Connects an assessment to the system it concerns.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/System"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-systemEvaluatedByAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-systemEvaluatedByAssessment">
+    <rdfs:label>rel:systemEvaluatedByAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/System"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/applies-to-system"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/assesses-aspect">
+    <rdfs:label>assesses aspect</rdfs:label>
+    <rdfs:comment>Connects an assessment to the discipline or aspect it evaluates.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Assessment-Aspect"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-aspectAssessedBy"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-aspectAssessedBy">
+    <rdfs:label>rel:aspectAssessedBy</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Assessment-Aspect"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/assesses-aspect"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/associated-with-activity">
+    <rdfs:label>associated with activity</rdfs:label>
+    <rdfs:comment>Connects an asset to a workflow step that acts on it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Asset"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-activityActsOnAsset"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-activityActsOnAsset">
+    <rdfs:label>rel:activityActsOnAsset</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Asset"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/associated-with-activity"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/based-on-section-template">
+    <rdfs:label>based on section template</rdfs:label>
+    <rdfs:comment>Connects a section occurrence to the template it realizes.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Template"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasSectionInstanceDerived"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasSectionInstanceDerived">
+    <rdfs:label>rel:hasSectionInstanceDerived</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Template"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/based-on-section-template"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/belongs-to-discipline">
+    <rdfs:label>belongs to discipline</rdfs:label>
+    <rdfs:comment>Connects a system to the technical discipline used in assessment.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/System"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Discipline"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-disciplineForSystem"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-disciplineForSystem">
+    <rdfs:label>rel:disciplineForSystem</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Discipline"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/System"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/belongs-to-discipline"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/characterizes-asset">
+    <rdfs:label>characterizes asset</rdfs:label>
+    <rdfs:comment>Connects a characterization to the asset it describes.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Asset"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasRadiologicalCharacterization"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasRadiologicalCharacterization">
+    <rdfs:label>rel:hasRadiologicalCharacterization</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Asset"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/characterizes-asset"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/cites-reference">
+    <rdfs:label>cites reference</rdfs:label>
+    <rdfs:comment>Connects a section to a concrete reference citation.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Reference-Citation"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-citationInSection"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-citationInSection">
+    <rdfs:label>rel:citationInSection</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Reference-Citation"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/cites-reference"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/classified-as-waste-stream">
+    <rdfs:label>classified as waste stream</rdfs:label>
+    <rdfs:comment>Connects a material to the waste stream it is classified into.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Material"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasMaterialMember"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasMaterialMember">
+    <rdfs:label>rel:hasMaterialMember</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Material"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/classified-as-waste-stream"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/constrained-by">
+    <rdfs:label>constrained by</rdfs:label>
+    <rdfs:comment>Connects an assessment to the constraints it imposes.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Constraint"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-constraintForAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-constraintForAssessment">
+    <rdfs:label>rel:constraintForAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Constraint"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/constrained-by"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/contains-room">
+    <rdfs:label>contains room</rdfs:label>
+    <rdfs:comment>Connects a building to one of its rooms.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Building"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Room"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-roomInBuilding"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-roomInBuilding">
+    <rdfs:label>rel:roomInBuilding</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Room"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Building"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/contains-room"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/defines-sample">
+    <rdfs:label>defines sample</rdfs:label>
+    <rdfs:comment>Connects a sampling plan to the samples it defines.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Sampling-Plan"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Sample"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-sampleDefinedByPlan"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-sampleDefinedByPlan">
+    <rdfs:label>rel:sampleDefinedByPlan</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Sample"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Sampling-Plan"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/defines-sample"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/depends-on-step">
+    <rdfs:label>depends on step</rdfs:label>
+    <rdfs:comment>States that a workflow step depends on another step.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-isPrerequisiteForStep"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-isPrerequisiteForStep">
+    <rdfs:label>rel:isPrerequisiteForStep</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/depends-on-step"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/derived-from-measurement">
+    <rdfs:label>derived from measurement</rdfs:label>
+    <rdfs:comment>Connects a characterization to the measurements supporting it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Measurement"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-measurementSupportsCharacterization"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-measurementSupportsCharacterization">
+    <rdfs:label>rel:measurementSupportsCharacterization</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Measurement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/derived-from-measurement"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/describes-affected-area">
+    <rdfs:label>describes affected area</rdfs:label>
+    <rdfs:comment>Links a scope statement to the affected room or area.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Scope-Statement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Room"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-affectedAreaDescribedBy"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-affectedAreaDescribedBy">
+    <rdfs:label>rel:affectedAreaDescribedBy</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Room"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Scope-Statement"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/describes-affected-area"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/generated-by-activity">
+    <rdfs:label>generated by activity</rdfs:label>
+    <rdfs:comment>Connects a waste stream to a workflow step that generates it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-generatesWasteStream"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-generatesWasteStream">
+    <rdfs:label>rel:generatesWasteStream</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/generated-by-activity"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-activity-inventory">
+    <rdfs:label>has activity inventory</rdfs:label>
+    <rdfs:comment>Connects a characterization to its activity inventory.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Activity-Inventory"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-activityInventoryForCharacterization"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-activityInventoryForCharacterization">
+    <rdfs:label>rel:activityInventoryForCharacterization</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Activity-Inventory"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-activity-inventory"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-answer">
+    <rdfs:label>has answer</rdfs:label>
+    <rdfs:comment>Connects a section to the structured answers extracted from it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Field-Answer"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-answerInSection"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-answerInSection">
+    <rdfs:label>rel:answerInSection</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Field-Answer"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-answer"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-assessment-result">
+    <rdfs:label>has assessment result</rdfs:label>
+    <rdfs:comment>Connects an assessment to its result statements.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Assessment-Result"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-resultOfAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-resultOfAssessment">
+    <rdfs:label>rel:resultOfAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Assessment-Result"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-assessment-result"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-contamination-status">
+    <rdfs:label>has contamination status</rdfs:label>
+    <rdfs:comment>Connects a characterization to a contamination-status classification.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Contamination-Status"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-contaminationStatusForCharacterization"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-contaminationStatusForCharacterization">
+    <rdfs:label>rel:contaminationStatusForCharacterization</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Contamination-Status"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-contamination-status"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-conversion-measure">
+    <rdfs:label>has conversion measure</rdfs:label>
+    <rdfs:comment>Connects the overall project measure to its concrete conversion measures.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Conversion-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-partOfProjectMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-partOfProjectMeasure">
+    <rdfs:label>rel:partOfProjectMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Conversion-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-conversion-measure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-current-state">
+    <rdfs:label>has current state</rdfs:label>
+    <rdfs:comment>Connects the project measure to the recorded current state.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Current-State"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-currentStateOfMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-currentStateOfMeasure">
+    <rdfs:label>rel:currentStateOfMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Current-State"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-current-state"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-disposal-path">
+    <rdfs:label>has disposal path</rdfs:label>
+    <rdfs:comment>Connects a waste stream to its planned disposal path.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Disposal-Path"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-disposalPathForWasteStream"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-disposalPathForWasteStream">
+    <rdfs:label>rel:disposalPathForWasteStream</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Disposal-Path"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-disposal-path"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-dose-rate">
+    <rdfs:label>has dose rate</rdfs:label>
+    <rdfs:comment>Connects a measurement to its dose-rate result.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Measurement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Dose-Rate"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-doseRateObservedInMeasurement"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-doseRateObservedInMeasurement">
+    <rdfs:label>rel:doseRateObservedInMeasurement</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Dose-Rate"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Measurement"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-dose-rate"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-execution-condition">
+    <rdfs:label>has execution condition</rdfs:label>
+    <rdfs:comment>Connects a workflow step to a required execution condition.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Execution-Condition"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-conditionForStep"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-conditionForStep">
+    <rdfs:label>rel:conditionForStep</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Execution-Condition"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-execution-condition"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-future-use">
+    <rdfs:label>has future use</rdfs:label>
+    <rdfs:comment>Connects the project measure to the future use after completion.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Future-Use"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-futureUseOfMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-futureUseOfMeasure">
+    <rdfs:label>rel:futureUseOfMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Future-Use"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-future-use"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-impact">
+    <rdfs:label>has impact</rdfs:label>
+    <rdfs:comment>Connects an assessment to the impacts it identifies.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Impact"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-impactOfAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-impactOfAssessment">
+    <rdfs:label>rel:impactOfAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Impact"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-impact"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-impact-assessment">
+    <rdfs:label>has impact assessment</rdfs:label>
+    <rdfs:comment>Connects a change measure to its impact assessment.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Impact-Assessment"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-impactAssessmentOfMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-impactAssessmentOfMeasure">
+    <rdfs:label>rel:impactAssessmentOfMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Impact-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-impact-assessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-mass-estimate">
+    <rdfs:label>has mass estimate</rdfs:label>
+    <rdfs:comment>Connects a waste stream to its estimated mass or quantity.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Raw-Waste-Estimate"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-massEstimateForWasteStream"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-massEstimateForWasteStream">
+    <rdfs:label>rel:massEstimateForWasteStream</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Raw-Waste-Estimate"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-mass-estimate"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-nuclide">
+    <rdfs:label>has nuclide</rdfs:label>
+    <rdfs:comment>Connects a measurement to the radionuclides it reports.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Measurement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Radionuclide"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-nuclideObservedInMeasurement"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-nuclideObservedInMeasurement">
+    <rdfs:label>rel:nuclideObservedInMeasurement</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radionuclide"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Measurement"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-nuclide"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-preparation-measure">
+    <rdfs:label>has preparation measure</rdfs:label>
+    <rdfs:comment>Connects the project measure to a preparatory action.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Preparation-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-partOfProjectMeasure-8ddd5797"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-partOfProjectMeasure-8ddd5797">
+    <rdfs:label>rel:partOfProjectMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Preparation-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-preparation-measure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-sampling-plan">
+    <rdfs:label>has sampling plan</rdfs:label>
+    <rdfs:comment>Connects a radiological characterization to the sampling plan used for it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Sampling-Plan"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-samplingPlanForCharacterization"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-samplingPlanForCharacterization">
+    <rdfs:label>rel:samplingPlanForCharacterization</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Sampling-Plan"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Radiological-Characterization"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-sampling-plan"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-scope-statement">
+    <rdfs:label>has scope statement</rdfs:label>
+    <rdfs:comment>Connects the measure to scope-defining statements.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Scope-Statement"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-scopeStatementOfMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-scopeStatementOfMeasure">
+    <rdfs:label>rel:scopeStatementOfMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Scope-Statement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-scope-statement"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-section-instance">
+    <rdfs:label>has section instance</rdfs:label>
+    <rdfs:comment>Connects a document to the sections it contains.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-sectionInDocument"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-sectionInDocument">
+    <rdfs:label>rel:sectionInDocument</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-section-instance"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-submission-requirement">
+    <rdfs:label>has submission requirement</rdfs:label>
+    <rdfs:comment>Connects a document-to-submit to the submission requirement it fulfills.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-To-Submit"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Submission-Requirement"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-submissionRequirementForDocument"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-submissionRequirementForDocument">
+    <rdfs:label>rel:submissionRequirementForDocument</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Submission-Requirement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-To-Submit"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-submission-requirement"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-tagged-item">
+    <rdfs:label>has tagged item</rdfs:label>
+    <rdfs:comment>Connects a component to one or more source tags.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Component"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Tagged-Item"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-tagForComponent"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-tagForComponent">
+    <rdfs:label>rel:tagForComponent</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Tagged-Item"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Component"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-tagged-item"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/has-target-state">
+    <rdfs:label>has target state</rdfs:label>
+    <rdfs:comment>Connects the project measure to the intended target state.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Target-State"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-targetStateOfMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-targetStateOfMeasure">
+    <rdfs:label>rel:targetStateOfMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Target-State"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/has-target-state"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/implements-measure">
+    <rdfs:label>implements measure</rdfs:label>
+    <rdfs:comment>Connects a workflow step to the change measure it executes.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-isImplementedByStep"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-isImplementedByStep">
+    <rdfs:label>rel:isImplementedByStep</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Change-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/implements-measure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/instantiates-template">
+    <rdfs:label>instantiates template</rdfs:label>
+    <rdfs:comment>Connects a concrete NWA document to its document template.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-Template"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasDocumentInstance"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasDocumentInstance">
+    <rdfs:label>rel:hasDocumentInstance</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-Template"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/instantiates-template"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/justified-by-assessment">
+    <rdfs:label>justified by assessment</rdfs:label>
+    <rdfs:comment>Connects a documentation change to the assessment that justifies it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-justifiesDocumentationChange"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-justifiesDocumentationChange">
+    <rdfs:label>rel:justifiesDocumentationChange</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/justified-by-assessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/located-in">
+    <rdfs:label>located in</rdfs:label>
+    <rdfs:comment>Connects an asset to the room it is located in.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Asset"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Room"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-containsAsset"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-containsAsset">
+    <rdfs:label>rel:containsAsset</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Room"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Asset"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/located-in"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/packaged-in">
+    <rdfs:label>packaged in</rdfs:label>
+    <rdfs:comment>Connects a waste stream to the package used for it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Package"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-packageForWasteStream"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-packageForWasteStream">
+    <rdfs:label>rel:packageForWasteStream</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Package"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/packaged-in"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/part-of-asset">
+    <rdfs:label>part of asset</rdfs:label>
+    <rdfs:comment>Connects one asset to a larger containing asset.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Asset"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Asset"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasAssetPart"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasAssetPart">
+    <rdfs:label>rel:hasAssetPart</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Asset"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Asset"/>
+    <kg:domainModule>Assets and Locations</kg:domainModule>
+    <kg:rangeModule>Assets and Locations</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/part-of-asset"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/part-of-workflow">
+    <rdfs:label>part of workflow</rdfs:label>
+    <rdfs:comment>Connects a workflow step to the workflow it belongs to.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasWorkflowStep"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasWorkflowStep">
+    <rdfs:label>rel:hasWorkflowStep</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/part-of-workflow"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/points-to-document">
+    <rdfs:label>points to document</rdfs:label>
+    <rdfs:comment>Connects a citation to the referenced document it names.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Reference-Citation"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Referenced-Document"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-documentPointedToByCitation"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-documentPointedToByCitation">
+    <rdfs:label>rel:documentPointedToByCitation</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Referenced-Document"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Reference-Citation"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/points-to-document"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/precedes-step">
+    <rdfs:label>precedes step</rdfs:label>
+    <rdfs:comment>States that one workflow step comes before another.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-followsStep"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-followsStep">
+    <rdfs:label>rel:followsStep</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Workflow-Step"/>
+    <kg:domainModule>Workflow and Change Measures</kg:domainModule>
+    <kg:rangeModule>Workflow and Change Measures</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/precedes-step"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/references-document">
+    <rdfs:label>references document</rdfs:label>
+    <rdfs:comment>Connects an NWA document to a referenced source document.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Referenced-Document"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-isReferencedByDocument"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-isReferencedByDocument">
+    <rdfs:label>rel:isReferencedByDocument</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Referenced-Document"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-Instance"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/references-document"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/requires-documentation-change">
+    <rdfs:label>requires documentation change</rdfs:label>
+    <rdfs:comment>Connects a project measure to required documentation changes.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-documentationChangeRequiredBy"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-documentationChangeRequiredBy">
+    <rdfs:label>rel:documentationChangeRequiredBy</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/requires-documentation-change"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/requires-mitigation">
+    <rdfs:label>requires mitigation</rdfs:label>
+    <rdfs:comment>Connects an assessment to required mitigation measures.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Mitigation-Measure"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-mitigationRequiredByAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-mitigationRequiredByAssessment">
+    <rdfs:label>rel:mitigationRequiredByAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Mitigation-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/requires-mitigation"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/requires-monitoring">
+    <rdfs:label>requires monitoring</rdfs:label>
+    <rdfs:comment>Connects an assessment to a resulting monitoring requirement.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Monitoring-Requirement"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-monitoringRequiredByAssessment"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-monitoringRequiredByAssessment">
+    <rdfs:label>rel:monitoringRequiredByAssessment</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Monitoring-Requirement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Technical-Assessment"/>
+    <kg:domainModule>Technical Safety Assessment</kg:domainModule>
+    <kg:rangeModule>Technical Safety Assessment</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/requires-monitoring"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/requires-storage-need">
+    <rdfs:label>requires storage need</rdfs:label>
+    <rdfs:comment>Connects a waste stream to its required storage capacity.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Storage-Need"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-storageNeedForWasteStream"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-storageNeedForWasteStream">
+    <rdfs:label>rel:storageNeedForWasteStream</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Storage-Need"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Waste-Stream"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/requires-storage-need"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/requires-submission">
+    <rdfs:label>requires submission</rdfs:label>
+    <rdfs:comment>Connects a project measure to documentation that must be submitted later.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-To-Submit"/>
+    <kg:domainModule>Measure Description</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-submissionRequiredByMeasure"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-submissionRequiredByMeasure">
+    <rdfs:label>rel:submissionRequiredByMeasure</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-To-Submit"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Project-Measure"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Measure Description</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/requires-submission"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/section-of-type">
+    <rdfs:label>section of type</rdfs:label>
+    <rdfs:comment>Assigns a semantic section type to a section instance.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Type"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-hasSectionOfType"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-hasSectionOfType">
+    <rdfs:label>rel:hasSectionOfType</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Section-Type"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Section-Instance"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/section-of-type"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/supported-by-evidence">
+    <rdfs:label>supported by evidence</rdfs:label>
+    <rdfs:comment>Connects an answer to the evidence supporting it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Field-Answer"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Evidence-Item"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-evidenceForAnswer"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-evidenceForAnswer">
+    <rdfs:label>rel:evidenceForAnswer</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Evidence-Item"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Field-Answer"/>
+    <kg:domainModule>Document Structure and Evidence</kg:domainModule>
+    <kg:rangeModule>Document Structure and Evidence</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/supported-by-evidence"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/supported-by-sampling-plan">
+    <rdfs:label>supported by sampling plan</rdfs:label>
+    <rdfs:comment>Connects a waste estimate to the sampling plan that supports it.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Raw-Waste-Estimate"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Sampling-Plan"/>
+    <kg:domainModule>Waste and Materials</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-supportsRawWasteEstimate"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-supportsRawWasteEstimate">
+    <rdfs:label>rel:supportsRawWasteEstimate</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Sampling-Plan"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Raw-Waste-Estimate"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Waste and Materials</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/supported-by-sampling-plan"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/targets-document">
+    <rdfs:label>targets document</rdfs:label>
+    <rdfs:comment>Connects a documentation change to the specific document that must be adapted.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Document-To-Adapt"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-isTargetOfDocumentationChange"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-isTargetOfDocumentationChange">
+    <rdfs:label>rel:isTargetOfDocumentationChange</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Document-To-Adapt"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Documentation-Change"/>
+    <kg:domainModule>Documentation and References</kg:domainModule>
+    <kg:rangeModule>Documentation and References</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/targets-document"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/uses-measurement-method">
+    <rdfs:label>uses measurement method</rdfs:label>
+    <rdfs:comment>Connects a measurement to the method used.</rdfs:comment>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Measurement"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Measurement-Method"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/rel-methodUsedInMeasurement"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="https://example.com/ontology/rel-methodUsedInMeasurement">
+    <rdfs:label>rel:methodUsedInMeasurement</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/ontology/Measurement-Method"/>
+    <rdfs:range rdf:resource="https://example.com/ontology/Measurement"/>
+    <kg:domainModule>Radiological Characterization</kg:domainModule>
+    <kg:rangeModule>Radiological Characterization</kg:rangeModule>
+    <owl:inverseOf rdf:resource="https://example.com/ontology/uses-measurement-method"/>
+  </owl:ObjectProperty>
+</rdf:RDF>
