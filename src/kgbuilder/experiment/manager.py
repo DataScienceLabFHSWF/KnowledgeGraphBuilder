@@ -599,7 +599,7 @@ class ConfigRunner:
 
             # Persist per-iteration metrics for convergence analysis
             if discover_result.iterations:
-                iter_metrics_path = output_dir / run_id / "iteration_metrics.json"
+                iter_metrics_path = self.output_dir / run_id / "iteration_metrics.json"
                 iter_metrics_path.parent.mkdir(parents=True, exist_ok=True)
                 iter_data = [
                     {
@@ -655,7 +655,7 @@ class ConfigRunner:
             # This enables semantic enrichment and skips re-extraction if needed
             logger.info("checkpointing_extraction_results", run_id=run_id)
             checkpoint_manager = CheckpointManager(
-                checkpoint_dir=output_dir / "checkpoints"
+                checkpoint_dir=self.output_dir / "checkpoints"
             )
             checkpoint_path = checkpoint_manager.save_extraction(
                 run_id=run_id,
@@ -906,7 +906,7 @@ class ConfigRunner:
             neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")
             owl_path = Path(os.getenv(
                 "ONTOLOGY_OWL_PATH",
-                "./data/ontology/law/law-ontology-v1.0.owl",
+                "./data/ontology/domain/decommissioning.owl",
             ))
 
             store = Neo4jGraphStore(neo4j_uri, (neo4j_user, neo4j_password))

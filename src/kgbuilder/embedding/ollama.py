@@ -290,12 +290,15 @@ class OllamaProvider:
         Raises:
             RuntimeError: If API call fails after retries or circuit breaker is open
         """
+        use_cache = kwargs.pop("use_cache", True)
+
         # Check cache first
         cache_key = self._get_cache_key(prompt, **kwargs)
-        cached = self._load_cache(cache_key)
-        if cached:
-            logger.debug("ollama_cache_hit", model=self.model, key=cache_key[:8])
-            return cached
+        if use_cache:
+            cached = self._load_cache(cache_key)
+            if cached:
+                logger.debug("ollama_cache_hit", model=self.model, key=cache_key[:8])
+                return cached
 
         # Check circuit breaker before attempting
         self._check_circuit_breaker()
@@ -332,8 +335,9 @@ class OllamaProvider:
                 completion = result.get("response", "")
                 completion_tokens = len(completion.split())
 
-                # Save to cache
-                self._save_cache(cache_key, completion)
+                # Save to cache only for cache-enabled calls.
+                if use_cache:
+                    self._save_cache(cache_key, completion)
 
                 # Accumulate totals
                 OllamaProvider.total_prompt_tokens += prompt_tokens
@@ -448,6 +452,7 @@ class OllamaProvider:
                     augmented_prompt,
                     temperature=temperature,
                     format="json",
+                    use_cache=False,
                     **kwargs,
                 )
 

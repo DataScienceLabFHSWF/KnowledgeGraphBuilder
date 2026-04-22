@@ -1,6 +1,8 @@
 {
   "name": "KG Quality Test - Single Variant",
+  "name_de": "KG-Qualitaetstest - Einzelvariante",
   "description": "Test Phase 5 relations with JSON parsing fixes",
+  "description_de": "Testet Beziehungen aus Phase 5 mit JSON-Parsing-Korrekturen",
   "output_dir": "experiment_results/test_relations",
   "variants": [
     {

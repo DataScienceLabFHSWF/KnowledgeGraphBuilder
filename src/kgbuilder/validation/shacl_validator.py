@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import time
+from urllib.parse import quote
 
 import rdflib
 import structlog
@@ -64,12 +65,17 @@ class SHACLValidator:
             raise ValueError("shapes_graph cannot be None")
 
         self.shapes_graph = shapes_graph
-        self.ontology_uri = ontology_uri
+        self.ontology_uri = ontology_uri.rstrip("/")
         logger.info(
             "shacl_validator_initialized",
             shape_count=len(shapes_graph),
-            ontology_uri=ontology_uri,
+            ontology_uri=self.ontology_uri,
         )
+
+    def _make_uri(self, *parts: object) -> rdflib.URIRef:
+        """Build a valid URIRef under the configured ontology base URI."""
+        encoded = [quote(str(p), safe="") for p in parts if p is not None]
+        return rdflib.URIRef(f"{self.ontology_uri}/{'/'.join(encoded)}")
 
     def validate(self, store: GraphStore) -> ValidationResult:
         """Validate a knowledge graph against SHACL shapes.
@@ -329,10 +335,10 @@ class SHACLValidator:
             nodes = list(store.get_all_nodes())
             for node in nodes:
                 # Create RDF URI for node
-                node_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}/{node.id}")
+                node_uri = self._make_uri(node.node_type, node.id)
 
                 # Add node type triple
-                node_type_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}")
+                node_type_uri = self._make_uri(node.node_type)
                 graph.add((node_uri, rdflib.RDF.type, node_type_uri))
 
                 # Add node properties
@@ -348,7 +354,7 @@ class SHACLValidator:
                 # Add custom properties
                 for key, value in node.properties.items():
                     if value is not None:
-                        prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{key}")
+                        prop_uri = self._make_uri(key)
                         literal_value = rdflib.Literal(value)
                         graph.add((node_uri, prop_uri, literal_value))
 
@@ -375,9 +381,9 @@ class SHACLValidator:
                     except Exception:
                         tgt_type = "Thing"
 
-                source_uri = rdflib.URIRef(f"{self.ontology_uri}/{src_type}/{edge.source_id}")
-                target_uri = rdflib.URIRef(f"{self.ontology_uri}/{tgt_type}/{edge.target_id}")
-                predicate_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}")
+                source_uri = self._make_uri(src_type, edge.source_id)
+                target_uri = self._make_uri(tgt_type, edge.target_id)
+                predicate_uri = self._make_uri(edge.edge_type)
 
                 # Add edge triple
                 graph.add((source_uri, predicate_uri, target_uri))
@@ -385,7 +391,7 @@ class SHACLValidator:
                 # Add edge properties
                 for key, value in edge.properties.items():
                     if value is not None:
-                        prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}_{key}")
+                        prop_uri = self._make_uri(f"{edge.edge_type}_{key}")
                         graph.add((source_uri, prop_uri, rdflib.Literal(value)))
 
             logger.info(

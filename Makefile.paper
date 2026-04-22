@@ -23,11 +23,13 @@ OLLAMA_URL   := http://localhost:18134
 NEO4J_URI    := bolt://localhost:7687
 QDRANT_URL   := http://localhost:6333
 FUSEKI_URL   := http://localhost:3030
+FUSEKI_DATASET := kgbuilder
+ONTOLOGY_OWL_PATH := ./data/ontology/domain/decommissioning.owl
 RESULTS_DIR  := experiment_results/benchmark_paper
 MODELS       := gemma4:e2b gemma4:e4b gemma4:31b nemotron-3-nano
 
 .PHONY: all check check-ollama check-models check-neo4j check-qdrant check-fuseki check-venv \
-        benchmark setup-venv pull-models clean help
+	benchmark setup-venv pull-models load-ontology clean help
 
 # =============================================================================
 # Top-level targets
@@ -103,16 +105,24 @@ pull-models:
 # =============================================================================
 
 benchmark: check
+	set -e
 	@echo ""
 	@echo "Running paper benchmark (6 conditions × 3 runs)..."
 	@echo "This will take many hours. Results are saved incrementally."
 	@mkdir -p $(RESULTS_DIR)
+	ONTOLOGY_OWL_PATH=$(ONTOLOGY_OWL_PATH) FUSEKI_DATASET=$(FUSEKI_DATASET) \
 	$(VENV) scripts/run_experiment.py \
 		--config examples/benchmark_paper.json \
 		--output $(RESULTS_DIR) \
 		--workers 1 \
 		--formats markdown json html
 	@echo "✓ Benchmark complete → $(RESULTS_DIR)/"
+
+load-ontology: check-venv
+	@echo "Loading ontology into Fuseki dataset $(FUSEKI_DATASET)..."
+	FUSEKI_DATASET=$(FUSEKI_DATASET) ONTOLOGY_OWL_PATH=$(ONTOLOGY_OWL_PATH) \
+		$(VENV) scripts/load_ontology_to_fuseki.py
+	@echo "✓ Ontology loaded: $(ONTOLOGY_OWL_PATH)"
 
 benchmark-quick: check
 	@echo ""
@@ -146,6 +156,7 @@ help:
 	@echo "  make -f Makefile.paper check          Verify infra + models"
 	@echo "  make -f Makefile.paper setup-venv      Create venv + install"
 	@echo "  make -f Makefile.paper pull-models     Pull all required models"
+	@echo "  make -f Makefile.paper load-ontology   Load decommissioning ontology into Fuseki"
 	@echo "  make -f Makefile.paper benchmark       Full benchmark (6×3 runs)"
 	@echo "  make -f Makefile.paper benchmark-quick Quick single-variant test"
 	@echo "  make -f Makefile.paper plots           Generate convergence plots"
@@ -154,3 +165,4 @@ help:
 	@echo "Models: $(MODELS)"
 	@echo "Ollama: $(OLLAMA_URL)"
 	@echo "Neo4j:  $(NEO4J_URI)  Qdrant: $(QDRANT_URL)  Fuseki: $(FUSEKI_URL)"
+	@echo "Ontology: $(ONTOLOGY_OWL_PATH) (dataset: $(FUSEKI_DATASET))"

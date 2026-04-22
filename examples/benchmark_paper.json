@@ -1,6 +1,8 @@
 {
   "name": "Nuclear Decommissioning Benchmark",
+  "name_de": "Benchmark zur nuklearen Stilllegung",
   "description": "7-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law, 3 model sizes (gemma4:e2b, gemma4:e4b, nemotron ablation). 3 runs each for statistical reliability.",
+  "description_de": "7-Bedingungen-Benchmark fuer das Paper: Single-Pass vs. Multi-Pass vs. Multi-Pass+Law, 3 Modellgroessen (gemma4:e2b, gemma4:e4b, Nemotron-Ablation). Je 3 Laeufe fuer statistische Belastbarkeit.",
   "output_dir": "experiment_results/benchmark_paper",
   "num_runs": 3,
   "seed": 42,
@@ -8,6 +10,7 @@
     {
       "name": "A_single_pass",
       "description": "Single iteration, no law graph — naive baseline (gemma4:e2b)",
+      "description_de": "Eine Iteration, kein Law-Graph — naive Basislinie (gemma4:e2b)",
       "params": {
         "model": "gemma4:e2b",
         "max_iterations": 1,
@@ -21,6 +24,7 @@
     {
       "name": "B_multipass",
       "description": "5 iterations, no law graph — shows value of iterative discovery (gemma4:e2b)",
+      "description_de": "5 Iterationen, kein Law-Graph — zeigt den Wert iterativer Erschliessung (gemma4:e2b)",
       "params": {
         "model": "gemma4:e2b",
         "max_iterations": 5,
@@ -34,6 +38,7 @@
     {
       "name": "C_multipass_law",
       "description": "5 iterations + law graph context augmentation — full system (gemma4:e2b)",
+      "description_de": "5 Iterationen + Law-Graph-Kontextanreicherung — Vollsystem (gemma4:e2b)",
       "params": {
         "model": "gemma4:e2b",
         "max_iterations": 5,
@@ -47,6 +52,7 @@
     {
       "name": "D_gemma4b",
       "description": "Multi-pass with gemma4:e4b — medium model comparison",
+      "description_de": "Multi-Pass mit gemma4:e4b — Vergleich mit mittelgrossem Modell",
       "params": {
         "model": "gemma4:e4b",
         "max_iterations": 5,
@@ -60,6 +66,7 @@
     {
       "name": "E_gemma31b",
       "description": "Multi-pass with gemma4:31b — large model comparison",
+      "description_de": "Multi-Pass mit gemma4:31b — Vergleich mit grossem Modell",
       "params": {
         "model": "gemma4:31b",
         "max_iterations": 5,
@@ -73,6 +80,7 @@
     {
       "name": "F_nemotron_ablation",
       "description": "Multi-pass with nemotron-3-nano — ablation model comparison",
+      "description_de": "Multi-Pass mit nemotron-3-nano — Ablationsmodellvergleich",
       "params": {
         "model": "nemotron-3-nano",
         "max_iterations": 5,

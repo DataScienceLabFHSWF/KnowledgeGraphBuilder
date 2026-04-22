@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260421_220625_f1382f56_F_nemotron_ablation_1",
+  "variant_name": "F_nemotron_ablation",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-04-22T04:29:05.315164",
+  "end_time": "2026-04-22T06:41:00.117009",
+  "duration_seconds": 7914.8,
+  "kg_metrics": {
+    "nodes": 100,
+    "edges": 200,
+    "build_time": 0.0
+  },
+  "eval_metrics": {
+    "accuracy": 0.71,
+    "f1_score": 0.6599999999999999,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 38
+  },
+  "error": "name 'output_dir' is not defined",
+  "metadata": {
+    "run_id": "exp_20260421_220625_f1382f56_F_nemotron_ablation_1",
+    "variant_name": "F_nemotron_ablation",
+    "started_at": "2026-04-22T04:29:05.315164",
+    "params": {
+      "model": "nemotron-3-nano",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "error_at": "2026-04-22T06:41:00.116652",
+    "error_type": "NameError"
+  }
+}
