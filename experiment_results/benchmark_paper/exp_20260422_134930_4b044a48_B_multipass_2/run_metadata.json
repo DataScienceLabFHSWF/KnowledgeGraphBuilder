@@ -1,0 +1,123 @@
+{
+  "run_id": "exp_20260422_134930_4b044a48_B_multipass_2",
+  "variant_name": "B_multipass",
+  "run_number": 2,
+  "status": "completed",
+  "start_time": "2026-04-22T14:41:19.686439",
+  "end_time": "2026-04-22T14:59:35.890709",
+  "duration_seconds": 1096.2,
+  "kg_metrics": {
+    "nodes": 650,
+    "edges": 0,
+    "build_time_seconds": 923.58,
+    "model": "gemma4:e2b",
+    "max_iterations": 5,
+    "final_coverage": 0.29,
+    "total_discovery_iterations": 5,
+    "total_entities_discovered": 650,
+    "total_relations_extracted": 0,
+    "graph_richness": {
+      "entity_classes_populated": 0,
+      "ontology_class_coverage_pct": 0.0,
+      "entity_type_distribution": {},
+      "entity_type_entropy": 0,
+      "unique_relation_types": 0,
+      "ontology_relation_coverage_pct": 0.0,
+      "relation_type_distribution": {},
+      "relation_density": 0.0,
+      "avg_degree": 0.0,
+      "max_degree": 0,
+      "orphan_count": 0,
+      "orphan_rate": 0.0
+    },
+    "discovery_iterations": [
+      {
+        "iteration": 1,
+        "entities_new": 375,
+        "entities_cumulative": 375,
+        "coverage": 0.25,
+        "new_entity_types_count": 40,
+        "time_sec": 475.02
+      },
+      {
+        "iteration": 2,
+        "entities_new": 142,
+        "entities_cumulative": 517,
+        "coverage": 0.26,
+        "new_entity_types_count": 41,
+        "time_sec": 110.3
+      },
+      {
+        "iteration": 3,
+        "entities_new": 38,
+        "entities_cumulative": 555,
+        "coverage": 0.26,
+        "new_entity_types_count": 41,
+        "time_sec": 86.38
+      },
+      {
+        "iteration": 4,
+        "entities_new": 55,
+        "entities_cumulative": 610,
+        "coverage": 0.29,
+        "new_entity_types_count": 44,
+        "time_sec": 130.53
+      },
+      {
+        "iteration": 5,
+        "entities_new": 40,
+        "entities_cumulative": 650,
+        "coverage": 0.29,
+        "new_entity_types_count": 44,
+        "time_sec": 117.79
+      }
+    ],
+    "shacl": {
+      "combined_score": 1.0,
+      "shacl_score": 1.0,
+      "consistency": 1.0,
+      "violations": 0,
+      "class_coverage": 1.0
+    }
+  },
+  "eval_metrics": {
+    "gold_standard": {
+      "documents_evaluated": 1,
+      "entities": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2
+      },
+      "relations": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "f1_score": 0.0,
+    "entities_f1": 0.0,
+    "relations_f1": 0.0
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_134930_4b044a48_B_multipass_2",
+    "variant_name": "B_multipass",
+    "started_at": "2026-04-22T14:41:19.686439",
+    "params": {
+      "model": "gemma4:e2b",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "completed_at": "2026-04-22T14:59:35.251163"
+  }
+}

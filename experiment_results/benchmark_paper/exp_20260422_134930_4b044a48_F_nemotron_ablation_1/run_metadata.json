@@ -1,0 +1,123 @@
+{
+  "run_id": "exp_20260422_134930_4b044a48_F_nemotron_ablation_1",
+  "variant_name": "F_nemotron_ablation",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-04-22T23:51:43.478171",
+  "end_time": "2026-04-23T06:09:31.220363",
+  "duration_seconds": 22667.74,
+  "kg_metrics": {
+    "nodes": 435,
+    "edges": 0,
+    "build_time_seconds": 22469.49,
+    "model": "nemotron-3-nano",
+    "max_iterations": 5,
+    "final_coverage": 0.36,
+    "total_discovery_iterations": 5,
+    "total_entities_discovered": 435,
+    "total_relations_extracted": 0,
+    "graph_richness": {
+      "entity_classes_populated": 0,
+      "ontology_class_coverage_pct": 0.0,
+      "entity_type_distribution": {},
+      "entity_type_entropy": 0,
+      "unique_relation_types": 0,
+      "ontology_relation_coverage_pct": 0.0,
+      "relation_type_distribution": {},
+      "relation_density": 0.0,
+      "avg_degree": 0.0,
+      "max_degree": 0,
+      "orphan_count": 0,
+      "orphan_rate": 0.0
+    },
+    "discovery_iterations": [
+      {
+        "iteration": 1,
+        "entities_new": 330,
+        "entities_cumulative": 330,
+        "coverage": 0.36,
+        "new_entity_types_count": 44,
+        "time_sec": 673.65
+      },
+      {
+        "iteration": 2,
+        "entities_new": 105,
+        "entities_cumulative": 435,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 21788.36
+      },
+      {
+        "iteration": 3,
+        "entities_new": 0,
+        "entities_cumulative": 435,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 1.14
+      },
+      {
+        "iteration": 4,
+        "entities_new": 0,
+        "entities_cumulative": 435,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 1.22
+      },
+      {
+        "iteration": 5,
+        "entities_new": 0,
+        "entities_cumulative": 435,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 0.99
+      }
+    ],
+    "shacl": {
+      "combined_score": 1.0,
+      "shacl_score": 1.0,
+      "consistency": 1.0,
+      "violations": 0,
+      "class_coverage": 1.0
+    }
+  },
+  "eval_metrics": {
+    "gold_standard": {
+      "documents_evaluated": 1,
+      "entities": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2
+      },
+      "relations": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "f1_score": 0.0,
+    "entities_f1": 0.0,
+    "relations_f1": 0.0
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_134930_4b044a48_F_nemotron_ablation_1",
+    "variant_name": "F_nemotron_ablation",
+    "started_at": "2026-04-22T23:51:43.478171",
+    "params": {
+      "model": "nemotron-3-nano",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "completed_at": "2026-04-23T06:09:30.468351"
+  }
+}

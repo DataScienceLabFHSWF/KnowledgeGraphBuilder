@@ -1,0 +1,123 @@
+{
+  "run_id": "exp_20260422_134930_4b044a48_E_gemma31b_2",
+  "variant_name": "E_gemma31b",
+  "run_number": 2,
+  "status": "completed",
+  "start_time": "2026-04-22T20:32:06.733143",
+  "end_time": "2026-04-22T22:21:55.126232",
+  "duration_seconds": 6588.39,
+  "kg_metrics": {
+    "nodes": 408,
+    "edges": 0,
+    "build_time_seconds": 6396.79,
+    "model": "gemma4:31b",
+    "max_iterations": 5,
+    "final_coverage": 0.24,
+    "total_discovery_iterations": 5,
+    "total_entities_discovered": 408,
+    "total_relations_extracted": 0,
+    "graph_richness": {
+      "entity_classes_populated": 0,
+      "ontology_class_coverage_pct": 0.0,
+      "entity_type_distribution": {},
+      "entity_type_entropy": 0,
+      "unique_relation_types": 0,
+      "ontology_relation_coverage_pct": 0.0,
+      "relation_type_distribution": {},
+      "relation_density": 0.0,
+      "avg_degree": 0.0,
+      "max_degree": 0,
+      "orphan_count": 0,
+      "orphan_rate": 0.0
+    },
+    "discovery_iterations": [
+      {
+        "iteration": 1,
+        "entities_new": 257,
+        "entities_cumulative": 257,
+        "coverage": 0.2,
+        "new_entity_types_count": 20,
+        "time_sec": 2729.16
+      },
+      {
+        "iteration": 2,
+        "entities_new": 80,
+        "entities_cumulative": 337,
+        "coverage": 0.23,
+        "new_entity_types_count": 23,
+        "time_sec": 989.16
+      },
+      {
+        "iteration": 3,
+        "entities_new": 47,
+        "entities_cumulative": 384,
+        "coverage": 0.23,
+        "new_entity_types_count": 23,
+        "time_sec": 279.06
+      },
+      {
+        "iteration": 4,
+        "entities_new": 24,
+        "entities_cumulative": 408,
+        "coverage": 0.24,
+        "new_entity_types_count": 24,
+        "time_sec": 2114.14
+      },
+      {
+        "iteration": 5,
+        "entities_new": 0,
+        "entities_cumulative": 408,
+        "coverage": 0.24,
+        "new_entity_types_count": 24,
+        "time_sec": 281.77
+      }
+    ],
+    "shacl": {
+      "combined_score": 1.0,
+      "shacl_score": 1.0,
+      "consistency": 1.0,
+      "violations": 0,
+      "class_coverage": 1.0
+    }
+  },
+  "eval_metrics": {
+    "gold_standard": {
+      "documents_evaluated": 1,
+      "entities": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2
+      },
+      "relations": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "f1_score": 0.0,
+    "entities_f1": 0.0,
+    "relations_f1": 0.0
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_134930_4b044a48_E_gemma31b_2",
+    "variant_name": "E_gemma31b",
+    "started_at": "2026-04-22T20:32:06.733143",
+    "params": {
+      "model": "gemma4:31b",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "completed_at": "2026-04-22T22:21:54.529991"
+  }
+}

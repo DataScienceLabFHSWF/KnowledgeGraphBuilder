@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from typing import Any
 
@@ -86,6 +87,21 @@ class Neo4jGraphStore:
     # Node Operations
     # =========================================================================
 
+    def _sanitize_cypher_identifier(self, value: str) -> str:
+        """Sanitize a dynamic label/type for safe Cypher interpolation.
+
+        Neo4j labels and relationship types cannot contain spaces or most
+        punctuation unless escaped. We normalize to an ASCII-safe identifier so
+        runtime MERGE statements remain valid.
+        """
+        token = re.sub(r"[^A-Za-z0-9_]", "_", value)
+        token = re.sub(r"_+", "_", token).strip("_")
+        if not token:
+            return "Unknown"
+        if token[0].isdigit():
+            token = f"_{token}"
+        return token
+
     def add_node(self, node: Node) -> str:
         """Add or update a node.
 
@@ -95,21 +111,25 @@ class Neo4jGraphStore:
         Returns:
             Node ID
         """
-        query = """
-        MERGE (n:{node_type} {id: $id})
+        safe_node_type = self._sanitize_cypher_identifier(node.node_type)
+        query = f"""
+        MERGE (n:{safe_node_type} {{id: $id}})
         SET n.label = $label,
             n.node_type = $node_type,
+            n.run_id = $run_id,
             n.properties = $properties,
             n.created_at = datetime()
         RETURN n.id AS id
         """
 
+        run_id = node.properties.get("run_id", "") if node.properties else ""
         with self._driver.session(database=self.database) as session:
             result = session.run(
-                query.replace("{node_type}", node.node_type),
+                query,
                 id=node.id,
                 label=node.label,
                 node_type=node.node_type,
+                run_id=run_id,
                 properties=json.dumps(node.properties),
             )
             return result.single()["id"]
@@ -192,15 +212,16 @@ class Neo4jGraphStore:
         Returns:
             List of nodes
         """
-        query = f"""
-        MATCH (n:{node_type})
+        query = """
+        MATCH (n)
+        WHERE n.node_type = $node_type
         RETURN n.id AS id, n.label AS label, labels(n)[0] AS node_type,
                n.properties AS properties
         """
 
         nodes = []
         with self._driver.session(database=self.database) as session:
-            result = session.run(query)
+            result = session.run(query, node_type=node_type)
             for record in result:
                 props = json.loads(record["properties"]) if record["properties"] else {}
                 nodes.append(
@@ -246,17 +267,20 @@ class Neo4jGraphStore:
                 )
 
             # Create edge
+            safe_edge_type = self._sanitize_cypher_identifier(edge.edge_type)
             query = f"""
             MATCH (s {{id: $source_id}}), (t {{id: $target_id}})
-            CREATE (s)-[r:{edge.edge_type} {{id: $id, properties: $properties, created_at: datetime()}}]->(t)
+            CREATE (s)-[r:{safe_edge_type} {{id: $id, run_id: $run_id, properties: $properties, created_at: datetime()}}]->(t)
             RETURN r.id AS id
             """
 
+            run_id = edge.properties.get("run_id", "") if edge.properties else ""
             result = session.run(
                 query,
                 id=edge.id,
                 source_id=edge.source_id,
                 target_id=edge.target_id,
+                run_id=run_id,
                 properties=json.dumps(edge.properties),
             )
             return result.single()["id"]

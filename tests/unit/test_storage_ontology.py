@@ -40,6 +40,7 @@ def make_service_with_mock_store(sample_result: dict) -> FusekiOntologyService:
     svc.store = MagicMock()
     svc.store.query_sparql.return_value = sample_result
     svc._classes_cache = None
+    svc._class_uri_map = {}
     return svc
 
 

@@ -1,0 +1,123 @@
+{
+  "run_id": "exp_20260422_134930_4b044a48_D_gemma4b_2",
+  "variant_name": "D_gemma4b",
+  "run_number": 2,
+  "status": "completed",
+  "start_time": "2026-04-22T16:39:53.724872",
+  "end_time": "2026-04-22T17:04:16.465356",
+  "duration_seconds": 1462.74,
+  "kg_metrics": {
+    "nodes": 665,
+    "edges": 0,
+    "build_time_seconds": 1264.93,
+    "model": "gemma4:e4b",
+    "max_iterations": 5,
+    "final_coverage": 0.17,
+    "total_discovery_iterations": 5,
+    "total_entities_discovered": 665,
+    "total_relations_extracted": 0,
+    "graph_richness": {
+      "entity_classes_populated": 0,
+      "ontology_class_coverage_pct": 0.0,
+      "entity_type_distribution": {},
+      "entity_type_entropy": 0,
+      "unique_relation_types": 0,
+      "ontology_relation_coverage_pct": 0.0,
+      "relation_type_distribution": {},
+      "relation_density": 0.0,
+      "avg_degree": 0.0,
+      "max_degree": 0,
+      "orphan_count": 0,
+      "orphan_rate": 0.0
+    },
+    "discovery_iterations": [
+      {
+        "iteration": 1,
+        "entities_new": 412,
+        "entities_cumulative": 412,
+        "coverage": 0.17,
+        "new_entity_types_count": 20,
+        "time_sec": 744.84
+      },
+      {
+        "iteration": 2,
+        "entities_new": 65,
+        "entities_cumulative": 477,
+        "coverage": 0.17,
+        "new_entity_types_count": 20,
+        "time_sec": 88.83
+      },
+      {
+        "iteration": 3,
+        "entities_new": 68,
+        "entities_cumulative": 545,
+        "coverage": 0.17,
+        "new_entity_types_count": 21,
+        "time_sec": 150.41
+      },
+      {
+        "iteration": 4,
+        "entities_new": 79,
+        "entities_cumulative": 624,
+        "coverage": 0.17,
+        "new_entity_types_count": 25,
+        "time_sec": 162.04
+      },
+      {
+        "iteration": 5,
+        "entities_new": 41,
+        "entities_cumulative": 665,
+        "coverage": 0.17,
+        "new_entity_types_count": 25,
+        "time_sec": 114.72
+      }
+    ],
+    "shacl": {
+      "combined_score": 1.0,
+      "shacl_score": 1.0,
+      "consistency": 1.0,
+      "violations": 0,
+      "class_coverage": 1.0
+    }
+  },
+  "eval_metrics": {
+    "gold_standard": {
+      "documents_evaluated": 1,
+      "entities": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 1,
+        "fn": 2
+      },
+      "relations": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "f1_score": 0.0,
+    "entities_f1": 0.0,
+    "relations_f1": 0.0
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_134930_4b044a48_D_gemma4b_2",
+    "variant_name": "D_gemma4b",
+    "started_at": "2026-04-22T16:39:53.724872",
+    "params": {
+      "model": "gemma4:e4b",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "completed_at": "2026-04-22T17:04:15.738442"
+  }
+}

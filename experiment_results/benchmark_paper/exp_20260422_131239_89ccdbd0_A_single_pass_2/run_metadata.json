@@ -1,0 +1,91 @@
+{
+  "run_id": "exp_20260422_131239_89ccdbd0_A_single_pass_2",
+  "variant_name": "A_single_pass",
+  "run_number": 2,
+  "status": "completed",
+  "start_time": "2026-04-22T13:23:34.748006",
+  "end_time": "2026-04-22T13:34:06.747390",
+  "duration_seconds": 632.0,
+  "kg_metrics": {
+    "nodes": 280,
+    "edges": 0,
+    "build_time_seconds": 473.67,
+    "model": "gemma4:e2b",
+    "max_iterations": 1,
+    "final_coverage": 0.23,
+    "total_discovery_iterations": 1,
+    "total_entities_discovered": 338,
+    "total_relations_extracted": 0,
+    "graph_richness": {
+      "entity_classes_populated": 0,
+      "ontology_class_coverage_pct": 0.0,
+      "entity_type_distribution": {},
+      "entity_type_entropy": 0,
+      "unique_relation_types": 0,
+      "ontology_relation_coverage_pct": 0.0,
+      "relation_type_distribution": {},
+      "relation_density": 0.0,
+      "avg_degree": 0.0,
+      "max_degree": 0,
+      "orphan_count": 0,
+      "orphan_rate": 0.0
+    },
+    "discovery_iterations": [
+      {
+        "iteration": 1,
+        "entities_new": 338,
+        "entities_cumulative": 338,
+        "coverage": 0.23,
+        "new_entity_types_count": 36,
+        "time_sec": 470.31
+      }
+    ],
+    "shacl": {
+      "combined_score": 1.0,
+      "shacl_score": 1.0,
+      "consistency": 1.0,
+      "violations": 0,
+      "class_coverage": 1.0
+    }
+  },
+  "eval_metrics": {
+    "gold_standard": {
+      "documents_evaluated": 1,
+      "entities": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2
+      },
+      "relations": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "f1_score": 0.0,
+    "entities_f1": 0.0,
+    "relations_f1": 0.0
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_131239_89ccdbd0_A_single_pass_2",
+    "variant_name": "A_single_pass",
+    "started_at": "2026-04-22T13:23:34.748006",
+    "params": {
+      "model": "gemma4:e2b",
+      "max_iterations": 1,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "completed_at": "2026-04-22T13:34:06.030335"
+  }
+}
