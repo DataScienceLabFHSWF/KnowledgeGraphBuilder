@@ -286,3 +286,4 @@ output.tptp
 
 # Experiment output (generated at runtime)
 experiment_output/
+src/graphify-out/cache/
