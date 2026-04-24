@@ -482,7 +482,7 @@ Step 5: Run
 
 | Domain | Ontology | Documents | Extractors |
 |--------|----------|-----------|------------|
-| Nuclear Decommissioning | `plan-ontology` (Fuseki) | 33 PDFs | Generic LLM + rules |
+| Nuclear Decommissioning | `data/ontology/domain/decommissioning.owl` | 33 PDFs | Generic LLM + rules |
 | German Federal Law | `law-ontology-v1.0.owl` (LKIF-Core + ELI) | ~6,800 XML files | `legal_rules.py` + `legal_llm.py` + `legal_ensemble.py` |
 
 See [Planning/02_ARCHITECTURE.md](Planning/02_ARCHITECTURE.md) Section 12 for

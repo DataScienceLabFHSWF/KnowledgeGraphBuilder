@@ -1,7 +1,7 @@
 {
   "name": "Nuclear Decommissioning Benchmark",
   "name_de": "Benchmark zur nuklearen Stilllegung",
-  "description": "7-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law, 3 model sizes (gemma4:e2b, gemma4:e4b, nemotron ablation). 3 runs each for statistical reliability.",
+  "description": "7-condition benchmark for paper: single-pass vs. multi-pass vs. multi-pass+law, 3 model sizes (gemma4:e2b, gemma4:e4b, gemma4:31b), nemotron ablation, plus max-capacity gemma4:31b (10 iterations + law). 3 runs each for statistical reliability.",
   "description_de": "7-Bedingungen-Benchmark fuer das Paper: Single-Pass vs. Multi-Pass vs. Multi-Pass+Law, 3 Modellgroessen (gemma4:e2b, gemma4:e4b, Nemotron-Ablation). Je 3 Laeufe fuer statistische Belastbarkeit.",
   "output_dir": "experiment_results/benchmark_paper",
   "num_runs": 3,
@@ -88,6 +88,20 @@
         "similarity_threshold": 0.85,
         "confidence_threshold": 0.6,
         "law_graph_enabled": false,
+        "top_k_docs": 5
+      }
+    },
+    {
+      "name": "G_gemma31b_max_capacity",
+      "description": "Max-capacity run: gemma4:31b with 10 iterations and law graph enabled",
+      "description_de": "Maximalkapazitaetslauf: gemma4:31b mit 10 Iterationen und aktiviertem Law-Graph",
+      "params": {
+        "model": "gemma4:31b",
+        "max_iterations": 10,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": true,
         "top_k_docs": 5
       }
     }

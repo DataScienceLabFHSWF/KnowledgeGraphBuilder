@@ -1,0 +1,1259 @@
+{
+  "name": "GraphQA benchmark_v3",
+  "description": "Converted from GraphQA benchmark_v3 for KGBuilder evaluation",
+  "version": "1.0",
+  "source": "GraphQA benchmark_v3",
+  "questions": [
+    {
+      "id": "q01",
+      "question": "Was ist das Atomgesetz (AtG)?",
+      "expected_answers": [
+        "Das Atomgesetz (AtG) ist das zentrale Bundesgesetz, das die friedliche Nutzung der Kernenergie und den Schutz vor ihren Gefahren in Deutschland regelt."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "legal_framework",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Atomgesetz",
+          "AtG"
+        ],
+        "notes": "Direct entity retrieval \u2014 one hop, one fact.",
+        "category": "legal_framework",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q02",
+      "question": "Was bedeutet der Begriff 'Stilllegung' im Kontext der Kerntechnik?",
+      "expected_answers": [
+        "Stilllegung bezeichnet das endg\u00fcltige Abschalten eines Kernkraftwerks und den \u00dcbergang in einen dauerhaft unterkritischen Zustand, ab dem keine Energieerzeugung mehr stattfindet."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "concepts",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Stilllegung"
+        ],
+        "notes": "Simple definition retrieval.",
+        "category": "concepts",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q03",
+      "question": "Welche Beh\u00f6rde ist in Deutschland f\u00fcr die Genehmigung des R\u00fcckbaus von Kernkraftwerken zust\u00e4ndig?",
+      "expected_answers": [
+        "Die jeweilige Landesbeh\u00f6rde (atomrechtliche Genehmigungsbeh\u00f6rde) ist zust\u00e4ndig, wobei das Bundesministerium f\u00fcr Umwelt die Bundesaufsicht aus\u00fcbt."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "organisations",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Genehmigungsbeh\u00f6rde",
+          "Bundesministerium f\u00fcr Umwelt"
+        ],
+        "notes": "One-hop entity lookup for responsible authority.",
+        "category": "organisations",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q04",
+      "question": "Was regelt \u00a77 Abs. 3 des Atomgesetzes?",
+      "expected_answers": [
+        "\u00a77 Abs. 3 AtG regelt die Genehmigungsvoraussetzungen f\u00fcr die Stilllegung und den Abbau von Kernanlagen oder deren sicheren Einschluss."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "legal_framework",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "\u00a77",
+          "Atomgesetz",
+          "Stilllegung",
+          "Abbau"
+        ],
+        "notes": "Look up one specific Paragraf node.",
+        "category": "legal_framework",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q05",
+      "question": "Was ist Freimessung beim R\u00fcckbau?",
+      "expected_answers": [
+        "Freimessung ist das messtechnische Verfahren, mit dem nachgewiesen wird, dass Materialien aus dem Kontrollbereich die Freigabewerte der Strahlenschutzverordnung unterschreiten und konventionell entsorgt werden k\u00f6nnen."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "techniques",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Freimessung",
+          "Freigabe"
+        ],
+        "notes": "Single concept definition.",
+        "category": "techniques",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q06",
+      "question": "Welche R\u00fcckbaustrategien werden international unterschieden?",
+      "expected_answers": [
+        "Die drei Hauptstrategien sind sofortiger R\u00fcckbau (DECON), sicherer Einschluss mit sp\u00e4terem R\u00fcckbau (SAFSTOR) und Entombment (ENTOMB)."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "strategies",
+        "list",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "DECON",
+          "SAFSTOR",
+          "ENTOMB"
+        ],
+        "notes": "Simple enumeration.",
+        "category": "strategies",
+        "question_type": "list",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q07",
+      "question": "Wie hei\u00dft das deutsche Strahlenschutzgesetz und wann trat es in Kraft?",
+      "expected_answers": [
+        "Das Strahlenschutzgesetz (StrlSchG) trat am 31. Dezember 2018 vollst\u00e4ndig in Kraft."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "legal_framework",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "StrlSchG",
+          "Strahlenschutzgesetz"
+        ],
+        "notes": "Simple attribute retrieval \u2014 entity + date.",
+        "category": "legal_framework",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q08",
+      "question": "Was ist ein Kontrollbereich in einer kerntechnischen Anlage?",
+      "expected_answers": [
+        "Ein Kontrollbereich ist ein Bereich, in dem Personen eine effektive Dosis von mehr als 6 mSv pro Jahr erhalten k\u00f6nnen und besondere Strahlenschutzma\u00dfnahmen gelten."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "safety",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Kontrollbereich"
+        ],
+        "notes": "Term definition.",
+        "category": "safety",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q09",
+      "question": "Wer ist die BGZ?",
+      "expected_answers": [
+        "Die BGZ (Bundesgesellschaft f\u00fcr Zwischenlagerung) ist f\u00fcr den Betrieb der Zwischenlager f\u00fcr radioaktive Abf\u00e4lle in Deutschland zust\u00e4ndig."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "organisations",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "BGZ",
+          "Zwischenlagerung"
+        ],
+        "notes": "Organisation entity.",
+        "category": "organisations",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q10",
+      "question": "Was ist ein Reststoff im Sinne des Atomrechts?",
+      "expected_answers": [
+        "Ein Reststoff ist ein beim Betrieb oder Abbau einer Kernanlage anfallender radioaktiver Stoff, der kein Kernbrennstoff ist und der Verwertung oder Beseitigung zugef\u00fchrt werden muss."
+      ],
+      "query_type": "entity",
+      "difficulty": 1,
+      "tags": [
+        "waste_management",
+        "factoid",
+        "single_entity_lookup"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Reststoff"
+        ],
+        "notes": "Legal definition.",
+        "category": "waste_management",
+        "question_type": "factoid",
+        "retrieval_complexity": "single_entity_lookup"
+      }
+    },
+    {
+      "id": "q11",
+      "question": "Welche Paragraphen des AtG regeln die Entsorgung radioaktiver Abf\u00e4lle?",
+      "expected_answers": [
+        "Die \u00a7\u00a79a bis 9g AtG regeln die Entsorgung radioaktiver Abf\u00e4lle, einschlie\u00dflich der Pflichten der Ablieferungspflichtigen und der staatlichen Entsorgung."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "legal_framework",
+        "list",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "\u00a79a",
+          "\u00a79b",
+          "AtG",
+          "radioaktive Abf\u00e4lle",
+          "Entsorgung"
+        ],
+        "notes": "Requires traversing from Gesetzbuch \u2192 multiple Paragraf nodes.",
+        "category": "legal_framework",
+        "question_type": "list",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q12",
+      "question": "Welche Genehmigungen sind f\u00fcr den vollst\u00e4ndigen R\u00fcckbau eines Kernkraftwerks erforderlich und auf welchen Gesetzen basieren sie?",
+      "expected_answers": [
+        "Es sind eine Stilllegungsgenehmigung nach \u00a77 Abs. 3 AtG, strahlenschutzrechtliche Genehmigungen nach dem StrlSchG und ggf. baurechtliche sowie umweltrechtliche Genehmigungen erforderlich."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "legal_framework",
+        "list",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Stilllegungsgenehmigung",
+          "AtG",
+          "StrlSchG",
+          "\u00a77"
+        ],
+        "notes": "Links concepts (Genehmigung) \u2192 multiple legal acts.",
+        "category": "legal_framework",
+        "question_type": "list",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q13",
+      "question": "Welche Schritte umfasst das Freigabeverfahren nach StrlSchV und welche Paragraphen sind relevant?",
+      "expected_answers": [
+        "Das Freigabeverfahren umfasst die Festlegung der Freigabewerte (Anlage 4 StrlSchV), die Probenahme und Messung, die beh\u00f6rdliche Pr\u00fcfung und die Freigabeentscheidung. Ma\u00dfgeblich sind \u00a7\u00a731-42 StrlSchV."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "techniques",
+        "list",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Freigabe",
+          "StrlSchV",
+          "Freigabewerte"
+        ],
+        "notes": "Needs to connect Verfahren \u2192 Paragraphen \u2192 Verordnung.",
+        "category": "techniques",
+        "question_type": "list",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q14",
+      "question": "Was unterscheidet die Rolle der BGE von der der BGZ in der deutschen Entsorgungskette?",
+      "expected_answers": [
+        "Die BGE (Bundesgesellschaft f\u00fcr Endlagerung) sucht und betreibt Endlager f\u00fcr radioaktive Abf\u00e4lle, w\u00e4hrend die BGZ (Bundesgesellschaft f\u00fcr Zwischenlagerung) die Zwischenlager betreibt, bis ein Endlager verf\u00fcgbar ist."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "organisations",
+        "comparative",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "BGE",
+          "BGZ",
+          "Endlager",
+          "Zwischenlager"
+        ],
+        "notes": "Compare two Organization entities and their relations.",
+        "category": "organisations",
+        "question_type": "comparative",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q15",
+      "question": "Welche Arten radioaktiver Abf\u00e4lle entstehen beim R\u00fcckbau eines Druckwasserreaktors?",
+      "expected_answers": [
+        "Beim R\u00fcckbau entstehen aktivierte Materialien (v.a. Reaktordruckbeh\u00e4lter-Einbauten), kontaminierte Materialien (Rohrleitungen, Oberfl\u00e4chen), Betriebsabf\u00e4lle und radioaktive Reststoffe mit unterschiedlicher Aktivit\u00e4t."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "waste_management",
+        "list",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Druckwasserreaktor",
+          "radioaktive Abf\u00e4lle",
+          "aktivierte Materialien",
+          "kontaminierte Materialien"
+        ],
+        "notes": "Facility type \u2192 waste categories (multiple relations).",
+        "category": "waste_management",
+        "question_type": "list",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q16",
+      "question": "Welche Grenzwerte gelten f\u00fcr die Freigabe von Geb\u00e4udestrukturen zum Abriss nach dem R\u00fcckbau?",
+      "expected_answers": [
+        "F\u00fcr die uneingeschr\u00e4nkte Freigabe zum Abriss gelten die Freigabewerte der Anlage 4 Tabelle 1 Spalte 5 StrlSchV. Das allgemeine Kriterium ist eine effektive Dosis von 10 \u03bcSv/a f\u00fcr Einzelpersonen der Bev\u00f6lkerung."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "safety",
+        "factoid",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Freigabe",
+          "StrlSchV",
+          "Freigabewerte",
+          "10 Mikrosievert"
+        ],
+        "notes": "Concept \u2192 Verordnung \u2192 specific numeric thresholds.",
+        "category": "safety",
+        "question_type": "factoid",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q17",
+      "question": "Welche Planungsdom\u00e4nen werden beim R\u00fcckbau eines Kernkraftwerks unterschieden?",
+      "expected_answers": [
+        "Typische Planungsdom\u00e4nen sind Radiologische Planung, Bautechnische Planung, Abfallmanagement, Projektsteuerung und Genehmigungsplanung."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "planning",
+        "list",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "PlanningDomain"
+        ],
+        "notes": "Enumerate PlanningDomain nodes from the graph.",
+        "category": "planning",
+        "question_type": "list",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q18",
+      "question": "Wie wird die Finanzierung des R\u00fcckbaus deutscher Kernkraftwerke geregelt?",
+      "expected_answers": [
+        "Seit 2017 sind die R\u00fcckbaukosten Sache der Betreiber, w\u00e4hrend die Finanzierung der Zwischen- und Endlagerung \u00fcber den \u00f6ffentlich-rechtlichen Fonds zur Finanzierung der kerntechnischen Entsorgung (KENFO) geregelt wird, in den die Betreiber eingezahlt haben."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "finance",
+        "causal",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "KENFO",
+          "R\u00fcckbaukosten",
+          "Betreiber"
+        ],
+        "notes": "Financial actor \u2192 legal mechanism \u2192 obligations.",
+        "category": "finance",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q19",
+      "question": "Welche Aufsichtsstruktur besteht bei der Genehmigung und \u00dcberwachung des R\u00fcckbaus?",
+      "expected_answers": [
+        "Die Landesbeh\u00f6rden erteilen Genehmigungen und f\u00fchren die Aufsicht, das BASE (Bundesamt f\u00fcr die Sicherheit der nuklearen Entsorgung) unterst\u00fctzt fachlich, und das Bundesumweltministerium \u00fcbt die Bundesaufsicht gem\u00e4\u00df \u00a724 AtG aus."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "organisations",
+        "list",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Landesbeh\u00f6rde",
+          "BASE",
+          "Bundesumweltministerium",
+          "\u00a724"
+        ],
+        "notes": "Multiple Organisation nodes + their regulatory relations.",
+        "category": "organisations",
+        "question_type": "list",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q20",
+      "question": "In welchem R\u00fcckbaustadium befindet sich das Kernkraftwerk Greifswald und warum wurde es stillgelegt?",
+      "expected_answers": [
+        "Das Kernkraftwerk Greifswald (KGR) wurde nach der Wiedervereinigung 1990 aus Sicherheitsgr\u00fcnden stillgelegt und befindet sich im fortgeschrittenen R\u00fcckbau unter Leitung der EWN GmbH."
+      ],
+      "query_type": "entity",
+      "difficulty": 2,
+      "tags": [
+        "facilities",
+        "factoid",
+        "multi_entity_neighbourhood"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Greifswald",
+          "EWN",
+          "Wiedervereinigung"
+        ],
+        "notes": "Facility \u2192 status + historical context.",
+        "category": "facilities",
+        "question_type": "factoid",
+        "retrieval_complexity": "multi_entity_neighbourhood"
+      }
+    },
+    {
+      "id": "q21",
+      "question": "Welchen Einfluss haben die Sicherungsanforderungen nach \u00a77 AtG auf die zeitliche Planung des R\u00fcckbaus, und wie interagiert das mit den Strahlenschutzanforderungen der StrlSchV beim Freigabeverfahren?",
+      "expected_answers": [
+        "Die Sicherungsanforderungen nach \u00a77 AtG bestimmen, dass Kernbrennstoffe und Sonderabf\u00e4lle zuerst entfernt werden m\u00fcssen, bevor der eigentliche Geb\u00e4uder\u00fcckbau beginnen kann. Parallel dazu erfordert die StrlSchV bei jedem Freigabeschritt eine messtechnische Pr\u00fcfung. Die Kombination beider Anforderungen f\u00fchrt zu einer sequentiellen Planung: Brennelemente entfernen \u2192 Kontrollbereich dekontaminieren \u2192 Freimessung \u2192 konventioneller Abriss."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "planning",
+        "causal",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "\u00a77",
+          "AtG",
+          "StrlSchV",
+          "Freigabe",
+          "Kernbrennstoff",
+          "Kontrollbereich"
+        ],
+        "notes": "Requires connecting legal provisions across two statutes to the planning sequence \u2014 multi-hop path.",
+        "category": "planning",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q22",
+      "question": "Wie wirkt sich die \u00c4nderung des AtG durch das Dreizehnte Gesetz zur \u00c4nderung des Atomgesetzes (2011) auf die R\u00fcckbauplanung der deutschen KKW aus?",
+      "expected_answers": [
+        "Das 13. AtG-\u00c4nderungsgesetz (2011) nach Fukushima setzte feste Abschalttermine f\u00fcr alle deutschen KKW und beschleunigte den \u00dcbergang in die R\u00fcckbauplanung. Es erforderte f\u00fcr 8 KKW die sofortige Stilllegung und f\u00fcr die restlichen gestaffelte Abschaltungen bis 2022, was parallel laufende Genehmigungsverfahren f\u00fcr den R\u00fcckbau notwendig machte."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "AtG",
+          "13. \u00c4nderungsgesetz",
+          "Fukushima",
+          "Stilllegung",
+          "Abschalttermine"
+        ],
+        "notes": "Traverse: legislative event \u2192 legal change \u2192 affected facilities \u2192 planning implications.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q23",
+      "question": "Wie h\u00e4ngen die Freigabepfade nach StrlSchV \u00a735 mit der Abfallhierarchie im Kreislaufwirtschaftsgesetz zusammen?",
+      "expected_answers": [
+        "Die StrlSchV \u00a735 definiert Freigabepfade (uneingeschr\u00e4nkte Freigabe, Freigabe zur Deponierung, Freigabe zur Verbrennung etc.). Nach erfolgreicher Freigabe unterliegen die Materialien dem KrWG und seiner Abfallhierarchie (Vermeidung \u2192 Verwertung \u2192 Beseitigung). Der \u00dcbergang vom Atom- zum Abfallrecht ist ein kritischer Schnittstelle."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "StrlSchV",
+          "\u00a735",
+          "Freigabepfade",
+          "KrWG",
+          "Kreislaufwirtschaftsgesetz",
+          "Abfallhierarchie"
+        ],
+        "notes": "Cross-statute path: Strahlenschutz \u2192 Freigabe \u2192 Abfallrecht.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q24",
+      "question": "Vergleiche die R\u00fcckbaustrategie von Obrigheim (sofortiger R\u00fcckbau) mit der von Lingen (sicherer Einschluss) \u2014 welche rechtlichen und technischen Unterschiede ergeben sich?",
+      "expected_answers": [
+        "Obrigheim w\u00e4hlte den sofortigen R\u00fcckbau (DECON), was eine einzige zusammenh\u00e4ngende Genehmigung nach \u00a77(3) AtG erforderte und den Vorteil bot, dass Betriebspersonal noch verf\u00fcgbar war. Lingen wurde zun\u00e4chst in den sicheren Einschluss (SAFSTOR) \u00fcberf\u00fchrt, was niedrigere laufende Kosten, aber h\u00f6here Langzeit\u00fcberwachungskosten und ein sp\u00e4teres Genehmigungsverfahren bedeutete. Technisch erfordert SAFSTOR eine zus\u00e4tzliche Umschlie\u00dfungsbarriere."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "strategies",
+        "comparative",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Obrigheim",
+          "Lingen",
+          "DECON",
+          "SAFSTOR",
+          "\u00a77",
+          "AtG"
+        ],
+        "notes": "Two parallel facility paths: Facility \u2192 Strategy \u2192 legal provisions + technical requirements.",
+        "category": "strategies",
+        "question_type": "comparative",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q25",
+      "question": "Welche Kette von Verantwortlichkeiten besteht von der Stilllegungsentscheidung bis zur Endlagerung des letzten hochradioaktiven Abfallgebindes?",
+      "expected_answers": [
+        "Betreiber stellt Stilllegungsantrag \u2192 Landesbeh\u00f6rde erteilt Genehmigung \u2192 Betreiber f\u00fchrt R\u00fcckbau durch \u2192 BGZ \u00fcbernimmt Zwischenlagerung \u2192 BGE w\u00e4hlt Endlagerstandort \u2192 BASE beaufsichtigt \u2192 BGE betreibt Endlager. Finanzierung \u00fcber KENFO."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "organisations",
+        "list",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Betreiber",
+          "Landesbeh\u00f6rde",
+          "BGZ",
+          "BGE",
+          "BASE",
+          "KENFO",
+          "Endlager"
+        ],
+        "notes": "Long chain of Organisation \u2192 Action \u2192 Organisation path traversal.",
+        "category": "organisations",
+        "question_type": "list",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q26",
+      "question": "Wie beeinflusst die radiologische Charakterisierung nach \u00a785 StrlSchV die Wahl der Zerlegetechniken im Kontrollbereich?",
+      "expected_answers": [
+        "Die radiologische Charakterisierung bestimmt die Aktivierungsprofile und Kontaminationsmuster der Komponenten. Hochaktivierte Teile (z.B. RDB-Einbauten) erfordern Unterwasser-Zerlegung oder Fernhantierung, kontaminierte Oberfl\u00e4chen k\u00f6nnen durch mechanische oder chemische Dekontamination behandelt werden. Die Ergebnisse flie\u00dfen direkt in die Auswahl der Zerlegetechniken und die Abschirmungsplanung ein."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "techniques",
+        "causal",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "radiologische Charakterisierung",
+          "\u00a785",
+          "StrlSchV",
+          "Zerlegetechniken",
+          "RDB",
+          "Dekontamination"
+        ],
+        "notes": "Legal requirement \u2192 technical assessment \u2192 technology selection.",
+        "category": "techniques",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q27",
+      "question": "Welche Wechselwirkungen bestehen zwischen dem Standortauswahlgesetz (StandAG) und der R\u00fcckbauplanung bestehender KKW?",
+      "expected_answers": [
+        "Das StandAG regelt die Suche nach einem Endlager f\u00fcr hochradioaktive Abf\u00e4lle. Solange kein Endlager existiert (voraussichtlich bis nach 2050), m\u00fcssen Castor-Beh\u00e4lter in Zwischenlagern verbleiben. Dies beeinflusst den R\u00fcckbau, da Zwischenlager am KKW-Standort l\u00e4nger betrieben werden m\u00fcssen und die R\u00fcckbauplanung die Zwischenlagerfl\u00e4chen ber\u00fccksichtigen muss."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "StandAG",
+          "Standortauswahlgesetz",
+          "Endlager",
+          "Zwischenlager",
+          "Castor"
+        ],
+        "notes": "Cross-regulation dependency: StandAG \u2192 Endlager timing \u2192 Zwischenlager impact \u2192 R\u00fcckbau.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q28",
+      "question": "Welche Auswirkungen hat die \u00d6ffentlichkeitsbeteiligung nach \u00a76 UVPG auf die Dauer des R\u00fcckbau-Genehmigungsverfahrens?",
+      "expected_answers": [
+        "Nach \u00a76 UVPG ist f\u00fcr wesentliche R\u00fcckbauvorhaben eine Umweltvertr\u00e4glichkeitspr\u00fcfung mit \u00d6ffentlichkeitsbeteiligung durchzuf\u00fchren. Dies umfasst die Bekanntmachung, Auslegung der Unterlagen, Einwendungsfrist und ggf. Er\u00f6rterungstermin, was das Genehmigungsverfahren um 6-18 Monate verl\u00e4ngern kann."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "public_participation",
+        "causal",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "UVPG",
+          "\u00a76",
+          "\u00d6ffentlichkeitsbeteiligung",
+          "Umweltvertr\u00e4glichkeitspr\u00fcfung"
+        ],
+        "notes": "Legal requirement \u2192 procedural steps \u2192 timeline impact.",
+        "category": "public_participation",
+        "question_type": "causal",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q29",
+      "question": "Wie unterscheiden sich die R\u00fcckbaukosten pro MW installierter Leistung zwischen Druckwasser- und Siedewasserreaktoren, und welche Faktoren sind daf\u00fcr urs\u00e4chlich?",
+      "expected_answers": [
+        "Siedewasserreaktoren haben tendenziell h\u00f6here spezifische R\u00fcckbaukosten (ca. 1,5-2 Mio \u20ac/MW) als Druckwasserreaktoren (ca. 1-1,5 Mio \u20ac/MW), da bei SWR die Turbine radioaktiv kontaminiert ist (direkter Dampfkreislauf), gr\u00f6\u00dfere kontaminierte Volumina vorliegen und komplexere Zerlegungsarbeiten am Reaktordruckbeh\u00e4lter n\u00f6tig sind."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "finance",
+        "comparative",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Druckwasserreaktor",
+          "Siedewasserreaktor",
+          "R\u00fcckbaukosten"
+        ],
+        "notes": "Compare two reactor types along cost + technical complexity dimensions.",
+        "category": "finance",
+        "question_type": "comparative",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q30",
+      "question": "In welcher Reihenfolge werden die Geb\u00e4udestrukturen beim R\u00fcckbau eines KKW nach KTA 1301 freigegeben?",
+      "expected_answers": [
+        "Die Freigabe erfolgt von innen nach au\u00dfen: 1) Kontrollbereich-Systeme, 2) Geb\u00e4udestrukturen im Kontrollbereich, 3) \u00dcberwachungsbereich, 4) \u00e4u\u00dfere Geb\u00e4ude. KTA 1301 definiert die sicherheitstechnischen Anforderungen an die Stilllegung, die diese Reihenfolge begr\u00fcnden."
+      ],
+      "query_type": "entity",
+      "difficulty": 3,
+      "tags": [
+        "planning",
+        "list",
+        "multi_hop_path_traversal"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "KTA 1301",
+          "Kontrollbereich",
+          "\u00dcberwachungsbereich",
+          "Freigabe"
+        ],
+        "notes": "Standard \u2192 building zones \u2192 sequential ordering.",
+        "category": "planning",
+        "question_type": "list",
+        "retrieval_complexity": "multi_hop_path_traversal"
+      }
+    },
+    {
+      "id": "q31",
+      "question": "Konstruiere den vollst\u00e4ndigen rechtlichen Pfad von einem kontaminierten Rohr im Kontrollbereich des KKW Neckarwestheim bis zu seiner endg\u00fcltigen Beseitigung, einschlie\u00dflich aller beteiligten Gesetze, Verordnungen und verantwortlichen Akteure.",
+      "expected_answers": [
+        "Kontaminiertes Rohr im Kontrollbereich \u2192 radiologische Charakterisierung (\u00a785 StrlSchV) \u2192 Zerlegung unter Strahlenschutzaufsicht (\u00a772 StrlSchG) \u2192 Freimessungsversuch nach StrlSchV Anlage 4 \u2192 Falls Freigabe: konventionelle Entsorgung nach KrWG \u2192 Falls nicht: Konditionierung als radioaktiver Abfall \u2192 Zwischenlagerung bei BGZ (\u00a72 Entsorgungs\u00fcbergangsgesetz) \u2192 Endlagerung durch BGE (StandAG). Betreiber EnBW tr\u00e4gt R\u00fcckbaukosten, KENFO finanziert Entsorgung."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "waste_management",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Neckarwestheim",
+          "EnBW",
+          "StrlSchV",
+          "StrlSchG",
+          "KrWG",
+          "BGZ",
+          "BGE",
+          "StandAG",
+          "KENFO",
+          "\u00a785",
+          "\u00a772"
+        ],
+        "notes": "End-to-end path: physical component \u2192 multiple legal regimes \u2192 multiple organisations \u2014 requires graph reasoning across 5+ hops.",
+        "category": "waste_management",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q32",
+      "question": "Wie interagieren das Atomgesetz, das Strahlenschutzgesetz, die Strahlenschutzverordnung, das Standortauswahlgesetz und das Entsorgungs\u00fcbergangsgesetz bei der Stilllegung und dem R\u00fcckbau eines Kernkraftwerks? Zeige die Abh\u00e4ngigkeiten auf.",
+      "expected_answers": [
+        "Das AtG bildet den Rahmen (Genehmigung nach \u00a77(3)). Das StrlSchG konkretisiert Strahlenschutzpflichten. Die StrlSchV operationalisiert Freigabewerte und Dosisgrenzwerte. Das StandAG regelt die Endlagersuche und bestimmt dadurch die Dauer der Zwischenlagerung. Das Entsorgungs\u00fcbergangsgesetz regelt die Zust\u00e4ndigkeits\u00fcbergabe von den Betreibern auf die BGZ. Die Gesetze bilden eine Kaskade: AtG \u2192 StrlSchG \u2192 StrlSchV f\u00fcr den R\u00fcckbau selbst, und AtG \u2192 StandAG \u2192 Entsorgungs\u00fcbergangsgesetz f\u00fcr die Abfallentsorgung."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "AtG",
+          "StrlSchG",
+          "StrlSchV",
+          "StandAG",
+          "Entsorgungs\u00fcbergangsgesetz",
+          "\u00a77",
+          "BGZ"
+        ],
+        "notes": "Reconstructing the entire legislative dependency graph across 5 statutes.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q33",
+      "question": "Welche Szenarien ergeben sich f\u00fcr den R\u00fcckbau des KKW Brokdorf, wenn das Endlager sp\u00e4ter als 2060 verf\u00fcgbar wird, und welche gesetzlichen \u00c4nderungen w\u00e4ren dann erforderlich?",
+      "expected_answers": [
+        "Bei Verz\u00f6gerung des Endlagers \u00fcber 2060 hinaus m\u00fcssten die Betriebsgenehmigungen der Zwischenlager verl\u00e4ngert werden (\u00a76 AtG). Der Betreiber PreussenElektra m\u00fcsste ggf. Nachr\u00fcstungen an den Zwischenlagern finanzieren. M\u00f6glicherweise w\u00e4re eine Novellierung des StandAG oder des Entsorgungs\u00fcbergangsgesetzes erforderlich. Es entst\u00fcnden zus\u00e4tzliche Kosten, die durch den KENFO m\u00f6glicherweise nicht gedeckt sind."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "planning",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Brokdorf",
+          "PreussenElektra",
+          "Endlager",
+          "Zwischenlager",
+          "\u00a76",
+          "AtG",
+          "StandAG",
+          "KENFO"
+        ],
+        "notes": "Hypothetical reasoning: Facility + temporal constraint \u2192 legal + financial implications.",
+        "category": "planning",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q34",
+      "question": "Vergleiche die Genehmigungsverfahren f\u00fcr den R\u00fcckbau der KKW Greifswald (DDR-Bauart WWER) und Neckarwestheim (westliche DWR-Bauart). Welche spezifischen rechtlichen und technischen Herausforderungen ergeben sich aus den unterschiedlichen Reaktortypen?",
+      "expected_answers": [
+        "Greifswald (WWER-440): Kein origin\u00e4res Genehmigungsverfahren nach bundesdeutschem AtG, da unter DDR-Recht gebaut; Nachgenehmigung nach der Wiedervereinigung; gr\u00f6\u00dfere kontaminierte Graphitmengen; RBMK-\u00e4hnliche Besonderheiten. Neckarwestheim (DWR): Standard-Genehmigung nach \u00a77(3) AtG; konventionellere Komponentengeometrie; aber h\u00f6here Neutronenfl\u00fcsse im RDB. Greifswald erforderte Sonderregelungen im Einigungsvertrag."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "facilities",
+        "comparative",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Greifswald",
+          "Neckarwestheim",
+          "WWER",
+          "DWR",
+          "\u00a77",
+          "AtG",
+          "EWN",
+          "EnBW"
+        ],
+        "notes": "Cross-domain comparison: two facilities \u00d7 reactor type \u00d7 legal context \u00d7 technical challenges.",
+        "category": "facilities",
+        "question_type": "comparative",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q35",
+      "question": "Welche R\u00fcckkopplungsschleifen bestehen zwischen Erkenntnissen aus dem laufenden R\u00fcckbau (z.B. unerwartete Kontaminationsfunde) und dem Genehmigungsverfahren nach AtG und StrlSchG?",
+      "expected_answers": [
+        "Unerwartete Funde (z.B. h\u00f6here Kontamination als im Sicherheitsbericht angenommen) l\u00f6sen eine Meldepflicht nach \u00a7108 StrlSchG aus, k\u00f6nnen eine \u00c4nderung des Stilllegungsberichts nach \u00a77(3) AtG erfordern, zu Nachgenehmigungsverfahren f\u00fchren und die Freigabebedingungen nach StrlSchV \u00e4ndern. Die Beh\u00f6rde kann Anordnungen nach \u00a719 AtG treffen, um den R\u00fcckbau zu modifizieren."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "safety",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "\u00a7108",
+          "StrlSchG",
+          "\u00a77",
+          "AtG",
+          "\u00a719",
+          "StrlSchV",
+          "Stilllegungsbericht"
+        ],
+        "notes": "Feedback loops across: operational finding \u2192 reporting duty \u2192 regulatory action \u2192 plan revision.",
+        "category": "safety",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q36",
+      "question": "Erstelle eine vollst\u00e4ndige Zuordnung aller Akteure im deutschen R\u00fcckbau-\u00d6kosystem zu ihren gesetzlichen Grundlagen und gegenseitigen Abh\u00e4ngigkeiten.",
+      "expected_answers": [
+        "Betreiber (\u00a77 AtG: R\u00fcckbaupflicht) \u2192 Landesbeh\u00f6rde (\u00a724 AtG: Aufsicht/Genehmigung) \u2192 BASE (\u00a7\u00a723a-d AtG: Bundesaufsicht Entsorgung) \u2192 BMU (Bundesaufsicht) \u2192 BGZ (Entsorgungs\u00fcbergangsgesetz: Zwischenlager) \u2192 BGE (StandAG: Endlager) \u2192 KENFO (Entsorgungsfondsgesetz: Finanzierung) \u2192 ESK/SSK (\u00a737 StrlSchG: Beratungskommissionen) \u2192 T\u00dcV/Sachverst\u00e4ndige (\u00a720 AtG: Gutachten). Die Akteure bilden ein gerichtetes Netzwerk mit Aufsichts-, Finanzierungs- und Zulieferbeziehungen."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "organisations",
+        "list",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Betreiber",
+          "Landesbeh\u00f6rde",
+          "BASE",
+          "BMU",
+          "BGZ",
+          "BGE",
+          "KENFO",
+          "ESK",
+          "SSK",
+          "T\u00dcV"
+        ],
+        "notes": "Full actor network with legal anchoring \u2014 massive graph traversal.",
+        "category": "organisations",
+        "question_type": "list",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q37",
+      "question": "Wie beeinflussen internationale IAEA-Sicherheitsstandards \u00fcber das StrlSchG den konkreten R\u00fcckbau eines deutschen Kernkraftwerks? Nenne den normativen Pfad.",
+      "expected_answers": [
+        "IAEA Safety Standards (GSR Part 6) \u2192 Euratom-Richtlinie 2014/87 (BSS) \u2192 Umsetzung in StrlSchG (2017) \u2192 Konkretisierung in StrlSchV \u2192 Allgemeine Verwaltungsvorschriften \u2192 KTA-Regelwerk \u2192 Betreiber-interne Anweisungen. Die IAEA-Standards haben keinen unmittelbaren Rechtscharakter, wirken aber \u00fcber die EU-Richtlinien bindend auf das deutsche Recht."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "IAEA",
+          "Euratom",
+          "StrlSchG",
+          "StrlSchV",
+          "KTA",
+          "BSS"
+        ],
+        "notes": "Normative cascade: international \u2192 EU \u2192 federal law \u2192 regulation \u2192 standards \u2192 practice.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q38",
+      "question": "Welche Wechselwirkungen bestehen zwischen dem R\u00fcckbau-Projektmanagement (Meilensteine, Kosten, Ressourcen) und den drei regulatorischen Genehmigungsphasen nach AtG?",
+      "expected_answers": [
+        "Die drei Genehmigungsphasen (1. Stilllegung/FAKR, 2. Restbetrieb, 3. konventioneller Abriss) determinieren die Projektmeilensteine. Jede Phase erfordert Nachweisdokumente (Sicherheitsbericht, Abfallbilanz, Strahlenschutzplan), die Personalqualifikation muss aufrechterhalten werden (sinkender Betriebspersonalbedarf vs. steigender R\u00fcckbaubedarf), und die Kostenplanung muss Unsicherheiten aus regulatorischen Verz\u00f6gerungen abbilden."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "planning",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "Genehmigungsphasen",
+          "Stilllegung",
+          "FAKR",
+          "Sicherheitsbericht"
+        ],
+        "notes": "Project management \u2194 regulatory phases cross-domain reasoning.",
+        "category": "planning",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q39",
+      "question": "Welche technischen Ma\u00dfnahmen zur Emissionsminderung sind beim R\u00fcckbau nach BImSchG und TA Luft im Zusammenspiel mit den strahlenschutzrechtlichen Anforderungen zu beachten?",
+      "expected_answers": [
+        "Beim R\u00fcckbau fallen sowohl konventionelle Emissionen (Staub, L\u00e4rm nach BImSchG/TA Luft) als auch radiologische Ableitungen (nach \u00a7101 StrlSchG) an. Die Herausforderung liegt in der \u00dcberlagerung: Abbrucharbeiten m\u00fcssen sowohl TA-Luft-Grenzwerte f\u00fcr Staub als auch \u00a747 StrlSchG-Grenzwerte f\u00fcr luftgetragene Radioaktivit\u00e4t einhalten. Umschlie\u00dfung, HEPA-Filterung und Nassabbau adressieren beide Anforderungen gleichzeitig."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "techniques",
+        "causal",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "BImSchG",
+          "TA Luft",
+          "StrlSchG",
+          "\u00a7101",
+          "\u00a747",
+          "HEPA"
+        ],
+        "notes": "Dual regulatory regime overlap: environmental + radiological.",
+        "category": "techniques",
+        "question_type": "causal",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q40",
+      "question": "Berechne den ungef\u00e4hren Gesamtmaterialfluss (in Tonnen) beim R\u00fcckbau eines typischen 1300-MW-DWR-Blocks und ordne die Fraktionen den jeweiligen Entsorgungspfaden nach StrlSchV und KrWG zu.",
+      "expected_answers": [
+        "Gesamtmasse ca. 300.000-500.000 t. Davon: ~97% konventionelle Abf\u00e4lle (Beton, Stahl) nach Freigabe \u2192 KrWG. ~2-3% schwach-/mittelradioaktive Abf\u00e4lle \u2192 Konditionierung \u2192 Endlager Konrad (genehmigt). ~0.1% hochradioaktive Abf\u00e4lle (Brennelemente, RDB-Einbauten) \u2192 Castor \u2192 Zwischenlager \u2192 Endlager (StandAG). Die Freigabe nach StrlSchV \u00a735 ist der entscheidende Sortierungspunkt."
+      ],
+      "query_type": "entity",
+      "difficulty": 4,
+      "tags": [
+        "waste_management",
+        "aggregation",
+        "cross_domain_reasoning"
+      ],
+      "metadata": {
+        "expected_entities": [
+          "DWR",
+          "StrlSchV",
+          "KrWG",
+          "Konrad",
+          "Castor",
+          "\u00a735",
+          "StandAG"
+        ],
+        "notes": "Quantitative reasoning: mass flows \u00d7 waste categories \u00d7 legal routing.",
+        "category": "waste_management",
+        "question_type": "aggregation",
+        "retrieval_complexity": "cross_domain_reasoning"
+      }
+    },
+    {
+      "id": "q41",
+      "question": "Wenn ein bisher unbekannter radioaktiver Kontaminationspfad im Erdreich unter dem Maschinenhaus eines stillgelegten SWR entdeckt wird und gleichzeitig das Grundwasser betroffen ist \u2014 welche vollst\u00e4ndige Kaskade von Gesetzen, Verordnungen, Meldepflichten, zust\u00e4ndigen Beh\u00f6rden und Ma\u00dfnahmen wird ausgel\u00f6st?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "safety",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Deliberately open-ended. Touches: StrlSchG (Meldepflicht), WHG (Grundwasserschutz), BBodSchG (Bodensanierung), AtG (Aufsicht), BImSchG (Umweltauswirkungen). May exceed graph knowledge \u2014 gap detection expected.",
+        "category": "safety",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q42",
+      "question": "Wie w\u00fcrde sich eine hypothetische EU-Taxonomie-Einstufung von Kernenergier\u00fcckbau als 'nachhaltige Wirtschaftsaktivit\u00e4t' auf die Finanzierungsstruktur (KENFO, Betreiberr\u00fcckstellungen, staatliche Garantien) und das Genehmigungsverfahren auswirken?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "finance",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Speculative cross-domain reasoning. Requires inferring from EU taxonomy + KENFO + AtG. No direct answer expected in KG.",
+        "category": "finance",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q43",
+      "question": "Entwirf ein regulatorisches Konzept, das die gleichzeitige Genehmigung von R\u00fcckbau und Bau eines SMR (Small Modular Reactor) am selben Standort erm\u00f6glicht, unter Ber\u00fccksichtigung aller relevanten Gesetze.",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Creative regulatory design. No precedent in KG. Tests system's ability to recognize its knowledge limits.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q44",
+      "question": "Welche bisher nicht regulierten Risiken k\u00f6nnten sich aus dem Klimawandel (steigende Flusspegel, Extremwetterereignisse) f\u00fcr laufende R\u00fcckbauprojekte und Zwischenlager ergeben, und welche Gesetzesl\u00fccken bestehen?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "safety",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Emergent risk reasoning. Climate change effects on nuclear infrastructure are largely uncodified. Gap detection expected.",
+        "category": "safety",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q45",
+      "question": "Analysiere, ob das deutsche R\u00fcckbau-Regulierungsframework einen systemischen Bias zugunsten bestimmter Betreiberkonzerne aufweist, indem du die Genehmigungsdauern, beh\u00f6rdlichen Auflagen und Kosten\u00fcbernahmen der vier gro\u00dfen Betreiber vergleichst.",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "organisations",
+        "comparative",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Meta-analytical question about regulatory fairness. Requires aggregating across all operators \u2014 data likely incomplete in KG.",
+        "category": "organisations",
+        "question_type": "comparative",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q46",
+      "question": "Welchen Einfluss h\u00e4tte die Einf\u00fchrung von Blockchain-basierter Abfallverfolgung auf die Einhaltung der Nachweispflichten nach \u00a770 und \u00a773 StrlSchG und die R\u00fcckverfolgbarkeit bis zum Endlager?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "techniques",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Technology-meets-regulation speculation. \u00a770/\u00a773 exist but blockchain integration is not in any KG.",
+        "category": "techniques",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q47",
+      "question": "Wie m\u00fcsste das atomrechtliche Genehmigungsverfahren ge\u00e4ndert werden, um den R\u00fcckbau von Fusionsreaktoren zu erfassen, die nach dem Betrieb aktivierte Materialien hinterlassen?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "legal_framework",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Future technology gap. Fusion decommissioning not covered by AtG. Requires reasoning from first principles.",
+        "category": "legal_framework",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q48",
+      "question": "Rekonstruiere, welche Knowledge-Graph-Entit\u00e4ten und -Relationen fehlen, um die vollst\u00e4ndige Kette von der Genehmigungserteilung bis zur Gr\u00fcne-Wiese-Freigabe eines KKW-Standorts im Graph abzubilden.",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "planning",
+        "list",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Meta-question about the KG itself. Directly triggers gap detection. No expected answer \u2014 the system should identify what's missing.",
+        "category": "planning",
+        "question_type": "list",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q49",
+      "question": "Gibt es internationale Parallelen zum deutschen Entsorgungsfondsgesetz, und wie unterscheiden sich die Finanzierungsmodelle in Frankreich (ASN/ANDRA), UK (NDA), und den USA (NRC decommissioning trust funds) vom KENFO-Modell?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "finance",
+        "comparative",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "International comparison. Most data likely not in the KG (focused on German domain). Tests boundary recognition.",
+        "category": "finance",
+        "question_type": "comparative",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    },
+    {
+      "id": "q50",
+      "question": "Wenn alle 17 stillgelegten und im R\u00fcckbau befindlichen deutschen KKW-Bl\u00f6cke gleichzeitig eine unerwartete Erh\u00f6hung der Cs-137-Kontamination im Betonschild melden \u2014 welche systemische Ursache k\u00f6nnte vorliegen, welche regulatorische Krise w\u00fcrde ausgel\u00f6st, und welche Gesetze/Verordnungen w\u00e4ren betroffen?",
+      "expected_answers": [],
+      "query_type": "entity",
+      "difficulty": 5,
+      "tags": [
+        "safety",
+        "causal",
+        "open_ended_exploration"
+      ],
+      "metadata": {
+        "expected_entities": [],
+        "notes": "Hypothetical crisis scenario. Requires reasoning over the full German KKW fleet and the entire regulatory framework. Far beyond current KG content.",
+        "category": "safety",
+        "question_type": "causal",
+        "retrieval_complexity": "open_ended_exploration"
+      }
+    }
+  ]
+}

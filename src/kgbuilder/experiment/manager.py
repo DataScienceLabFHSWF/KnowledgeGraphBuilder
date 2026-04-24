@@ -305,8 +305,12 @@ class ConfigRunner:
             # Run actual KG building pipeline
             kg_metrics = self._build_kg(variant, run_id, wandb_run=wandb_run)
 
-            # Try gold-standard evaluation first (if gold annotations + checkpoint exist)
-            eval_metrics = self._evaluate_with_gold(run_id) or self._simulate_evaluation(variant)
+            # Prefer QA benchmark evaluation when configured, then gold annotations.
+            eval_metrics = (
+                self._evaluate_with_qa_dataset(run_id)
+                or self._evaluate_with_gold(run_id)
+                or self._simulate_evaluation(variant)
+            )
 
             # SHACL quality scoring (best-effort)
             shacl_metrics = self._run_shacl_scoring(run_id, wandb_run=wandb_run)
@@ -315,6 +319,15 @@ class ConfigRunner:
 
             run.kg_metrics = kg_metrics
             run.eval_metrics = eval_metrics
+            # Keep legacy shortcuts in sync for analyzer/report compatibility.
+            run.kg_nodes = int(kg_metrics.get("nodes", 0))
+            run.kg_edges = int(kg_metrics.get("edges", 0))
+            run.kg_build_time = float(
+                kg_metrics.get("build_time_seconds", kg_metrics.get("build_time", 0.0))
+            )
+            run.accuracy = float(eval_metrics.get("accuracy", 0.0))
+            run.f1_score = float(eval_metrics.get("f1_score", 0.0))
+            run.coverage = float(eval_metrics.get("coverage", 0.0))
             run.status = "completed"
 
             # Add completion metadata
@@ -1110,9 +1123,117 @@ class ConfigRunner:
                 "relations": rel_metrics,
             },
             "f1_score": top_f1,
+            "accuracy": ent_metrics["f1"],
+            "coverage": ent_metrics["recall"],
+            "completeness": ent_metrics["recall"],
             "entities_f1": ent_metrics["f1"],
             "relations_f1": rel_metrics["f1"],
         }
+
+    def _evaluate_with_qa_dataset(self, run_id: str) -> dict[str, Any] | None:
+        """Evaluate one run against configured QA dataset.
+
+        Returns None if no QA dataset is configured, unavailable, or unusable.
+        """
+        import os
+
+        from kgbuilder.evaluation.metrics import MetricsComputer
+        from kgbuilder.evaluation.qa_dataset import QADataset
+        from kgbuilder.evaluation.query_executor import QueryExecutor
+        from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+
+        if self.config is None:
+            return None
+
+        dataset_path = getattr(self.config.evaluation, "qa_dataset_path", "")
+        if not dataset_path:
+            return None
+
+        path = Path(dataset_path)
+        if not path.exists():
+            logger.warning("qa_dataset_missing", path=str(path), run_id=run_id)
+            return None
+
+        dataset = QADataset.load(path)
+        if not dataset.questions:
+            return None
+
+        scored_questions = [q for q in dataset.questions if q.expected_answers]
+        exploratory_questions = [q for q in dataset.questions if not q.expected_answers]
+
+        if not scored_questions:
+            logger.warning(
+                "qa_dataset_has_no_scored_questions",
+                path=str(path),
+                run_id=run_id,
+                total_questions=len(dataset.questions),
+            )
+            return None
+
+        neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+        neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")
+        similarity_threshold = float(
+            getattr(self.config.evaluation, "similarity_threshold", 0.8)
+        )
+
+        store = Neo4jGraphStore(neo4j_uri, (neo4j_user, neo4j_password))
+        try:
+            executor = QueryExecutor(store)
+            all_results = []
+            for question in dataset.questions:
+                result = executor.execute(
+                    question_id=question.id,
+                    question_text=question.question,
+                    query_type=question.query_type,
+                )
+                all_results.append(result.to_dict())
+
+            scored_ids = {q.id for q in scored_questions}
+            scored_results = [r for r in all_results if r.get("question_id") in scored_ids]
+            qa_pairs = [(q.to_dict(), q.expected_answers) for q in scored_questions]
+
+            metrics = MetricsComputer().compute(qa_pairs=qa_pairs, results=scored_results)
+            metrics_dict = metrics.to_dict()
+
+            answered_exploratory = sum(
+                1
+                for result in all_results
+                if result.get("question_id") not in scored_ids and result.get("retrieved_answers")
+            )
+            exploratory_count = len(exploratory_questions)
+            exploratory_answer_rate = (
+                answered_exploratory / exploratory_count if exploratory_count > 0 else 0.0
+            )
+
+            metrics_dict.update(
+                {
+                    "qa_dataset": {
+                        "name": dataset.name,
+                        "source": dataset.source,
+                        "path": str(path),
+                        "total_questions": len(dataset.questions),
+                        "scored_questions": len(scored_questions),
+                        "exploratory_questions": exploratory_count,
+                        "exploratory_answered": answered_exploratory,
+                        "exploratory_answer_rate": round(exploratory_answer_rate, 4),
+                    },
+                    "qa_similarity_threshold": similarity_threshold,
+                }
+            )
+
+            logger.info(
+                "qa_evaluation_completed",
+                run_id=run_id,
+                dataset=str(path),
+                scored_questions=len(scored_questions),
+                exploratory_questions=exploratory_count,
+                accuracy=metrics_dict.get("accuracy", 0.0),
+                f1_score=metrics_dict.get("f1_score", 0.0),
+            )
+            return metrics_dict
+        finally:
+            store.close()
 
 
 class ExperimentManager:
@@ -1297,7 +1418,7 @@ class ExperimentManager:
         # Group by variant
         by_variant = {}
         for run in completed:
-            variant_name = run.variant.name
+            variant_name = run.variant.name if run.variant else (run.variant_name or "unknown")
             if variant_name not in by_variant:
                 by_variant[variant_name] = []
             by_variant[variant_name].append(run)
