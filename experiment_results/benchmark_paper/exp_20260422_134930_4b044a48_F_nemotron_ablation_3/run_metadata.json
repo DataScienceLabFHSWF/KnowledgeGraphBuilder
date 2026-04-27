@@ -1,20 +1,20 @@
 {
-  "run_id": "exp_20260422_134930_4b044a48_E_gemma31b_2",
-  "variant_name": "E_gemma31b",
-  "run_number": 2,
+  "run_id": "exp_20260422_134930_4b044a48_F_nemotron_ablation_3",
+  "variant_name": "F_nemotron_ablation",
+  "run_number": 3,
   "status": "completed",
-  "start_time": "2026-04-22T20:32:06.733143",
-  "end_time": "2026-04-22T22:21:55.126232",
-  "duration_seconds": 6588.39,
+  "start_time": "2026-04-23T10:25:57.405309",
+  "end_time": "2026-04-23T15:04:09.299140",
+  "duration_seconds": 16691.89,
   "kg_metrics": {
-    "nodes": 408,
+    "nodes": 438,
     "edges": 0,
-    "build_time_seconds": 6396.79,
-    "model": "gemma4:31b",
+    "build_time_seconds": 16497.99,
+    "model": "nemotron-3-nano",
     "max_iterations": 5,
-    "final_coverage": 0.24,
+    "final_coverage": 0.36,
     "total_discovery_iterations": 5,
-    "total_entities_discovered": 408,
+    "total_entities_discovered": 438,
     "total_relations_extracted": 0,
     "graph_richness": {
       "entity_classes_populated": 0,
@@ -33,43 +33,43 @@
     "discovery_iterations": [
       {
         "iteration": 1,
-        "entities_new": 257,
-        "entities_cumulative": 257,
-        "coverage": 0.2,
-        "new_entity_types_count": 20,
-        "time_sec": 2729.16
+        "entities_new": 330,
+        "entities_cumulative": 330,
+        "coverage": 0.36,
+        "new_entity_types_count": 44,
+        "time_sec": 671.75
       },
       {
         "iteration": 2,
-        "entities_new": 80,
-        "entities_cumulative": 337,
-        "coverage": 0.23,
-        "new_entity_types_count": 23,
-        "time_sec": 989.16
+        "entities_new": 108,
+        "entities_cumulative": 438,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 15820.79
       },
       {
         "iteration": 3,
-        "entities_new": 47,
-        "entities_cumulative": 384,
-        "coverage": 0.23,
-        "new_entity_types_count": 23,
-        "time_sec": 279.06
+        "entities_new": 0,
+        "entities_cumulative": 438,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 0.7
       },
       {
         "iteration": 4,
-        "entities_new": 24,
-        "entities_cumulative": 408,
-        "coverage": 0.24,
-        "new_entity_types_count": 24,
-        "time_sec": 2114.14
+        "entities_new": 0,
+        "entities_cumulative": 438,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 0.69
       },
       {
         "iteration": 5,
         "entities_new": 0,
-        "entities_cumulative": 408,
-        "coverage": 0.24,
-        "new_entity_types_count": 24,
-        "time_sec": 281.77
+        "entities_cumulative": 438,
+        "coverage": 0.36,
+        "new_entity_types_count": 45,
+        "time_sec": 0.7
       }
     ],
     "shacl": {
@@ -115,7 +115,7 @@
     "correctness": 0.0,
     "answer_relevancy": 0.0,
     "semantic_similarity": 0.0,
-    "average_response_time": 247.17,
+    "average_response_time": 247.38,
     "by_type": {
       "entity": {
         "accuracy": 0.0,
@@ -926,11 +926,11 @@
   },
   "error": null,
   "metadata": {
-    "run_id": "exp_20260422_134930_4b044a48_E_gemma31b_2",
-    "variant_name": "E_gemma31b",
-    "started_at": "2026-04-22T20:32:06.733143",
+    "run_id": "exp_20260422_134930_4b044a48_F_nemotron_ablation_3",
+    "variant_name": "F_nemotron_ablation",
+    "started_at": "2026-04-23T10:25:57.405309",
     "params": {
-      "model": "gemma4:31b",
+      "model": "nemotron-3-nano",
       "max_iterations": 5,
       "similarity_threshold": 0.85,
       "confidence_threshold": 0.6,
@@ -938,7 +938,7 @@
       "questions_per_class": 3,
       "law_graph_enabled": false
     },
-    "completed_at": "2026-04-22T22:21:54.529991"
+    "completed_at": "2026-04-23T15:04:08.632494"
   },
   "accuracy": 0.0,
   "f1_score": 0.0,

@@ -426,7 +426,7 @@ class ConfigRunner:
         from kgbuilder.retrieval import FusionRAGRetriever
         from kgbuilder.storage.neo4j_store import Neo4jGraphStore
         from kgbuilder.storage.ontology import FusekiOntologyService
-        from kgbuilder.storage.protocol import Node
+        from kgbuilder.storage.protocol import Edge, Node
         from kgbuilder.storage.vector import QdrantStore
 
         build_start = time.time()
@@ -540,15 +540,14 @@ class ConfigRunner:
             # Get ontology relations for extraction (NEW - Phase 5)
             ontology_relations = []
             try:
-                # Query ontology for all object properties (relations)
-                relation_uris = ontology_service.get_class_relations(None)  # Get all relations
+                relation_labels = ontology_service.get_all_relations()
                 ontology_relations = [
                     OntologyRelationDef(
                         uri=f"http://ontology#/{rel}",
                         label=rel,
                         description=None,
                     )
-                    for rel in relation_uris
+                    for rel in relation_labels
                 ]
             except Exception as e:
                 logger.warning("ontology_relations_load_failed", error=str(e))
@@ -702,6 +701,20 @@ class ConfigRunner:
                 for e in entities
             ]
 
+            edges = [
+                Edge(
+                    id=relation.id,
+                    source_id=relation.source_entity_id,
+                    target_id=relation.target_entity_id,
+                    edge_type=relation.predicate,
+                    properties={
+                        "confidence": relation.confidence,
+                        "run_id": run_id,
+                    },
+                )
+                for relation in relations
+            ]
+
             # Build graph with BOTH entities and relations (NEW - Phase 5)
             builder = KGBuilder(
                 primary_store=neo4j_store,
@@ -716,7 +729,7 @@ class ConfigRunner:
                 logger.info("kg_build_with_relations", relation_count=len(relations), run_id=run_id)
 
             # Build with relations (NOW includes Phase 5 output!)
-            build_result = builder.build(entities=nodes, relations=relations if relations else None)
+            build_result = builder.build(entities=nodes, relations=edges if edges else None)
 
             build_time = time.time() - build_start
 
@@ -738,7 +751,12 @@ class ConfigRunner:
             )
 
             # Lightweight post-build graph richness metrics (best-effort)
-            richness = self._graph_richness_metrics(neo4j_store, run_id)
+            richness = self._graph_richness_metrics(
+                neo4j_store,
+                run_id,
+                ontology_class_count=len(ontology_classes) or None,
+                ontology_relation_count=len(ontology_relations) or None,
+            )
 
             return {
                 "nodes": build_result.nodes_created,
@@ -772,6 +790,8 @@ class ConfigRunner:
         self,
         neo4j_store: Any,
         run_id: str,
+        ontology_class_count: int | None = None,
+        ontology_relation_count: int | None = None,
     ) -> dict[str, Any]:
         """Query Neo4j for structural richness metrics scoped to this run.
 
@@ -781,6 +801,14 @@ class ConfigRunner:
 
         All queries are scoped by the ``run_id`` property written onto every
         node during assembly, so results are per-variant-run.
+
+        Args:
+            neo4j_store: Active Neo4j store.
+            run_id: Experiment run identifier.
+            ontology_class_count: Total OWL classes (denominator for class
+                coverage %). Pass ``None`` to skip percentage computation.
+            ontology_relation_count: Total OWL object properties (denominator
+                for relation coverage %). Pass ``None`` to skip percentage.
 
         Returns:
             Dict with richness metrics, or empty dict on failure.
@@ -853,15 +881,19 @@ class ConfigRunner:
                 4,
             )
 
-            # Ontology coverage ratios (denominators from Fuseki: 18 classes, 26 relations)
-            ONTOLOGY_CLASS_COUNT = 18
-            ONTOLOGY_RELATION_COUNT = 26
-            ontology_class_coverage_pct = round(
-                entity_classes_populated / ONTOLOGY_CLASS_COUNT * 100, 1
-            )
-            ontology_relation_coverage_pct = round(
-                unique_relation_types / ONTOLOGY_RELATION_COUNT * 100, 1
-            )
+            # Ontology coverage ratios use live counts loaded from the active
+            # ontology service (Fuseki). Falls back to ``None`` when the caller
+            # cannot supply a denominator, so we don't fabricate percentages.
+            ontology_class_coverage_pct: float | None = None
+            if ontology_class_count and ontology_class_count > 0:
+                ontology_class_coverage_pct = round(
+                    entity_classes_populated / ontology_class_count * 100, 1
+                )
+            ontology_relation_coverage_pct: float | None = None
+            if ontology_relation_count and ontology_relation_count > 0:
+                ontology_relation_coverage_pct = round(
+                    unique_relation_types / ontology_relation_count * 100, 1
+                )
 
             # Relation density: edges per node (higher = more connected graph)
             relation_density = round(
@@ -924,7 +956,7 @@ class ConfigRunner:
 
             store = Neo4jGraphStore(neo4j_uri, (neo4j_user, neo4j_password))
             scorer = KGQualityScorer(ontology_owl_path=owl_path, sample_limit=500)
-            report = scorer.score_neo4j_store(store)
+            report = scorer.score_neo4j_store(store, run_id=run_id)
 
             # Copy SHACL report JSON into the run directory
             run_dir = self.output_dir / run_id

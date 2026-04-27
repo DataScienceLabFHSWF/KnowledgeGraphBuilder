@@ -182,7 +182,7 @@ python scripts/full_kg_pipeline.py --max-iterations 1
 LAW_GRAPH_ENABLED=true python scripts/full_kg_pipeline.py --max-iterations 1
 ```
 
-For law-specific pipeline setup, see [QUICKSTART_LAW_GRAPH.md](QUICKSTART_LAW_GRAPH.md).
+For law-specific pipeline setup, see [docs/getting-started/quickstart-law-graph.md](docs/getting-started/quickstart-law-graph.md).
 
 See `python scripts/full_kg_pipeline.py --help` for all CLI options including
 `--enrich-only`, `--skip-enrichment`, `--skip-analytics`, `--checkpoint`, and
@@ -664,7 +664,7 @@ The documentation is generated from module docstrings using
 | [Planning/LANGEXTRACT_EVAL.md](Planning/LANGEXTRACT_EVAL.md) | Evaluation of Google LangExtract (adopted patterns) |
 | [Planning/IMPLEMENTATION_SUMMARY.md](Planning/IMPLEMENTATION_SUMMARY.md) | Law graph implementation summary |
 | [Planning/LAW_ONTOLOGY_RATIONALE.md](Planning/LAW_ONTOLOGY_RATIONALE.md) | Legal ontology design decisions |
-| [QUICKSTART_LAW_GRAPH.md](QUICKSTART_LAW_GRAPH.md) | Quick start for German law graph |
+| [docs/getting-started/quickstart-law-graph.md](docs/getting-started/quickstart-law-graph.md) | Quick start for German law graph |
 | [data/README.md](data/README.md) | Data directory layout and sources |
 | [examples/ABLATION_STUDY_GUIDE.md](examples/ABLATION_STUDY_GUIDE.md) | Ablation study setup guide |
 

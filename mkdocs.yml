@@ -79,6 +79,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - Quick Start: getting-started/quickstart.md
+      - Law Graph Quick Start: getting-started/quickstart-law-graph.md
       - Infrastructure: getting-started/infrastructure.md
       - Configuration: getting-started/configuration.md
   - Architecture:
