@@ -120,7 +120,7 @@ def plot_bar_charts(
     cols = 3
     rows = math.ceil(n_metrics / cols)
 
-    fig, axes = plt.subplots(rows, cols, figsize=(6 * cols, 4 * rows))
+    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 6 * rows))
     axes_flat = axes.flatten()
 
     for idx, (metric_label, (dotpath, higher_better)) in enumerate(METRICS.items()):
@@ -131,23 +131,40 @@ def plot_bar_charts(
             means.append(mean)
             stds.append(std)
             colors.append(VARIANT_STYLES[var]["color"])
-            labels.append(var)
+            # Use short label: first character of the variant style label (A, B, C …)
+            labels.append(VARIANT_STYLES[var]["label"].split(":")[0].strip())
 
         x = np.arange(len(variants))
-        bars = ax.bar(x, means, yerr=stds, capsize=4, color=colors, alpha=0.85)
+        bars = ax.bar(x, means, yerr=stds, capsize=5, color=colors, alpha=0.85)
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=9)
-        ax.set_title(metric_label, fontsize=10, fontweight="bold")
-        ax.set_ylabel("mean ± std", fontsize=8)
+        ax.set_xticklabels(labels, fontsize=14, rotation=0, ha="center")
+        ax.set_title(metric_label, fontsize=15, fontweight="bold", pad=8)
+        ax.set_ylabel("mean ± std", fontsize=12)
+        ax.tick_params(axis="y", labelsize=11)
         direction = "↑ better" if higher_better else "↓ better"
         ax.annotate(direction, xy=(0.98, 0.96), xycoords="axes fraction",
-                    ha="right", va="top", fontsize=7, color="grey")
+                    ha="right", va="top", fontsize=11, color="grey")
 
     # Hide unused subplots
     for idx in range(n_metrics, len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
-    fig.suptitle("Graph Richness: Cross-Condition Comparison", fontsize=14, fontweight="bold", y=1.01)
+    # Add a shared legend in the last unused cell (or below the figure)
+    from matplotlib.patches import Patch
+    legend_handles = [
+        Patch(color=VARIANT_STYLES[v]["color"], label=VARIANT_STYLES[v]["label"])
+        for v in variants
+    ]
+    if n_metrics < len(axes_flat):
+        legend_ax = axes_flat[n_metrics]
+        legend_ax.set_visible(True)
+        legend_ax.axis("off")
+        legend_ax.legend(handles=legend_handles, loc="center", fontsize=13, framealpha=0.9)
+    else:
+        fig.legend(handles=legend_handles, loc="lower center", ncol=3,
+                   fontsize=12, bbox_to_anchor=(0.5, -0.02), framealpha=0.9)
+
+    fig.suptitle("Graph Richness: Cross-Condition Comparison", fontsize=16, fontweight="bold", y=1.01)
     plt.tight_layout()
     out_path = output_dir / "richness_bar_comparison.png"
     fig.savefig(out_path, dpi=150, bbox_inches="tight")

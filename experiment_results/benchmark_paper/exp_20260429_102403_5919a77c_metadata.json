@@ -1,0 +1,92 @@
+{
+  "experiment_id": "exp_20260429_102403_5919a77c",
+  "experiment_name": "Nuclear Decommissioning Benchmark - Restart E/F",
+  "started_at": "2026-04-29T10:24:03.988854",
+  "completed_at": "2026-05-06T16:10:05.478658",
+  "total_duration_seconds": 625561.489804,
+  "completed_runs": 6,
+  "failed_runs": 0,
+  "config": {
+    "name": "Nuclear Decommissioning Benchmark - Restart E/F",
+    "description": "Restart only E and F after bugfixes",
+    "output_dir": "experiment_results/benchmark_paper",
+    "num_runs": 3,
+    "parallel_jobs": 1,
+    "seed": 42,
+    "variants": [
+      {
+        "name": "E_gemma31b",
+        "description": "Multi-pass with gemma4:31b \u2014 large model comparison",
+        "params": {
+          "model": "gemma4:31b",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      },
+      {
+        "name": "F_nemotron_ablation",
+        "description": "Multi-pass with nemotron-3-nano \u2014 ablation model comparison",
+        "params": {
+          "model": "nemotron-3-nano",
+          "max_iterations": 5,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 3,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      }
+    ],
+    "evaluation": {
+      "qa_dataset_path": "data/evaluation/competency_questions.json",
+      "metrics": [
+        "ontology_class_coverage",
+        "relation_coverage",
+        "entity_count",
+        "edge_count",
+        "avg_confidence",
+        "cq_answerability",
+        "graph_density",
+        "connected_components",
+        "avg_degree",
+        "clustering_coefficient",
+        "build_time_seconds"
+      ],
+      "similarity_threshold": 0.8,
+      "max_results": 10
+    },
+    "metadata": {}
+  },
+  "run_ids": [
+    "exp_20260429_102403_5919a77c_E_gemma31b_1",
+    "exp_20260429_102403_5919a77c_E_gemma31b_2",
+    "exp_20260429_102403_5919a77c_E_gemma31b_3",
+    "exp_20260429_102403_5919a77c_F_nemotron_ablation_1",
+    "exp_20260429_102403_5919a77c_F_nemotron_ablation_2",
+    "exp_20260429_102403_5919a77c_F_nemotron_ablation_3"
+  ],
+  "aggregate_metrics": {
+    "E_gemma31b": {
+      "f1_score": 0.0,
+      "accuracy": 0.0,
+      "coverage": 0.0,
+      "completeness": 0.0,
+      "entities_f1": 0.0,
+      "relations_f1": 0.0
+    },
+    "F_nemotron_ablation": {
+      "f1_score": 0.0,
+      "accuracy": 0.0,
+      "coverage": 0.0,
+      "completeness": 0.0,
+      "entities_f1": 0.0,
+      "relations_f1": 0.0
+    }
+  }
+}
