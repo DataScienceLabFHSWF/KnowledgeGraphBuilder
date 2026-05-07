@@ -11,16 +11,6 @@ A minimal sample dataset is available at `data/smoke_test/` (ontology + text
 file) for quick local experiments and to exercise the `scripts/quickstart.py`
 workflow.
 
-Part of a three-repository research ecosystem:
-
-| Repository | Purpose | Branch |
-|-----------|---------|--------|
-| **KnowledgeGraphBuilder** (this repo) | KG construction, validation, and export | `fast-api` |
-| [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent) | Ontology-informed GraphRAG QA agent | `dev/fast-api-backend` |
-| [OntologyExtender](https://github.com/DataScienceLabFHSWF/OntologyExtender) | Human-in-the-loop ontology extension | `fast-api` |
-
-All three are orchestrated together via [KGPlatform](https://github.com/DataScienceLabFHSWF/KGPlatform), but each works standalone with its own `docker-compose.yml`.
-
 ---
 
 ## Table of Contents
