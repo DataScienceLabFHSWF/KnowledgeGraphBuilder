@@ -665,7 +665,8 @@ The documentation is generated from module docstrings using
 | [Planning/IMPLEMENTATION_SUMMARY.md](Planning/IMPLEMENTATION_SUMMARY.md) | Law graph implementation summary |
 | [Planning/LAW_ONTOLOGY_RATIONALE.md](Planning/LAW_ONTOLOGY_RATIONALE.md) | Legal ontology design decisions |
 | [docs/getting-started/quickstart-law-graph.md](docs/getting-started/quickstart-law-graph.md) | Quick start for German law graph |
-| [data/README.md](data/README.md) | Data directory layout and sources |
+| [data/README.md](data/README.md) | Data directory layout |
+| [data/SOURCES.md](data/SOURCES.md) | Document sources: German nuclear decommissioning corpus |
 | [examples/ABLATION_STUDY_GUIDE.md](examples/ABLATION_STUDY_GUIDE.md) | Ablation study setup guide |
 
 ---
