@@ -104,6 +104,17 @@ def test_add_and_get_node():
     assert got.id == "n1" and got.properties == props
 
 
+def test_add_node_sanitizes_label_for_cypher():
+    store = Neo4jGraphStore("bolt://x", ("u", "p"))
+    s = store._driver.session_obj
+    s._queue.append(FakeResult(single={"id": "n1"}))
+
+    n = Node(id="n1", label="Assessment Aspect", node_type="Assessment Aspect")
+    store.add_node(n)
+
+    assert "MERGE (n:Assessment_Aspect" in s.last_query
+
+
 def test_update_and_delete_node():
     store = Neo4jGraphStore("bolt://x", ("u", "p"))
     s = store._driver.session_obj
@@ -149,6 +160,22 @@ def test_add_and_delete_edge():
     assert store.delete_edge("e1") is True
     s._queue.append(FakeResult(single={"count": 0}))
     assert store.delete_edge("miss") is False
+
+
+def test_add_edge_sanitizes_relationship_type_for_cypher():
+    store = Neo4jGraphStore("bolt://x", ("u", "p"))
+    s = store._driver.session_obj
+    s._queue.extend([FakeResult(single={"count": 1}), FakeResult(single={"id": "e1"})])
+
+    edge = Edge(
+        id="e1",
+        source_id="a",
+        target_id="b",
+        edge_type="Change Measure",
+    )
+    store.add_edge(edge)
+
+    assert "[r:Change_Measure" in s.last_query
 
 
 def test_get_edges_for_node_directions():

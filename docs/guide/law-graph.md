@@ -69,4 +69,4 @@ Merges rule-based and LLM results:
 Law XML files from [gesetze-im-internet.de](https://www.gesetze-im-internet.de/)
 are stored in `data/law_html/`. Each law directory contains a `BJNR*.xml` file.
 
-For detailed setup, see [QUICKSTART_LAW_GRAPH.md](https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder/blob/main/QUICKSTART_LAW_GRAPH.md).
+For detailed setup, see [the law graph quickstart](../getting-started/quickstart-law-graph.md).

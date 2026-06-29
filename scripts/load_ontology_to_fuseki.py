@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Load decommissioning ontology into Fuseki RDF store.
+"""Load ontology into Fuseki RDF store.
 
-This script reads the ontology file from data/ontology/plan-ontology-v1.0.owl
-and uploads it to the Fuseki server configured in .env file.
+By default, this script reads the benchmark ontology from
+data/ontology/domain/decommissioning.owl and uploads it to the
+configured Fuseki dataset.
 
 Usage:
     python scripts/load_ontology_to_fuseki.py
@@ -36,9 +37,14 @@ def load_ontology() -> None:
     fuseki_url = os.getenv("FUSEKI_URL", "http://localhost:3030")
     fuseki_user = os.getenv("FUSEKI_USER", "admin")
     fuseki_password = os.getenv("FUSEKI_PASSWORD", "")
-    dataset_name = os.getenv("FUSEKI_DATASET", "kgbuilder_test")
+    dataset_name = os.getenv("FUSEKI_DATASET", "kgbuilder")
 
-    ontology_path = Path(__file__).parent.parent / "data" / "ontology" / "domain" / "plan-ontology-v2.0.owl"
+    ontology_path = Path(
+        os.getenv(
+            "ONTOLOGY_OWL_PATH",
+            str(Path(__file__).parent.parent / "data" / "ontology" / "domain" / "decommissioning.owl"),
+        )
+    )
 
     logger.info(
         "loading_ontology",
@@ -74,7 +80,7 @@ def load_ontology() -> None:
         logger.info("ontology_loaded_successfully")
 
         print(f"[OK] Ontology loaded successfully to {fuseki_url}")
-        print("  Dataset: kgbuilder")
+        print(f"  Dataset: {dataset_name}")
         print(f"  File: {ontology_path}")
         print(f"  Size: {len(ontology_content) / 1024:.1f} KB")
 

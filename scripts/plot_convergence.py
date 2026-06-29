@@ -49,8 +49,9 @@ VARIANT_STYLES: dict[str, dict] = {
     "A_single_pass":   {"color": "#E07B54", "label": "A: Single-pass (gemma4:e2b)", "ls": "--"},
     "B_multipass":     {"color": "#5B919B", "label": "B: Multi-pass (gemma4:e2b)", "ls": "-"},
     "C_multipass_law": {"color": "#3E6B48", "label": "C: Multi-pass + Law Graph (gemma4:e2b)", "ls": "-"},
-    "D_nemotron_4b":   {"color": "#9B6B9B", "label": "D: Multi-pass (nemotron-3-nano:4b)", "ls": "-."},
-    "E_nemotron_30b":  {"color": "#B59B3E", "label": "E: Multi-pass (nemotron-3-nano:30b)", "ls": ":"},
+    "D_gemma4b":           {"color": "#9B6B9B", "label": "D: Multi-pass (gemma4:e4b)", "ls": "-."},
+    "E_gemma31b":           {"color": "#B59B3E", "label": "E: Multi-pass (gemma4:31b)", "ls": ":"},
+    "F_nemotron_ablation":  {"color": "#7B7B7B", "label": "F: Multi-pass (nemotron-nano)", "ls": "-."},
 }
 
 
@@ -59,16 +60,37 @@ def load_variant_runs(results_dir: Path, variant_name: str) -> list[list[dict]]:
 
     Returns a list of run-data (each run-data is a list of iteration dicts).
     """
-    variant_dir = results_dir / variant_name
     runs: list[list[dict]] = []
-    if not variant_dir.exists():
-        return runs
-    for run_dir in sorted(variant_dir.iterdir()):
-        metrics_file = run_dir / "iteration_metrics.json"
-        if metrics_file.exists():
-            data = json.loads(metrics_file.read_text())
-            if data:
-                runs.append(data)
+
+    # Support both layouts:
+    # 1. Nested:  <results_dir>/<variant_name>/<run_dir>/iteration_metrics.json
+    # 2. Flat:    <results_dir>/<run_dir>/iteration_metrics.json
+    #    where variant_name is stored in run_metadata.json inside the run_dir
+    variant_dir = results_dir / variant_name
+    if variant_dir.exists() and variant_dir.is_dir():
+        # Nested layout
+        for run_dir in sorted(variant_dir.iterdir()):
+            metrics_file = run_dir / "iteration_metrics.json"
+            if metrics_file.exists():
+                data = json.loads(metrics_file.read_text())
+                if data:
+                    runs.append(data)
+    else:
+        # Flat layout: scan all run dirs and match by variant_name in metadata
+        for run_dir in sorted(results_dir.iterdir()):
+            if not run_dir.is_dir():
+                continue
+            meta_file = run_dir / "run_metadata.json"
+            metrics_file = run_dir / "iteration_metrics.json"
+            if meta_file.exists() and metrics_file.exists():
+                try:
+                    meta = json.loads(meta_file.read_text())
+                except Exception:
+                    continue
+                if meta.get("variant_name") == variant_name:
+                    data = json.loads(metrics_file.read_text())
+                    if data:
+                        runs.append(data)
     return runs
 
 

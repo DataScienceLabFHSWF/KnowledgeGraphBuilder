@@ -225,27 +225,41 @@ class KGQualityScorer:
     # ------------------------------------------------------------------
 
     def _sample_actions_from_neo4j(
-        self, store: Neo4jGraphStore, limit: int | None = None,
+        self,
+        store: Neo4jGraphStore,
+        limit: int | None = None,
+        run_id: str | None = None,
     ) -> tuple[list[Any], list[Any]]:
         """Retrieve entities and relations from Neo4j for SHACL2FOL checks.
+
+        Args:
+            store: Neo4j store.
+            limit: Maximum number of records sampled per query.
+            run_id: Optional experiment run identifier. When set, sampling is
+                restricted to nodes / edges tagged with this top-level
+                ``run_id`` property to avoid cross-run contamination.
 
         Returns:
             ``(entities, relations)`` – lightweight objects with ``entity_type``
             / ``relation_type`` / ``source_type`` / ``target_type`` attributes.
         """
         limit = limit or self._sample_limit
+        scope = "{run_id: $run_id}" if run_id else ""
+        params: dict[str, Any] = {"limit": limit}
+        if run_id:
+            params["run_id"] = run_id
 
         # --- entities ------------------------------------------------
         entities: list[Any] = []
         try:
             q = (
-                "MATCH (n) "
+                f"MATCH (n {scope}) "
                 "UNWIND labels(n) AS lbl "
                 "WITH lbl, collect(n)[0] AS sample "
                 "RETURN sample.id AS id, lbl AS label "
                 "LIMIT $limit"
             )
-            rows = store.query(q, params={"limit": limit})
+            rows = store.query(q, params=params)
             records = getattr(rows, "records", rows) or []
             for r in records:
                 lbl = r.get("label") if isinstance(r, dict) else getattr(r, "label", "Thing")
@@ -256,8 +270,11 @@ class KGQualityScorer:
         # Fallback: also sample raw nodes if label-based yielded nothing
         if not entities:
             try:
-                q2 = "MATCH (n) RETURN n.id AS id, labels(n) AS labels LIMIT $limit"
-                rows = store.query(q2, params={"limit": limit})
+                q2 = (
+                    f"MATCH (n {scope}) "
+                    "RETURN n.id AS id, labels(n) AS labels LIMIT $limit"
+                )
+                rows = store.query(q2, params=params)
                 records = getattr(rows, "records", rows) or []
                 for r in records:
                     labels = (r.get("labels") if isinstance(r, dict) else []) or []
@@ -269,12 +286,20 @@ class KGQualityScorer:
         # --- relations -----------------------------------------------
         rels: list[Any] = []
         try:
-            q = (
-                "MATCH (a)-[r]->(b) "
-                "RETURN type(r) AS rel, labels(a) AS src, labels(b) AS tgt "
-                "LIMIT $limit"
-            )
-            rows = store.query(q, params={"limit": limit})
+            if run_id:
+                q = (
+                    "MATCH (a {run_id: $run_id})-[r {run_id: $run_id}]->"
+                    "(b {run_id: $run_id}) "
+                    "RETURN type(r) AS rel, labels(a) AS src, labels(b) AS tgt "
+                    "LIMIT $limit"
+                )
+            else:
+                q = (
+                    "MATCH (a)-[r]->(b) "
+                    "RETURN type(r) AS rel, labels(a) AS src, labels(b) AS tgt "
+                    "LIMIT $limit"
+                )
+            rows = store.query(q, params=params)
             records = getattr(rows, "records", rows) or []
             for r in records:
                 if isinstance(r, dict):
@@ -293,7 +318,12 @@ class KGQualityScorer:
         except Exception as exc:
             logger.warning("relation_sampling_failed", error=str(exc))
 
-        logger.info("sampled_actions", entities=len(entities), relations=len(rels))
+        logger.info(
+            "sampled_actions",
+            entities=len(entities),
+            relations=len(rels),
+            run_id=run_id,
+        )
         return entities, rels
 
     # ------------------------------------------------------------------
@@ -301,16 +331,30 @@ class KGQualityScorer:
     # ------------------------------------------------------------------
 
     def _compute_class_coverage(
-        self, store: Any, shapes_graph: rdflib.Graph | None,
+        self,
+        store: Any,
+        shapes_graph: rdflib.Graph | None,
+        run_id: str | None = None,
     ) -> float:
-        """Fraction of ontology classes that appear as node labels in the KG."""
+        """Fraction of ontology classes that appear as node labels in the KG.
+
+        When ``run_id`` is provided and the store supports Cypher, the count
+        of distinct labels is restricted to nodes tagged with this run id.
+        """
         try:
             # Count distinct labels in graph
             if hasattr(store, "query"):
-                res = store.query(
-                    "MATCH (n) UNWIND labels(n) AS l "
-                    "RETURN count(DISTINCT l) AS cnt"
-                )
+                if run_id:
+                    cypher = (
+                        "MATCH (n {run_id: $run_id}) UNWIND labels(n) AS l "
+                        "RETURN count(DISTINCT l) AS cnt"
+                    )
+                    res = store.query(cypher, {"run_id": run_id})
+                else:
+                    res = store.query(
+                        "MATCH (n) UNWIND labels(n) AS l "
+                        "RETURN count(DISTINCT l) AS cnt"
+                    )
                 cnt = 0
                 if res and getattr(res, "records", None):
                     cnt = int(res.records[0].get("cnt", 0))
@@ -339,15 +383,21 @@ class KGQualityScorer:
     # ------------------------------------------------------------------
 
     def _run_pyshacl(
-        self, store: Any, shapes_path: Path | None = None,
+        self,
+        store: Any,
+        shapes_path: Path | None = None,
+        run_id: str | None = None,
     ) -> tuple[float, int, str | None]:
         """Always run pySHACL validation.
+
+        When ``run_id`` is set, the underlying store-to-RDF conversion is
+        restricted to that run via the validator.
 
         Returns:
             ``(score, violation_count, report_path)``
         """
         validator = self._ensure_shacl_validator(shapes_path)
-        sh_res = validator.validate(store)
+        sh_res = validator.validate(store, run_id=run_id)
 
         sh_valid = getattr(sh_res, "valid", False)
         violations = list(getattr(sh_res, "violations", []))
@@ -394,8 +444,14 @@ class KGQualityScorer:
         self,
         store: Any,
         shapes_path: Path | str | None = None,
+        run_id: str | None = None,
     ) -> KGQualityReport:
         """Score a graph store (Neo4j or compatible ``GraphStore``).
+
+        When ``run_id`` is provided and the store supports Cypher, sampling
+        and pySHACL conversion are restricted to nodes/edges tagged with that
+        ``run_id``. This avoids contamination from prior runs sharing the same
+        Neo4j database.
 
         Steps:
             1. Ensure / generate SHACL shapes
@@ -432,7 +488,7 @@ class KGQualityScorer:
         entities: list[Any] = []
         relations: list[Any] = []
         if isinstance(store, Neo4jGraphStore):
-            entities, relations = self._sample_actions_from_neo4j(store)
+            entities, relations = self._sample_actions_from_neo4j(store, run_id=run_id)
         elif hasattr(store, "to_dict"):
             data = store.to_dict()
             entities = data.get("entities", [])[:self._sample_limit]
@@ -457,11 +513,13 @@ class KGQualityScorer:
             logger.warning("no_sampled_actions", store=type(store).__name__)
 
         # 4) Class coverage
-        class_coverage = self._compute_class_coverage(store, shapes_graph)
+        class_coverage = self._compute_class_coverage(store, shapes_graph, run_id=run_id)
 
         # 5) pySHACL – always runs  ======================================
         try:
-            shacl_score, n_violations, report_path = self._run_pyshacl(store, shapes)
+            shacl_score, n_violations, report_path = self._run_pyshacl(
+                store, shapes, run_id=run_id,
+            )
         except Exception as exc:
             logger.error("pyshacl_failed", error=str(exc))
             shacl_score, n_violations, report_path = 0.0, 0, None
@@ -506,6 +564,7 @@ class KGQualityScorer:
         self,
         store: Neo4jGraphStore,
         shapes_path: Path | str | None = None,
+        run_id: str | None = None,
     ) -> KGQualityReport:
         """Convenience alias for ``score_store`` with a Neo4j store."""
-        return self.score_store(store, shapes_path)
+        return self.score_store(store, shapes_path, run_id=run_id)

@@ -17,6 +17,10 @@
   - Environmental assessments (UVP)
   - Technical descriptions (Kurzbeschreibung)
 
+### SOURCES.md
+- **Complete source attribution** — Web links to all 33 documents by state and reactor
+  - (Links current as of June 28, 2024; some may no longer be reachable)
+
 ---
 
 ## Quick Usage
@@ -59,3 +63,5 @@ python scripts/download_ontology.py
 ---
 
 For detailed setup and processing examples, see [QUICKSTART_DATA.md](../QUICKSTART_DATA.md).
+
+For complete source attribution and web links to all 33 decommissioning documents, see [SOURCES.md](SOURCES.md).

@@ -1,0 +1,57 @@
+{
+  "experiment_id": "exp_20260407_111245_fd6da746",
+  "experiment_name": "Smoke Test",
+  "started_at": "2026-04-07T11:12:45.892013",
+  "completed_at": "2026-04-07T11:12:50.189051",
+  "total_duration_seconds": 4.297038,
+  "completed_runs": 1,
+  "failed_runs": 0,
+  "config": {
+    "name": "Smoke Test",
+    "description": "Quick single-variant test to verify pipeline works",
+    "output_dir": "experiment_results/smoke_test",
+    "num_runs": 1,
+    "parallel_jobs": 1,
+    "seed": 42,
+    "variants": [
+      {
+        "name": "smoke_gemma4_e2b",
+        "description": "Quick smoke test with gemma4:e2b, 1 iteration",
+        "params": {
+          "model": "gemma4:e2b",
+          "max_iterations": 1,
+          "similarity_threshold": 0.85,
+          "confidence_threshold": 0.6,
+          "classes_limit": null,
+          "questions_per_class": 1,
+          "law_graph_enabled": false
+        },
+        "metadata": {}
+      }
+    ],
+    "evaluation": {
+      "qa_dataset_path": "data/evaluation/competency_questions.json",
+      "metrics": [
+        "entity_count",
+        "edge_count",
+        "build_time_seconds"
+      ],
+      "similarity_threshold": 0.8,
+      "max_results": 10
+    },
+    "metadata": {}
+  },
+  "run_ids": [
+    "exp_20260407_111245_fd6da746_smoke_gemma4_e2b_1"
+  ],
+  "aggregate_metrics": {
+    "smoke_gemma4_e2b": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    }
+  }
+}

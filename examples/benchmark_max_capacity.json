@@ -1,0 +1,52 @@
+{
+  "name": "Nuclear Decommissioning Max Capacity",
+  "description": "Single-condition max-capacity benchmark run with gemma4:31b, 10 iterations, and law graph enabled.",
+  "output_dir": "experiment_results/benchmark_max_capacity",
+  "num_runs": 1,
+  "seed": 42,
+  "variants": [
+    {
+      "name": "G_gemma31b_max_capacity",
+      "description": "Max-capacity run: gemma4:31b with 10 iterations and law graph enabled",
+      "params": {
+        "model": "gemma4:31b",
+        "max_iterations": 10,
+        "questions_per_class": 3,
+        "similarity_threshold": 0.85,
+        "confidence_threshold": 0.6,
+        "law_graph_enabled": true,
+        "top_k_docs": 5
+      }
+    }
+  ],
+  "evaluation": {
+    "qa_dataset_path": "data/evaluation/benchmark_v3_kgbuilder.json",
+    "gold_standard_path": "data/evaluation/gold_standard/",
+    "metrics": [
+      "ontology_class_coverage",
+      "relation_coverage",
+      "entity_count",
+      "edge_count",
+      "avg_confidence",
+      "cq_answerability",
+      "graph_density",
+      "connected_components",
+      "avg_degree",
+      "clustering_coefficient",
+      "build_time_seconds"
+    ],
+    "per_iteration_tracking": true,
+    "similarity_threshold": 0.8,
+    "max_results": 10
+  },
+  "services": {
+    "neo4j_container": "kgplatform-neo4j",
+    "neo4j_uri": "bolt://localhost:7687",
+    "qdrant_container": "kgplatform-qdrant",
+    "qdrant_collection": "kgbuilder",
+    "ollama_container": "ollama-kgbuilder",
+    "ollama_url": "http://localhost:18134",
+    "fuseki_container": "kgplatform-fuseki",
+    "fuseki_url": "http://localhost:3030"
+  }
+}

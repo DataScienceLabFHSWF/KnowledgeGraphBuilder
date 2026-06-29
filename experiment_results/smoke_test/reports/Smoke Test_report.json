@@ -1,0 +1,117 @@
+{
+  "experiment_name": "Smoke Test",
+  "timestamp": "2026-04-07T11:31:20.075217",
+  "summary": {
+    "total_variants": 1,
+    "total_runs": 1,
+    "completed_runs": 1,
+    "total_duration_hours": 0.2466409186111111,
+    "avg_run_duration_min": 14.798455116666666,
+    "success_rate": 1.0
+  },
+  "convergence": {
+    "coverage": {
+      "smoke_gemma4_e2b": {
+        "variant_name": "smoke_gemma4_e2b",
+        "metric_name": "coverage",
+        "values": [
+          0.85
+        ],
+        "mean": 0.85,
+        "std_dev": 0.0,
+        "min_val": 0.85,
+        "max_val": 0.85,
+        "improvement": 0.0,
+        "improvement_rate": [],
+        "avg_improvement_rate": 0.0,
+        "has_plateau": false
+      }
+    },
+    "accuracy": {
+      "smoke_gemma4_e2b": {
+        "variant_name": "smoke_gemma4_e2b",
+        "metric_name": "accuracy",
+        "values": [
+          0.71
+        ],
+        "mean": 0.71,
+        "std_dev": 0.0,
+        "min_val": 0.71,
+        "max_val": 0.71,
+        "improvement": 0.0,
+        "improvement_rate": [],
+        "avg_improvement_rate": 0.0,
+        "has_plateau": false
+      }
+    },
+    "f1_score": {
+      "smoke_gemma4_e2b": {
+        "variant_name": "smoke_gemma4_e2b",
+        "metric_name": "f1_score",
+        "values": [
+          0.6599999999999999
+        ],
+        "mean": 0.6599999999999999,
+        "std_dev": 0.0,
+        "min_val": 0.6599999999999999,
+        "max_val": 0.6599999999999999,
+        "improvement": 0.0,
+        "improvement_rate": [],
+        "avg_improvement_rate": 0.0,
+        "has_plateau": false
+      }
+    }
+  },
+  "comparison": {
+    "coverage": {
+      "metric_name": "coverage",
+      "variant_metrics": {},
+      "metrics": null,
+      "best_variant": "",
+      "best_score": 0.0,
+      "worst_variant": "",
+      "ranking": {},
+      "mean_diff": 0.0,
+      "winner_margin": 0.0,
+      "best_margin": 0.0,
+      "margins": {}
+    },
+    "accuracy": {
+      "metric_name": "accuracy",
+      "variant_metrics": {},
+      "metrics": null,
+      "best_variant": "",
+      "best_score": 0.0,
+      "worst_variant": "",
+      "ranking": {},
+      "mean_diff": 0.0,
+      "winner_margin": 0.0,
+      "best_margin": 0.0,
+      "margins": {}
+    },
+    "f1_score": {
+      "metric_name": "f1_score",
+      "variant_metrics": {},
+      "metrics": null,
+      "best_variant": "",
+      "best_score": 0.0,
+      "worst_variant": "",
+      "ranking": {},
+      "mean_diff": 0.0,
+      "winner_margin": 0.0,
+      "best_margin": 0.0,
+      "margins": {}
+    }
+  },
+  "details": {
+    "smoke_gemma4_e2b": {
+      "accuracy": 0.71,
+      "f1_score": 0.66,
+      "coverage": 0.85,
+      "completeness": 0.75,
+      "total_questions": 54.0,
+      "correct_answers": 38.0
+    }
+  },
+  "visualizations": {}
+}

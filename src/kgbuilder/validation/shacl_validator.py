@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import time
+from urllib.parse import quote
 
 import rdflib
 import structlog
@@ -64,20 +65,32 @@ class SHACLValidator:
             raise ValueError("shapes_graph cannot be None")
 
         self.shapes_graph = shapes_graph
-        self.ontology_uri = ontology_uri
+        self.ontology_uri = ontology_uri.rstrip("/")
         logger.info(
             "shacl_validator_initialized",
             shape_count=len(shapes_graph),
-            ontology_uri=ontology_uri,
+            ontology_uri=self.ontology_uri,
         )
 
-    def validate(self, store: GraphStore) -> ValidationResult:
+    def _make_uri(self, *parts: object) -> rdflib.URIRef:
+        """Build a valid URIRef under the configured ontology base URI."""
+        encoded = [quote(str(p), safe="") for p in parts if p is not None]
+        return rdflib.URIRef(f"{self.ontology_uri}/{'/'.join(encoded)}")
+
+    def validate(
+        self, store: GraphStore, run_id: str | None = None,
+    ) -> ValidationResult:
         """Validate a knowledge graph against SHACL shapes.
 
         Converts graph store to RDF format and validates against shapes.
 
         Args:
             store: GraphStore to validate (Neo4j, RDF, or in-memory)
+            run_id: Optional experiment run identifier. When provided and the
+                store exposes Cypher querying, only nodes and edges tagged with
+                this ``run_id`` (top-level property) are converted to RDF and
+                validated. This avoids contamination from prior runs that
+                share the same Neo4j database.
 
         Returns:
             ValidationResult with violations and metrics
@@ -86,8 +99,8 @@ class SHACLValidator:
         result = ValidationResult()
 
         try:
-            # Convert store to RDF graph
-            data_graph = self._convert_store_to_rdf(store)
+            # Convert store to RDF graph (optionally scoped by run_id)
+            data_graph = self._convert_store_to_rdf(store, run_id=run_id)
 
             # Prefer using store.get_statistics() (implemented by stores such as Neo4j). Fall
             # back to SPARQL/Cypher queries if unavailable.
@@ -304,7 +317,96 @@ class SHACLValidator:
     # Private Methods
     # =========================================================================
 
-    def _convert_store_to_rdf(self, store: GraphStore) -> rdflib.Graph:
+    def _scoped_nodes_edges(
+        self, store: GraphStore, run_id: str,
+    ) -> tuple[list[Any], list[Any]]:
+        """Materialize nodes and edges restricted to ``run_id`` via Cypher.
+
+        Returns lightweight stand-in objects with the same attributes the
+        downstream RDF conversion expects (``id``, ``label``, ``node_type``,
+        ``properties`` for nodes; ``source_id``, ``target_id``, ``edge_type``,
+        ``properties`` for edges).
+        """
+        # ---- nodes ----------------------------------------------------------
+        node_q = (
+            "MATCH (n {run_id: $run_id}) "
+            "RETURN n.id AS id, labels(n) AS labels, n.label AS label, "
+            "       n.node_type AS node_type, n.properties AS properties"
+        )
+        node_rows = store.query(node_q, params={"run_id": run_id})
+        node_records = getattr(node_rows, "records", node_rows) or []
+
+        nodes: list[Any] = []
+        for r in node_records:
+            get = r.get if isinstance(r, dict) else (lambda k, _r=r: getattr(_r, k, None))
+            labels = get("labels") or []
+            node_type = get("node_type") or (labels[0] if labels else "Thing")
+            raw_props = get("properties")
+            if isinstance(raw_props, str):
+                try:
+                    import json as _json
+                    raw_props = _json.loads(raw_props)
+                except Exception:
+                    raw_props = {}
+            properties = raw_props if isinstance(raw_props, dict) else {}
+            nodes.append(
+                type(
+                    "_ScopedNode",
+                    (),
+                    {
+                        "id": get("id"),
+                        "label": get("label") or "",
+                        "node_type": node_type,
+                        "properties": properties,
+                    },
+                )()
+            )
+
+        # ---- edges ----------------------------------------------------------
+        edge_q = (
+            "MATCH (a {run_id: $run_id})-[r {run_id: $run_id}]->(b {run_id: $run_id}) "
+            "RETURN r.id AS id, a.id AS source_id, b.id AS target_id, "
+            "       type(r) AS edge_type, r.properties AS properties"
+        )
+        edge_rows = store.query(edge_q, params={"run_id": run_id})
+        edge_records = getattr(edge_rows, "records", edge_rows) or []
+
+        edges: list[Any] = []
+        for r in edge_records:
+            get = r.get if isinstance(r, dict) else (lambda k, _r=r: getattr(_r, k, None))
+            raw_props = get("properties")
+            if isinstance(raw_props, str):
+                try:
+                    import json as _json
+                    raw_props = _json.loads(raw_props)
+                except Exception:
+                    raw_props = {}
+            properties = raw_props if isinstance(raw_props, dict) else {}
+            edges.append(
+                type(
+                    "_ScopedEdge",
+                    (),
+                    {
+                        "id": get("id") or "",
+                        "source_id": get("source_id"),
+                        "target_id": get("target_id"),
+                        "edge_type": get("edge_type") or "RELATED_TO",
+                        "properties": properties,
+                    },
+                )()
+            )
+
+        logger.info(
+            "scoped_store_materialized",
+            run_id=run_id,
+            nodes=len(nodes),
+            edges=len(edges),
+        )
+        return nodes, edges
+
+    def _convert_store_to_rdf(
+        self, store: GraphStore, run_id: str | None = None,
+    ) -> rdflib.Graph:
         """Convert graph store to RDF format for SHACL validation.
 
         Supports Neo4j, RDF, and in-memory graph stores. Creates RDF triples
@@ -312,6 +414,9 @@ class SHACLValidator:
 
         Args:
             store: GraphStore to convert (Neo4j, RDF, or in-memory)
+            run_id: Optional experiment run id. When set and the store supports
+                Cypher querying, conversion is restricted to nodes/edges with a
+                matching top-level ``run_id`` property.
 
         Returns:
             RDFLib graph with RDF representation
@@ -323,16 +428,37 @@ class SHACLValidator:
         ns = rdflib.Namespace(self.ontology_uri)
 
         try:
-            logger.debug("converting_store_to_rdf", store_type=type(store).__name__)
+            logger.debug(
+                "converting_store_to_rdf",
+                store_type=type(store).__name__,
+                run_id=run_id,
+            )
 
-            # Get all nodes from store (materialize iterator so we can log counts)
-            nodes = list(store.get_all_nodes())
+            # Resolve nodes/edges with optional run_id scoping. We try a
+            # Cypher-scoped path first (Neo4j); on any failure we fall back
+            # to the unscoped store iterators so non-Neo4j stores still work.
+            nodes: list[Any] = []
+            edges: list[Any] = []
+            scoped = False
+            if run_id and hasattr(store, "query"):
+                try:
+                    nodes, edges = self._scoped_nodes_edges(store, run_id)
+                    scoped = True
+                except Exception as exc:
+                    logger.warning(
+                        "run_scoped_conversion_failed_falling_back",
+                        run_id=run_id,
+                        error=str(exc),
+                    )
+            if not scoped:
+                # Get all nodes from store (materialize iterator so we can log counts)
+                nodes = list(store.get_all_nodes())
             for node in nodes:
                 # Create RDF URI for node
-                node_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}/{node.id}")
+                node_uri = self._make_uri(node.node_type, node.id)
 
                 # Add node type triple
-                node_type_uri = rdflib.URIRef(f"{self.ontology_uri}/{node.node_type}")
+                node_type_uri = self._make_uri(node.node_type)
                 graph.add((node_uri, rdflib.RDF.type, node_type_uri))
 
                 # Add node properties
@@ -348,12 +474,14 @@ class SHACLValidator:
                 # Add custom properties
                 for key, value in node.properties.items():
                     if value is not None:
-                        prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{key}")
+                        prop_uri = self._make_uri(key)
                         literal_value = rdflib.Literal(value)
                         graph.add((node_uri, prop_uri, literal_value))
 
-            # Get all edges from store (materialize iterator)
-            edges = list(store.get_all_edges())
+            # Get all edges from store (materialize iterator) unless we already
+            # collected scoped edges above.
+            if not scoped:
+                edges = list(store.get_all_edges())
             for edge in edges:
                 # Determine source/target node types: prefer explicit attrs on Edge,
                 # otherwise look up nodes from the store (Neo4jGraphStore yields
@@ -375,9 +503,9 @@ class SHACLValidator:
                     except Exception:
                         tgt_type = "Thing"
 
-                source_uri = rdflib.URIRef(f"{self.ontology_uri}/{src_type}/{edge.source_id}")
-                target_uri = rdflib.URIRef(f"{self.ontology_uri}/{tgt_type}/{edge.target_id}")
-                predicate_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}")
+                source_uri = self._make_uri(src_type, edge.source_id)
+                target_uri = self._make_uri(tgt_type, edge.target_id)
+                predicate_uri = self._make_uri(edge.edge_type)
 
                 # Add edge triple
                 graph.add((source_uri, predicate_uri, target_uri))
@@ -385,7 +513,7 @@ class SHACLValidator:
                 # Add edge properties
                 for key, value in edge.properties.items():
                     if value is not None:
-                        prop_uri = rdflib.URIRef(f"{self.ontology_uri}/{edge.edge_type}_{key}")
+                        prop_uri = self._make_uri(f"{edge.edge_type}_{key}")
                         graph.add((source_uri, prop_uri, rdflib.Literal(value)))
 
             logger.info(

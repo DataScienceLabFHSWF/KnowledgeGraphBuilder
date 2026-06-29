@@ -107,6 +107,14 @@ def test_get_class_relations_and_error():
     svc.store = DummyStore(results=fake)
     rels = svc.get_class_relations("http://ex/Class")
     assert set(rels) == {"Rel1", "r2"}
+
+    # label-with-space should resolve to URI before query construction
+    svc.store = DummyStore(results=fake)
+    svc._class_uri_map = {"Activity Inventory": "http://ex/ActivityInventory"}
+    rels_space = svc.get_class_relations("Activity Inventory")
+    assert set(rels_space) == {"Rel1", "r2"}
+    assert "<http://ex/ActivityInventory>" in svc.store.queries[-1]
+
     # error path should raise RuntimeError
     svc.store = DummyStore()
     svc.store.query_sparql = lambda q: (_ for _ in ()).throw(Exception("fail"))

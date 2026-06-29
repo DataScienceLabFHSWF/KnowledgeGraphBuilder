@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260407_121045_61646d4c_A_single_pass_3",
+  "variant_name": "A_single_pass",
+  "run_number": 3,
+  "status": "completed",
+  "start_time": "2026-04-07T12:11:06.875096",
+  "end_time": "2026-04-07T12:11:14.462780",
+  "duration_seconds": 7.59,
+  "kg_metrics": {
+    "nodes": 100,
+    "edges": 200,
+    "build_time": 0.0
+  },
+  "eval_metrics": {
+    "accuracy": 0.71,
+    "f1_score": 0.6599999999999999,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 38
+  },
+  "error": "name 'output_dir' is not defined",
+  "metadata": {
+    "run_id": "exp_20260407_121045_61646d4c_A_single_pass_3",
+    "variant_name": "A_single_pass",
+    "started_at": "2026-04-07T12:11:06.875096",
+    "params": {
+      "model": "gemma4:e2b",
+      "max_iterations": 1,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "error_at": "2026-04-07T12:11:14.455373",
+    "error_type": "NameError"
+  }
+}

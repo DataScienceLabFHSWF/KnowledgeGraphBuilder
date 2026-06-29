@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260407_111245_fd6da746_smoke_gemma4_e2b_1",
+  "variant_name": "smoke_gemma4_e2b",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-04-07T11:12:46.354321",
+  "end_time": "2026-04-07T11:12:48.933067",
+  "duration_seconds": 2.58,
+  "kg_metrics": {
+    "nodes": 100,
+    "edges": 200,
+    "build_time": 0.0
+  },
+  "eval_metrics": {
+    "accuracy": 0.71,
+    "f1_score": 0.6599999999999999,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 38
+  },
+  "error": "'ConfigRunner' object has no attribute 'config'",
+  "metadata": {
+    "run_id": "exp_20260407_111245_fd6da746_smoke_gemma4_e2b_1",
+    "variant_name": "smoke_gemma4_e2b",
+    "started_at": "2026-04-07T11:12:46.354321",
+    "params": {
+      "model": "gemma4:e2b",
+      "max_iterations": 1,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 1,
+      "law_graph_enabled": false
+    },
+    "error_at": "2026-04-07T11:12:48.931624",
+    "error_type": "AttributeError"
+  }
+}

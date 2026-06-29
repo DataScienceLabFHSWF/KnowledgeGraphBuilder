@@ -160,17 +160,17 @@ def analyze_results(results: Any) -> dict[str, Any]:
     """
     logger.info("analyzing_results", runs=len(results.runs))
 
-    analyzer = ExperimentAnalyzer(results.runs)
+    analyzer = ExperimentAnalyzer(results)
 
-    # Extract metrics to analyze
+    # Extract numeric eval metrics directly from run.eval_metrics so reports
+    # still populate when legacy shortcut fields are missing.
+    preferred_metrics = ["accuracy", "f1_score", "coverage", "entities_f1", "relations_f1"]
     metrics = set()
     for run in results.runs:
-        if run.accuracy is not None:
-            metrics.add("accuracy")
-        if run.f1_score is not None:
-            metrics.add("f1_score")
-        if run.coverage is not None:
-            metrics.add("coverage")
+        eval_metrics = run.eval_metrics or {}
+        for metric in preferred_metrics:
+            if isinstance(eval_metrics.get(metric), (int, float)):
+                metrics.add(metric)
 
     # Perform analysis
     convergence = {}

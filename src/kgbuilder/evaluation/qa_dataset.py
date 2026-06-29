@@ -62,14 +62,77 @@ class QAQuestion:
     @staticmethod
     def from_dict(data: dict[str, Any]) -> QAQuestion:
         """Create from dictionary (JSON deserialization)."""
+        question_id = data.get("id") or data.get("question_id") or ""
+        question_text = data.get("question") or data.get("text") or ""
+
+        expected_answers = data.get("expected_answers")
+        if expected_answers is None:
+            expected_answer = data.get("expected_answer")
+            if isinstance(expected_answer, str):
+                expected_answers = [expected_answer.strip()] if expected_answer.strip() else []
+            elif isinstance(expected_answer, list):
+                expected_answers = [str(a).strip() for a in expected_answer if str(a).strip()]
+            else:
+                expected_answers = []
+
+        raw_query_type = (
+            data.get("query_type")
+            or data.get("question_type")
+            or data.get("type")
+            or "entity"
+        )
+
+        query_type_map = {
+            "entity_lookup": "entity",
+            "factoid": "entity",
+            "factual": "entity",
+            "relationship": "relation",
+            "relation": "relation",
+            "count": "count",
+            "boolean": "boolean",
+            "yes_no": "boolean",
+            "complex": "complex",
+            "multi_hop": "complex",
+            "open": "complex",
+        }
+        query_type = query_type_map.get(str(raw_query_type).strip().lower(), "entity")
+
+        difficulty_value = data.get("difficulty", 1)
+        try:
+            difficulty = int(difficulty_value)
+        except (TypeError, ValueError):
+            difficulty = 1
+
+        tags = data.get("tags")
+        if not isinstance(tags, list):
+            tags = []
+        for key in ("category", "question_type", "retrieval_complexity"):
+            value = data.get(key)
+            if value and str(value) not in tags:
+                tags.append(str(value))
+
+        metadata = dict(data.get("metadata", {})) if isinstance(data.get("metadata"), dict) else {}
+        passthrough_keys = (
+            "expected_entities",
+            "expected_relations",
+            "source",
+            "notes",
+            "retrieval_complexity",
+            "category",
+            "question_type",
+        )
+        for key in passthrough_keys:
+            if key in data and key not in metadata:
+                metadata[key] = data[key]
+
         return QAQuestion(
-            id=data["id"],
-            question=data["question"],
-            expected_answers=data.get("expected_answers", []),
-            query_type=data.get("query_type", "entity"),
-            difficulty=data.get("difficulty", 1),
-            tags=data.get("tags", []),
-            metadata=data.get("metadata", {}),
+            id=question_id,
+            question=question_text,
+            expected_answers=expected_answers,
+            query_type=query_type,
+            difficulty=difficulty,
+            tags=tags,
+            metadata=metadata,
         )
 
 
@@ -138,13 +201,28 @@ class QADataset:
         with open(path) as f:
             data = json.load(f)
 
-        questions = [QAQuestion.from_dict(q) for q in data.get("questions", [])]
+        # Support both object-wrapped schema and plain list-of-questions schema.
+        if isinstance(data, list):
+            raw_questions = data
+            dataset_name = path.stem
+            dataset_description = f"Dataset from {path.name}"
+            dataset_version = "1.0"
+            dataset_source = "json_list"
+        else:
+            raw_questions = data.get("questions", [])
+            dataset_name = data.get("name", "unknown")
+            dataset_description = data.get("description", "")
+            dataset_version = data.get("version", "1.0")
+            dataset_source = data.get("source", "unknown")
+
+        questions = [QAQuestion.from_dict(q) for q in raw_questions]
+        questions = [q for q in questions if q.id and q.question]
 
         dataset = QADataset(
-            name=data.get("name", "unknown"),
-            description=data.get("description", ""),
-            version=data.get("version", "1.0"),
-            source=data.get("source", "unknown"),
+            name=dataset_name,
+            description=dataset_description,
+            version=dataset_version,
+            source=dataset_source,
             questions=questions,
         )
 

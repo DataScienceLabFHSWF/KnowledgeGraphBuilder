@@ -28,7 +28,7 @@ def main() -> None:
     store = Neo4jGraphStore(uri, (user, pwd))
 
     shapes_path = Path(os.getenv("STATIC_SHAPES_PATH", "./data/ontology/shapes.ttl"))
-    owl_path = Path(os.getenv("ONTOLOGY_OWL_PATH", "./data/ontology/law/law-ontology-v1.0.owl"))
+    owl_path = Path(os.getenv("ONTOLOGY_OWL_PATH", "./data/ontology/domain/decommissioning.owl"))
 
     scorer = KGQualityScorer(
         ontology_owl_path=owl_path,

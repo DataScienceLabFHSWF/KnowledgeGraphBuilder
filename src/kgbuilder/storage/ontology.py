@@ -7,6 +7,8 @@ to guide KG construction and question generation.
 
 from __future__ import annotations
 
+import re
+
 import structlog
 
 from kgbuilder.storage.rdf import FusekiStore
@@ -41,12 +43,69 @@ class FusekiOntologyService:
             password=password
         )
         self._classes_cache = None
+        self._class_uri_map: dict[str, str] = {}
         logger.info(
             "fuseki_ontology_initialized",
             url=fuseki_url,
             dataset=dataset_name,
             authenticated=bool(username)
         )
+
+    def _escape_sparql_string(self, value: str) -> str:
+        """Escape a Python string for safe use as SPARQL string literal."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    def _resolve_class_uri(self, class_ref: str) -> str | None:
+        """Resolve a class label/local-name/URI to a full class URI."""
+        if not class_ref:
+            return None
+
+        # Ensure cache is initialized
+        if self._classes_cache is None:
+            try:
+                self.get_all_classes()
+            except Exception:
+                return None
+
+        if class_ref in self._class_uri_map:
+            return self._class_uri_map[class_ref]
+
+        lowered_ref = class_ref.lower()
+        for key, uri in self._class_uri_map.items():
+            if key.lower() == lowered_ref:
+                return uri
+
+        if class_ref.startswith(("http://", "https://")) and " " not in class_ref:
+            return class_ref
+
+        # Fallback lookup by exact label/local-name in Fuseki
+        escaped = self._escape_sparql_string(class_ref)
+        sparql = f"""
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        SELECT DISTINCT ?class
+        WHERE {{
+            ?class a owl:Class .
+            OPTIONAL {{ ?class rdfs:label ?label . }}
+            FILTER(
+                (BOUND(?label) && LCASE(STR(?label)) = LCASE("{escaped}")) ||
+                REGEX(STR(?class), "[#/]" || "{re.escape(class_ref)}" || "$", "i")
+            )
+        }}
+        LIMIT 1
+        """
+        try:
+            result = self.store.query_sparql(sparql)
+            bindings = result.get("results", {}).get("bindings", [])
+            if bindings:
+                uri = bindings[0].get("class", {}).get("value")
+                if uri:
+                    self._class_uri_map[class_ref] = uri
+                    return uri
+        except Exception:
+            return None
+
+        return None
 
     def get_all_classes(self) -> list[str]:
         """Get all classes from Fuseki ontology.
@@ -91,6 +150,11 @@ class FusekiOntologyService:
                         label = class_uri.split("#")[-1].split("/")[-1]
 
                     classes.append(label)
+                    self._class_uri_map[label] = class_uri
+                    self._class_uri_map[class_uri] = class_uri
+                    local_name = class_uri.split("#")[-1].split("/")[-1]
+                    if local_name:
+                        self._class_uri_map.setdefault(local_name, class_uri)
 
             self._classes_cache = classes
             logger.info("ontology_classes_loaded", count=len(classes))
@@ -200,6 +264,11 @@ class FusekiOntologyService:
             RuntimeError: If SPARQL query fails
         """
         try:
+            resolved_uri = self._resolve_class_uri(class_uri)
+            if not resolved_uri:
+                logger.warning("class_uri_unresolved", class_ref=class_uri)
+                return []
+
             sparql = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -208,9 +277,9 @@ class FusekiOntologyService:
                 ?prop a owl:ObjectProperty .
                 OPTIONAL {{ ?prop rdfs:label ?label . }}
                 {{
-                    ?prop rdfs:domain <{class_uri}> .
+                    ?prop rdfs:domain <{resolved_uri}> .
                 }} UNION {{
-                    ?prop rdfs:range <{class_uri}> .
+                    ?prop rdfs:range <{resolved_uri}> .
                 }}
             }}
             LIMIT 100
@@ -229,7 +298,7 @@ class FusekiOntologyService:
 
             logger.info(
                 "class_relations_loaded",
-                class_uri=class_uri,
+                class_uri=resolved_uri,
                 count=len(relations)
             )
             return relations

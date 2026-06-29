@@ -205,14 +205,17 @@ class ConfigRunner:
     directory defaults to a temporary directory.
     """
 
-    def __init__(self, variant_or_output: ConfigVariant | Path | str | None = None, output_dir: Path | None = None) -> None:
+    def __init__(self, variant_or_output: ConfigVariant | Path | str | None = None, output_dir: Path | None = None, config: ExperimentConfig | None = None) -> None:
         """Initialize runner.
 
         Args:
             variant_or_output: ConfigVariant (test compat) or output dir path.
             output_dir: Explicit output dir (used when first arg is a variant).
+            config: ExperimentConfig for seed and metadata access.
         """
         import tempfile
+
+        self.config = config
 
         if isinstance(variant_or_output, ConfigVariant):
             self.variant: ConfigVariant | None = variant_or_output
@@ -302,8 +305,12 @@ class ConfigRunner:
             # Run actual KG building pipeline
             kg_metrics = self._build_kg(variant, run_id, wandb_run=wandb_run)
 
-            # Try gold-standard evaluation first (if gold annotations + checkpoint exist)
-            eval_metrics = self._evaluate_with_gold(run_id) or self._simulate_evaluation(variant)
+            # Prefer QA benchmark evaluation when configured, then gold annotations.
+            eval_metrics = (
+                self._evaluate_with_qa_dataset(run_id)
+                or self._evaluate_with_gold(run_id)
+                or self._simulate_evaluation(variant)
+            )
 
             # SHACL quality scoring (best-effort)
             shacl_metrics = self._run_shacl_scoring(run_id, wandb_run=wandb_run)
@@ -312,6 +319,15 @@ class ConfigRunner:
 
             run.kg_metrics = kg_metrics
             run.eval_metrics = eval_metrics
+            # Keep legacy shortcuts in sync for analyzer/report compatibility.
+            run.kg_nodes = int(kg_metrics.get("nodes", 0))
+            run.kg_edges = int(kg_metrics.get("edges", 0))
+            run.kg_build_time = float(
+                kg_metrics.get("build_time_seconds", kg_metrics.get("build_time", 0.0))
+            )
+            run.accuracy = float(eval_metrics.get("accuracy", 0.0))
+            run.f1_score = float(eval_metrics.get("f1_score", 0.0))
+            run.coverage = float(eval_metrics.get("coverage", 0.0))
             run.status = "completed"
 
             # Add completion metadata
@@ -410,7 +426,7 @@ class ConfigRunner:
         from kgbuilder.retrieval import FusionRAGRetriever
         from kgbuilder.storage.neo4j_store import Neo4jGraphStore
         from kgbuilder.storage.ontology import FusekiOntologyService
-        from kgbuilder.storage.protocol import Node
+        from kgbuilder.storage.protocol import Edge, Node
         from kgbuilder.storage.vector import QdrantStore
 
         build_start = time.time()
@@ -449,7 +465,7 @@ class ConfigRunner:
             llm = OllamaProvider(
                 model=variant.params.model,
                 base_url=ollama_url,
-                seed=self.config.seed,
+                seed=self.config.seed if self.config else 42,
             )
 
             # Retriever
@@ -524,15 +540,14 @@ class ConfigRunner:
             # Get ontology relations for extraction (NEW - Phase 5)
             ontology_relations = []
             try:
-                # Query ontology for all object properties (relations)
-                relation_uris = ontology_service.get_class_relations(None)  # Get all relations
+                relation_labels = ontology_service.get_all_relations()
                 ontology_relations = [
                     OntologyRelationDef(
                         uri=f"http://ontology#/{rel}",
                         label=rel,
                         description=None,
                     )
-                    for rel in relation_uris
+                    for rel in relation_labels
                 ]
             except Exception as e:
                 logger.warning("ontology_relations_load_failed", error=str(e))
@@ -596,7 +611,7 @@ class ConfigRunner:
 
             # Persist per-iteration metrics for convergence analysis
             if discover_result.iterations:
-                iter_metrics_path = output_dir / run_id / "iteration_metrics.json"
+                iter_metrics_path = self.output_dir / run_id / "iteration_metrics.json"
                 iter_metrics_path.parent.mkdir(parents=True, exist_ok=True)
                 iter_data = [
                     {
@@ -652,7 +667,7 @@ class ConfigRunner:
             # This enables semantic enrichment and skips re-extraction if needed
             logger.info("checkpointing_extraction_results", run_id=run_id)
             checkpoint_manager = CheckpointManager(
-                checkpoint_dir=output_dir / "checkpoints"
+                checkpoint_dir=self.output_dir / "checkpoints"
             )
             checkpoint_path = checkpoint_manager.save_extraction(
                 run_id=run_id,
@@ -686,6 +701,20 @@ class ConfigRunner:
                 for e in entities
             ]
 
+            edges = [
+                Edge(
+                    id=relation.id,
+                    source_id=relation.source_entity_id,
+                    target_id=relation.target_entity_id,
+                    edge_type=relation.predicate,
+                    properties={
+                        "confidence": relation.confidence,
+                        "run_id": run_id,
+                    },
+                )
+                for relation in relations
+            ]
+
             # Build graph with BOTH entities and relations (NEW - Phase 5)
             builder = KGBuilder(
                 primary_store=neo4j_store,
@@ -700,7 +729,7 @@ class ConfigRunner:
                 logger.info("kg_build_with_relations", relation_count=len(relations), run_id=run_id)
 
             # Build with relations (NOW includes Phase 5 output!)
-            build_result = builder.build(entities=nodes, relations=relations if relations else None)
+            build_result = builder.build(entities=nodes, relations=edges if edges else None)
 
             build_time = time.time() - build_start
 
@@ -721,6 +750,14 @@ class ConfigRunner:
                 build_time=build_time
             )
 
+            # Lightweight post-build graph richness metrics (best-effort)
+            richness = self._graph_richness_metrics(
+                neo4j_store,
+                run_id,
+                ontology_class_count=len(ontology_classes) or None,
+                ontology_relation_count=len(ontology_relations) or None,
+            )
+
             return {
                 "nodes": build_result.nodes_created,
                 "edges": build_result.edges_created,
@@ -731,6 +768,7 @@ class ConfigRunner:
                 "total_discovery_iterations": discover_result.total_iterations,
                 "total_entities_discovered": len(entities),
                 "total_relations_extracted": len(relations),
+                "graph_richness": richness,
                 "discovery_iterations": [
                     {
                         "iteration": it.iteration,
@@ -747,6 +785,153 @@ class ConfigRunner:
         except Exception as e:
             logger.error("kg_build_failed", run_id=run_id, error=str(e))
             raise
+
+    def _graph_richness_metrics(
+        self,
+        neo4j_store: Any,
+        run_id: str,
+        ontology_class_count: int | None = None,
+        ontology_relation_count: int | None = None,
+    ) -> dict[str, Any]:
+        """Query Neo4j for structural richness metrics scoped to this run.
+
+        Captures the metrics that prove the discovery loop makes the graph
+        richer with each additional pass: entity type distribution, relation
+        type diversity, orphan rate, and average degree.
+
+        All queries are scoped by the ``run_id`` property written onto every
+        node during assembly, so results are per-variant-run.
+
+        Args:
+            neo4j_store: Active Neo4j store.
+            run_id: Experiment run identifier.
+            ontology_class_count: Total OWL classes (denominator for class
+                coverage %). Pass ``None`` to skip percentage computation.
+            ontology_relation_count: Total OWL object properties (denominator
+                for relation coverage %). Pass ``None`` to skip percentage.
+
+        Returns:
+            Dict with richness metrics, or empty dict on failure.
+        """
+        try:
+            # ── Entity type distribution ────────────────────────────────────
+            type_dist_result = neo4j_store.query(
+                """
+                MATCH (n {run_id: $run_id})
+                WHERE n.node_type IS NOT NULL
+                RETURN n.node_type AS entity_type, count(n) AS cnt
+                ORDER BY cnt DESC
+                """,
+                {"run_id": run_id},
+            )
+            entity_type_distribution = {
+                row["entity_type"]: row["cnt"]
+                for row in type_dist_result.records
+                if row.get("entity_type")
+            }
+            entity_classes_populated = len(entity_type_distribution)
+
+            # ── Unique relation (predicate) types ───────────────────────────
+            pred_result = neo4j_store.query(
+                """
+                MATCH (a {run_id: $run_id})-[r]->(b {run_id: $run_id})
+                RETURN type(r) AS pred, count(r) AS cnt
+                ORDER BY cnt DESC
+                """,
+                {"run_id": run_id},
+            )
+            relation_type_distribution = {
+                row["pred"]: row["cnt"]
+                for row in pred_result.records
+                if row.get("pred")
+            }
+            unique_relation_types = len(relation_type_distribution)
+
+            # ── Degree stats + orphan rate ──────────────────────────────────
+            degree_result = neo4j_store.query(
+                """
+                MATCH (n {run_id: $run_id})
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS deg
+                RETURN
+                    avg(deg)          AS avg_degree,
+                    max(deg)          AS max_degree,
+                    sum(CASE WHEN deg = 0 THEN 1 ELSE 0 END) AS orphans,
+                    count(n)          AS total_nodes
+                """,
+                {"run_id": run_id},
+            )
+            deg_row = degree_result.records[0] if degree_result.records else {}
+            total_nodes = int(deg_row.get("total_nodes") or 0)
+            orphans = int(deg_row.get("orphans") or 0)
+            avg_degree = round(float(deg_row.get("avg_degree") or 0.0), 4)
+            max_degree = int(deg_row.get("max_degree") or 0)
+            orphan_rate = round(orphans / total_nodes, 4) if total_nodes > 0 else 0.0
+
+            # ── Derived quality metrics ─────────────────────────────────────────
+            # Shannon entropy over entity type distribution (higher = more diverse)
+            import math
+            total_typed = sum(entity_type_distribution.values()) or 1
+            entity_type_entropy = round(
+                -sum(
+                    (c / total_typed) * math.log2(c / total_typed)
+                    for c in entity_type_distribution.values()
+                    if c > 0
+                ),
+                4,
+            )
+
+            # Ontology coverage ratios use live counts loaded from the active
+            # ontology service (Fuseki). Falls back to ``None`` when the caller
+            # cannot supply a denominator, so we don't fabricate percentages.
+            ontology_class_coverage_pct: float | None = None
+            if ontology_class_count and ontology_class_count > 0:
+                ontology_class_coverage_pct = round(
+                    entity_classes_populated / ontology_class_count * 100, 1
+                )
+            ontology_relation_coverage_pct: float | None = None
+            if ontology_relation_count and ontology_relation_count > 0:
+                ontology_relation_coverage_pct = round(
+                    unique_relation_types / ontology_relation_count * 100, 1
+                )
+
+            # Relation density: edges per node (higher = more connected graph)
+            relation_density = round(
+                sum(relation_type_distribution.values()) / total_nodes, 4
+            ) if total_nodes > 0 else 0.0
+
+            metrics = {
+                "entity_classes_populated": entity_classes_populated,
+                "ontology_class_coverage_pct": ontology_class_coverage_pct,
+                "entity_type_distribution": entity_type_distribution,
+                "entity_type_entropy": entity_type_entropy,
+                "unique_relation_types": unique_relation_types,
+                "ontology_relation_coverage_pct": ontology_relation_coverage_pct,
+                "relation_type_distribution": relation_type_distribution,
+                "relation_density": relation_density,
+                "avg_degree": avg_degree,
+                "max_degree": max_degree,
+                "orphan_count": orphans,
+                "orphan_rate": orphan_rate,
+            }
+
+            logger.info(
+                "graph_richness_metrics_collected",
+                run_id=run_id,
+                entity_classes=entity_classes_populated,
+                ontology_class_coverage_pct=ontology_class_coverage_pct,
+                unique_relation_types=unique_relation_types,
+                ontology_relation_coverage_pct=ontology_relation_coverage_pct,
+                entity_type_entropy=entity_type_entropy,
+                relation_density=relation_density,
+                avg_degree=avg_degree,
+                orphan_rate=orphan_rate,
+            )
+            return metrics
+
+        except Exception as exc:
+            logger.warning("graph_richness_metrics_failed", run_id=run_id, error=str(exc))
+            return {}
 
     def _run_shacl_scoring(
         self, run_id: str, wandb_run: Any = None,
@@ -766,12 +951,12 @@ class ConfigRunner:
             neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")
             owl_path = Path(os.getenv(
                 "ONTOLOGY_OWL_PATH",
-                "./data/ontology/law/law-ontology-v1.0.owl",
+                "./data/ontology/domain/decommissioning.owl",
             ))
 
             store = Neo4jGraphStore(neo4j_uri, (neo4j_user, neo4j_password))
             scorer = KGQualityScorer(ontology_owl_path=owl_path, sample_limit=500)
-            report = scorer.score_neo4j_store(store)
+            report = scorer.score_neo4j_store(store, run_id=run_id)
 
             # Copy SHACL report JSON into the run directory
             run_dir = self.output_dir / run_id
@@ -970,9 +1155,117 @@ class ConfigRunner:
                 "relations": rel_metrics,
             },
             "f1_score": top_f1,
+            "accuracy": ent_metrics["f1"],
+            "coverage": ent_metrics["recall"],
+            "completeness": ent_metrics["recall"],
             "entities_f1": ent_metrics["f1"],
             "relations_f1": rel_metrics["f1"],
         }
+
+    def _evaluate_with_qa_dataset(self, run_id: str) -> dict[str, Any] | None:
+        """Evaluate one run against configured QA dataset.
+
+        Returns None if no QA dataset is configured, unavailable, or unusable.
+        """
+        import os
+
+        from kgbuilder.evaluation.metrics import MetricsComputer
+        from kgbuilder.evaluation.qa_dataset import QADataset
+        from kgbuilder.evaluation.query_executor import QueryExecutor
+        from kgbuilder.storage.neo4j_store import Neo4jGraphStore
+
+        if self.config is None:
+            return None
+
+        dataset_path = getattr(self.config.evaluation, "qa_dataset_path", "")
+        if not dataset_path:
+            return None
+
+        path = Path(dataset_path)
+        if not path.exists():
+            logger.warning("qa_dataset_missing", path=str(path), run_id=run_id)
+            return None
+
+        dataset = QADataset.load(path)
+        if not dataset.questions:
+            return None
+
+        scored_questions = [q for q in dataset.questions if q.expected_answers]
+        exploratory_questions = [q for q in dataset.questions if not q.expected_answers]
+
+        if not scored_questions:
+            logger.warning(
+                "qa_dataset_has_no_scored_questions",
+                path=str(path),
+                run_id=run_id,
+                total_questions=len(dataset.questions),
+            )
+            return None
+
+        neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+        neo4j_password = os.getenv("NEO4J_PASSWORD", "changeme")
+        similarity_threshold = float(
+            getattr(self.config.evaluation, "similarity_threshold", 0.8)
+        )
+
+        store = Neo4jGraphStore(neo4j_uri, (neo4j_user, neo4j_password))
+        try:
+            executor = QueryExecutor(store)
+            all_results = []
+            for question in dataset.questions:
+                result = executor.execute(
+                    question_id=question.id,
+                    question_text=question.question,
+                    query_type=question.query_type,
+                )
+                all_results.append(result.to_dict())
+
+            scored_ids = {q.id for q in scored_questions}
+            scored_results = [r for r in all_results if r.get("question_id") in scored_ids]
+            qa_pairs = [(q.to_dict(), q.expected_answers) for q in scored_questions]
+
+            metrics = MetricsComputer().compute(qa_pairs=qa_pairs, results=scored_results)
+            metrics_dict = metrics.to_dict()
+
+            answered_exploratory = sum(
+                1
+                for result in all_results
+                if result.get("question_id") not in scored_ids and result.get("retrieved_answers")
+            )
+            exploratory_count = len(exploratory_questions)
+            exploratory_answer_rate = (
+                answered_exploratory / exploratory_count if exploratory_count > 0 else 0.0
+            )
+
+            metrics_dict.update(
+                {
+                    "qa_dataset": {
+                        "name": dataset.name,
+                        "source": dataset.source,
+                        "path": str(path),
+                        "total_questions": len(dataset.questions),
+                        "scored_questions": len(scored_questions),
+                        "exploratory_questions": exploratory_count,
+                        "exploratory_answered": answered_exploratory,
+                        "exploratory_answer_rate": round(exploratory_answer_rate, 4),
+                    },
+                    "qa_similarity_threshold": similarity_threshold,
+                }
+            )
+
+            logger.info(
+                "qa_evaluation_completed",
+                run_id=run_id,
+                dataset=str(path),
+                scored_questions=len(scored_questions),
+                exploratory_questions=exploratory_count,
+                accuracy=metrics_dict.get("accuracy", 0.0),
+                f1_score=metrics_dict.get("f1_score", 0.0),
+            )
+            return metrics_dict
+        finally:
+            store.close()
 
 
 class ExperimentManager:
@@ -1005,7 +1298,7 @@ class ExperimentManager:
         """
         self.config = config
         self.experiment_id = generate_run_id()  # Master experiment ID
-        self.runner = ConfigRunner(config.get_output_dir())
+        self.runner = ConfigRunner(config.get_output_dir(), config=config)
         logger.info(
             "experiment_manager_initialized",
             name=config.name,
@@ -1157,7 +1450,7 @@ class ExperimentManager:
         # Group by variant
         by_variant = {}
         for run in completed:
-            variant_name = run.variant.name
+            variant_name = run.variant.name if run.variant else (run.variant_name or "unknown")
             if variant_name not in by_variant:
                 by_variant[variant_name] = []
             by_variant[variant_name].append(run)

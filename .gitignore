@@ -258,6 +258,12 @@ temp/
 model_cache/
 embeddings_cache/
 
+# Generated benchmark/report artifacts
+graphify-out/
+docs/graphify-out/
+experiment_results/**/reports/
+experiment_results/**/checkpoints/
+
 # Experiment results
 results/
 output/
@@ -286,3 +292,4 @@ output.tptp
 
 # Experiment output (generated at runtime)
 experiment_output/
+src/*/graphify-out/cache/

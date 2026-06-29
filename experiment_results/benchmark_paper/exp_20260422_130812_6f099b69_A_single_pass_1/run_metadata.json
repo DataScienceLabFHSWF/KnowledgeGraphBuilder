@@ -1,0 +1,26 @@
+{
+  "run_id": "exp_20260422_130812_6f099b69_A_single_pass_1",
+  "variant_name": "A_single_pass",
+  "run_number": 1,
+  "status": "running",
+  "start_time": "2026-04-22T13:08:13.125644",
+  "end_time": "2026-04-22T13:11:30.287449",
+  "duration_seconds": 197.16,
+  "kg_metrics": {},
+  "eval_metrics": {},
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_130812_6f099b69_A_single_pass_1",
+    "variant_name": "A_single_pass",
+    "started_at": "2026-04-22T13:08:13.125644",
+    "params": {
+      "model": "gemma4:e2b",
+      "max_iterations": 1,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    }
+  }
+}

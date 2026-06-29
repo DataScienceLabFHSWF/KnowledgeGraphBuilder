@@ -36,6 +36,7 @@ class ConvergenceAnalysis:
     improvement_rate: list[float] = field(default_factory=list)
     avg_improvement_rate: float = 0.0
     has_plateau: bool = False
+    plateau_start: int | None = None
 
     def __post_init__(self) -> None:
         """Compute derived statistics when `values` are provided.
@@ -62,6 +63,7 @@ class ConvergenceAnalysis:
                     self.values[-2], 1e-9
                 )
                 self.has_plateau = relative_diff < 0.01
+                self.plateau_start = n if self.has_plateau else None
 
     @property
     def final_value(self) -> float:
@@ -87,6 +89,7 @@ class ConvergenceAnalysis:
             "improvement_rate": [round(v, 4) for v in self.improvement_rate],
             "avg_improvement_rate": round(self.avg_improvement_rate, 4),
             "has_plateau": self.has_plateau,
+            "plateau_start": self.plateau_start,
         }
 
 
@@ -268,6 +271,7 @@ class ExperimentAnalyzer:
         if len(values) >= 2:
             relative_diff = abs(values[-1] - values[-2]) / max(values[-2], 1e-9)
             analysis.has_plateau = relative_diff < 0.01
+            analysis.plateau_start = len(values) if analysis.has_plateau else None
 
         return analysis
 
@@ -305,7 +309,7 @@ class ExperimentAnalyzer:
             key=lambda x: x[1],
             reverse=True,
         )
-        comparison.ranking = sorted_variants
+        comparison.ranking = {name: score for name, score in sorted_variants}
 
         if sorted_variants:
             comparison.best_variant = sorted_variants[0][0]

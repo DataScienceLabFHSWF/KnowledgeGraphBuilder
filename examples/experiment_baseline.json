@@ -1,6 +1,8 @@
 {
   "name": "KG Quality Baseline",
+  "name_de": "KG-Qualitaet-Basislinie",
   "description": "Compare different extraction configurations for KG quality",
+  "description_de": "Vergleicht unterschiedliche Extraktionskonfigurationen fuer die KG-Qualitaet",
   "output_dir": "./experiment_results/baseline",
   "num_runs": 1,
   "parallel_jobs": 2,
@@ -9,6 +11,7 @@
     {
       "name": "baseline",
       "description": "Default parameters",
+      "description_de": "Standardparameter",
       "params": {
         "model": "qwen3:8b",
         "max_iterations": 2,
@@ -23,6 +26,7 @@
     {
       "name": "strict",
       "description": "High confidence and similarity thresholds",
+      "description_de": "Hohe Schwellen fuer Konfidenz und Aehnlichkeit",
       "params": {
         "model": "qwen3:8b",
         "max_iterations": 2,
@@ -37,6 +41,7 @@
     {
       "name": "permissive",
       "description": "Low thresholds, more entities extracted",
+      "description_de": "Niedrige Schwellen, mehr extrahierte Entitaeten",
       "params": {
         "model": "qwen3:8b",
         "max_iterations": 2,

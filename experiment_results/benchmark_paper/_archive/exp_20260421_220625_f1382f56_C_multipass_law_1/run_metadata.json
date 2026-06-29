@@ -1,0 +1,39 @@
+{
+  "run_id": "exp_20260421_220625_f1382f56_C_multipass_law_1",
+  "variant_name": "C_multipass_law",
+  "run_number": 1,
+  "status": "completed",
+  "start_time": "2026-04-21T22:14:20.123055",
+  "end_time": "2026-04-21T22:14:46.974148",
+  "duration_seconds": 26.85,
+  "kg_metrics": {
+    "nodes": 100,
+    "edges": 200,
+    "build_time": 0.0
+  },
+  "eval_metrics": {
+    "accuracy": 0.71,
+    "f1_score": 0.6599999999999999,
+    "coverage": 0.85,
+    "completeness": 0.75,
+    "total_questions": 54,
+    "correct_answers": 38
+  },
+  "error": "name 'output_dir' is not defined",
+  "metadata": {
+    "run_id": "exp_20260421_220625_f1382f56_C_multipass_law_1",
+    "variant_name": "C_multipass_law",
+    "started_at": "2026-04-21T22:14:20.123055",
+    "params": {
+      "model": "gemma4:e2b",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": true
+    },
+    "error_at": "2026-04-21T22:14:46.965617",
+    "error_type": "NameError"
+  }
+}

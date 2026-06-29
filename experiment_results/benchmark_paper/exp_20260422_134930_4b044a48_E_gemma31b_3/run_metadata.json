@@ -1,0 +1,946 @@
+{
+  "run_id": "exp_20260422_134930_4b044a48_E_gemma31b_3",
+  "variant_name": "E_gemma31b",
+  "run_number": 3,
+  "status": "completed",
+  "start_time": "2026-04-22T22:21:57.871377",
+  "end_time": "2026-04-22T23:51:40.210954",
+  "duration_seconds": 5382.34,
+  "kg_metrics": {
+    "nodes": 421,
+    "edges": 0,
+    "build_time_seconds": 5189.93,
+    "model": "gemma4:31b",
+    "max_iterations": 5,
+    "final_coverage": 0.23,
+    "total_discovery_iterations": 5,
+    "total_entities_discovered": 421,
+    "total_relations_extracted": 0,
+    "graph_richness": {
+      "entity_classes_populated": 0,
+      "ontology_class_coverage_pct": 0.0,
+      "entity_type_distribution": {},
+      "entity_type_entropy": 0,
+      "unique_relation_types": 0,
+      "ontology_relation_coverage_pct": 0.0,
+      "relation_type_distribution": {},
+      "relation_density": 0.0,
+      "avg_degree": 0.0,
+      "max_degree": 0,
+      "orphan_count": 0,
+      "orphan_rate": 0.0
+    },
+    "discovery_iterations": [
+      {
+        "iteration": 1,
+        "entities_new": 257,
+        "entities_cumulative": 257,
+        "coverage": 0.2,
+        "new_entity_types_count": 20,
+        "time_sec": 2734.39
+      },
+      {
+        "iteration": 2,
+        "entities_new": 102,
+        "entities_cumulative": 359,
+        "coverage": 0.23,
+        "new_entity_types_count": 23,
+        "time_sec": 612.8
+      },
+      {
+        "iteration": 3,
+        "entities_new": 45,
+        "entities_cumulative": 404,
+        "coverage": 0.23,
+        "new_entity_types_count": 23,
+        "time_sec": 277.35
+      },
+      {
+        "iteration": 4,
+        "entities_new": 17,
+        "entities_cumulative": 421,
+        "coverage": 0.23,
+        "new_entity_types_count": 23,
+        "time_sec": 1283.68
+      },
+      {
+        "iteration": 5,
+        "entities_new": 0,
+        "entities_cumulative": 421,
+        "coverage": 0.23,
+        "new_entity_types_count": 23,
+        "time_sec": 277.88
+      }
+    ],
+    "shacl": {
+      "combined_score": 1.0,
+      "shacl_score": 1.0,
+      "consistency": 1.0,
+      "violations": 0,
+      "class_coverage": 1.0
+    }
+  },
+  "eval_metrics": {
+    "gold_standard": {
+      "documents_evaluated": 1,
+      "entities": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2
+      },
+      "relations": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "f1_score": 0.0,
+    "entities_f1": 0.0,
+    "relations_f1": 0.0,
+    "total_questions": 40,
+    "correct_answers": 0,
+    "accuracy": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "coverage": 1.0,
+    "completeness": 0.0,
+    "faithfulness": 0.0,
+    "relevance": 0.0,
+    "correctness": 0.0,
+    "answer_relevancy": 0.0,
+    "semantic_similarity": 0.0,
+    "average_response_time": 247.8,
+    "by_type": {
+      "entity": {
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "count": 40
+      }
+    },
+    "by_difficulty": {
+      "1": {
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "count": 10
+      },
+      "2": {
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "count": 10
+      },
+      "3": {
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "count": 10
+      },
+      "4": {
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "count": 10
+      }
+    },
+    "deepeval_results": [
+      {
+        "question_id": "q01",
+        "question_text": "Was ist das Atomgesetz (AtG)?",
+        "retrieved_answers": [
+          "Leistungsbetrieb",
+          "AtG",
+          "AtG",
+          "Nichtleistungs- / Nachbetrieb",
+          "Atomgesetz",
+          "Leistungsbetrieb",
+          "Druckwasser-reaktor",
+          "Ortsdosisleistung",
+          "AtG",
+          "Atomgesetz - AtG"
+        ],
+        "expected_answers": [
+          "Das Atomgesetz (AtG) ist das zentrale Bundesgesetz, das die friedliche Nutzung der Kernenergie und den Schutz vor ihren Gefahren in Deutschland regelt."
+        ]
+      },
+      {
+        "question_id": "q02",
+        "question_text": "Was bedeutet der Begriff 'Stilllegung' im Kontext der Kerntechnik?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Obrigheim",
+          "Begriffe und Definitionen",
+          "Stilllegung",
+          "Immission",
+          "Druckwasser-reaktor",
+          "Kernkraftwerk Neckarwestheim",
+          "Wiederkehrende Pr\u00fcfung"
+        ],
+        "expected_answers": [
+          "Stilllegung bezeichnet das endg\u00fcltige Abschalten eines Kernkraftwerks und den \u00dcbergang in einen dauerhaft unterkritischen Zustand, ab dem keine Energieerzeugung mehr stattfindet."
+        ]
+      },
+      {
+        "question_id": "q03",
+        "question_text": "Welche Beh\u00f6rde ist in Deutschland f\u00fcr die Genehmigung des R\u00fcckbaus von Kernkraftwerken zust\u00e4ndig?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "Gebinde",
+          "Herausbringen",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Kontamination",
+          "Leistungsbetrieb",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen"
+        ],
+        "expected_answers": [
+          "Die jeweilige Landesbeh\u00f6rde (atomrechtliche Genehmigungsbeh\u00f6rde) ist zust\u00e4ndig, wobei das Bundesministerium f\u00fcr Umwelt die Bundesaufsicht aus\u00fcbt."
+        ]
+      },
+      {
+        "question_id": "q04",
+        "question_text": "Was regelt \u00a77 Abs. 3 des Atomgesetzes?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "\u00a7 5 Absatz 39 Nummer 1",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "BGBI. I S. 1843",
+          "UVU_KRBII 2016-09-23.docx",
+          "Atomgesetz",
+          "Druckwasser-reaktor",
+          "KTA-Regeln 3902 und 3905",
+          "Brennelementlager- und des Reaktorbeckens"
+        ],
+        "expected_answers": [
+          "\u00a77 Abs. 3 AtG regelt die Genehmigungsvoraussetzungen f\u00fcr die Stilllegung und den Abbau von Kernanlagen oder deren sicheren Einschluss."
+        ]
+      },
+      {
+        "question_id": "q05",
+        "question_text": "Was ist Freimessung beim R\u00fcckbau?",
+        "retrieved_answers": [
+          "Leistungsbetrieb",
+          "Nichtleistungs- / Nachbetrieb",
+          "Leistungsbetrieb",
+          "Druckwasser-reaktor",
+          "Ortsdosisleistung",
+          "Leistungsbetrieb",
+          "Anlagenhistorie",
+          "Unterabschnitt 2 Schutz des Verbrauchers beim Zusatz radioaktiver Stoffe und bei der Aktivierung",
+          "Leistungsbetrieb",
+          "Ortsdosisleistung"
+        ],
+        "expected_answers": [
+          "Freimessung ist das messtechnische Verfahren, mit dem nachgewiesen wird, dass Materialien aus dem Kontrollbereich die Freigabewerte der Strahlenschutzverordnung unterschreiten und konventionell entsorgt werden k\u00f6nnen."
+        ]
+      },
+      {
+        "question_id": "q06",
+        "question_text": "Welche R\u00fcckbaustrategien werden international unterschieden?",
+        "retrieved_answers": [
+          "Abschnitt 3 Zulassung von Anlagen, in denen Abf\u00e4lle entsorgt werden",
+          "Wirkungen eines Vorhabens auf die Umwelt hinsichtlich ihrer Untersuchungsrelevanz im Rahmen der UVU beurteilt werden",
+          "vorhandene g\u00fcltige Umweltstandards sicher eingehalten werden",
+          "US",
+          "US"
+        ],
+        "expected_answers": [
+          "Die drei Hauptstrategien sind sofortiger R\u00fcckbau (DECON), sicherer Einschluss mit sp\u00e4terem R\u00fcckbau (SAFSTOR) und Entombment (ENTOMB)."
+        ]
+      },
+      {
+        "question_id": "q07",
+        "question_text": "Wie hei\u00dft das deutsche Strahlenschutzgesetz und wann trat es in Kraft?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Reststoffe, nicht radioaktiv",
+          "Reststoffe, radioaktiv",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "Reststoffe, nicht radioaktiv",
+          "Reststoffe, radioaktiv",
+          "Strahlenschutzgesetzes",
+          "Strahlenschutzgesetz",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung"
+        ],
+        "expected_answers": [
+          "Das Strahlenschutzgesetz (StrlSchG) trat am 31. Dezember 2018 vollst\u00e4ndig in Kraft."
+        ]
+      },
+      {
+        "question_id": "q08",
+        "question_text": "Was ist ein Kontrollbereich in einer kerntechnischen Anlage?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "Gebinde",
+          "Herausbringen",
+          "Kontamination",
+          "Kontrollbereich",
+          "Leistungsbetrieb",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen"
+        ],
+        "expected_answers": [
+          "Ein Kontrollbereich ist ein Bereich, in dem Personen eine effektive Dosis von mehr als 6 mSv pro Jahr erhalten k\u00f6nnen und besondere Strahlenschutzma\u00dfnahmen gelten."
+        ]
+      },
+      {
+        "question_id": "q09",
+        "question_text": "Wer ist die BGZ?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Freigabewert",
+          "Halbwertszeit",
+          "Leistungsbetrieb",
+          "RWE Power AG",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Kernkraftwerk Gundremmingen",
+          "Stadtwerke M\u00fcnchen GmbH",
+          "Kernkraftwerk Isar 2"
+        ],
+        "expected_answers": [
+          "Die BGZ (Bundesgesellschaft f\u00fcr Zwischenlagerung) ist f\u00fcr den Betrieb der Zwischenlager f\u00fcr radioaktive Abf\u00e4lle in Deutschland zust\u00e4ndig."
+        ]
+      },
+      {
+        "question_id": "q10",
+        "question_text": "Was ist ein Reststoff im Sinne des Atomrechts?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Reststoffe, nicht radioaktiv",
+          "Reststoffe, radioaktiv",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Reststoffe, nicht radioaktiv",
+          "Reststoffe, radioaktiv",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Obrigheim",
+          "Leistungsbetrieb"
+        ],
+        "expected_answers": [
+          "Ein Reststoff ist ein beim Betrieb oder Abbau einer Kernanlage anfallender radioaktiver Stoff, der kein Kernbrennstoff ist und der Verwertung oder Beseitigung zugef\u00fchrt werden muss."
+        ]
+      },
+      {
+        "question_id": "q11",
+        "question_text": "Welche Paragraphen des AtG regeln die Entsorgung radioaktiver Abf\u00e4lle?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "radioaktiver Stoffe",
+          "radioaktiver Entweichen",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Abfall, radioaktiver",
+          "AtG",
+          "AtG",
+          "Freisetzung radioaktiver Stoffe",
+          "Konditionierung radioaktiver Abf\u00e4lle"
+        ],
+        "expected_answers": [
+          "Die \u00a7\u00a79a bis 9g AtG regeln die Entsorgung radioaktiver Abf\u00e4lle, einschlie\u00dflich der Pflichten der Ablieferungspflichtigen und der staatlichen Entsorgung."
+        ]
+      },
+      {
+        "question_id": "q12",
+        "question_text": "Welche Genehmigungen sind f\u00fcr den vollst\u00e4ndigen R\u00fcckbau eines Kernkraftwerks erforderlich und auf welchen Gesetzen basieren sie?",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen",
+          "RDB und biologischer Schild",
+          "Kreislaufwirtschaftsgesetz"
+        ],
+        "expected_answers": [
+          "Es sind eine Stilllegungsgenehmigung nach \u00a77 Abs. 3 AtG, strahlenschutzrechtliche Genehmigungen nach dem StrlSchG und ggf. baurechtliche sowie umweltrechtliche Genehmigungen erforderlich."
+        ]
+      },
+      {
+        "question_id": "q13",
+        "question_text": "Welche Schritte umfasst das Freigabeverfahren nach StrlSchV und welche Paragraphen sind relevant?",
+        "retrieved_answers": [
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "StrlSchV",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Freigabe",
+          "Nachbetrieb",
+          "Nachbetriebsphase"
+        ],
+        "expected_answers": [
+          "Das Freigabeverfahren umfasst die Festlegung der Freigabewerte (Anlage 4 StrlSchV), die Probenahme und Messung, die beh\u00f6rdliche Pr\u00fcfung und die Freigabeentscheidung. Ma\u00dfgeblich sind \u00a7\u00a731-42 StrlSchV."
+        ]
+      },
+      {
+        "question_id": "q14",
+        "question_text": "Was unterscheidet die Rolle der BGE von der der BGZ in der deutschen Entsorgungskette?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Gebinde",
+          "Herausbringen",
+          "Kontamination",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen"
+        ],
+        "expected_answers": [
+          "Die BGE (Bundesgesellschaft f\u00fcr Endlagerung) sucht und betreibt Endlager f\u00fcr radioaktive Abf\u00e4lle, w\u00e4hrend die BGZ (Bundesgesellschaft f\u00fcr Zwischenlagerung) die Zwischenlager betreibt, bis ein Endlager verf\u00fcgbar ist."
+        ]
+      },
+      {
+        "question_id": "q15",
+        "question_text": "Welche Arten radioaktiver Abf\u00e4lle entstehen beim R\u00fcckbau eines Druckwasserreaktors?",
+        "retrieved_answers": [
+          "Reaktor",
+          "Reaktor",
+          "radioaktiver Stoffe",
+          "radioaktiver Entweichen",
+          "Abfall, radioaktiver",
+          "Freisetzung radioaktiver Stoffe",
+          "Direkter R\u00fcckbau",
+          "Konditionierung radioaktiver Abf\u00e4lle",
+          "Absturz eines Fasses mit Filterst\u00e4uben",
+          "Abf\u00e4lle"
+        ],
+        "expected_answers": [
+          "Beim R\u00fcckbau entstehen aktivierte Materialien (v.a. Reaktordruckbeh\u00e4lter-Einbauten), kontaminierte Materialien (Rohrleitungen, Oberfl\u00e4chen), Betriebsabf\u00e4lle und radioaktive Reststoffe mit unterschiedlicher Aktivit\u00e4t."
+        ]
+      },
+      {
+        "question_id": "q16",
+        "question_text": "Welche Grenzwerte gelten f\u00fcr die Freigabe von Geb\u00e4udestrukturen zum Abriss nach dem R\u00fcckbau?",
+        "retrieved_answers": [
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "Freigabe Verwaltungsakt",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "Freigabewert",
+          "Freigabe",
+          "Nachbetrieb",
+          "Nachbetriebsphase",
+          "Nichtleistungs- / Nachbetrieb"
+        ],
+        "expected_answers": [
+          "F\u00fcr die uneingeschr\u00e4nkte Freigabe zum Abriss gelten die Freigabewerte der Anlage 4 Tabelle 1 Spalte 5 StrlSchV. Das allgemeine Kriterium ist eine effektive Dosis von 10 \u03bcSv/a f\u00fcr Einzelpersonen der Bev\u00f6lkerung."
+        ]
+      },
+      {
+        "question_id": "q17",
+        "question_text": "Welche Planungsdom\u00e4nen werden beim R\u00fcckbau eines Kernkraftwerks unterschieden?",
+        "retrieved_answers": [
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Direkter R\u00fcckbau",
+          "Absturz eines Fasses mit Filterst\u00e4uben",
+          "Kernkraftwerk",
+          "Abschnitt 3 Zulassung von Anlagen, in denen Abf\u00e4lle entsorgt werden",
+          "Unterabschnitt 2 Schutz des Verbrauchers beim Zusatz radioaktiver Stoffe und bei der Aktivierung",
+          "Abschnitt 2 Infolge eines Notfalls kontaminierte Gebiete",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Kernkraftwerk",
+          "Kernkraftwerksanlage"
+        ],
+        "expected_answers": [
+          "Typische Planungsdom\u00e4nen sind Radiologische Planung, Bautechnische Planung, Abfallmanagement, Projektsteuerung und Genehmigungsplanung."
+        ]
+      },
+      {
+        "question_id": "q18",
+        "question_text": "Wie wird die Finanzierung des R\u00fcckbaus deutscher Kernkraftwerke geregelt?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Kernkraftwerke Lippe-Ems GmbH",
+          "Brennelementlager- und des Reaktorbeckens",
+          "Kernkraftwerk",
+          "Verordnung \u00fcber die Deckungsvorsorge nach dem Atomgesetz",
+          "Wiederkehrende Pr\u00fcfung",
+          "Wiederverwendung",
+          "Stilllegung und Abbau von Anlagenteilen des GKN I"
+        ],
+        "expected_answers": [
+          "Seit 2017 sind die R\u00fcckbaukosten Sache der Betreiber, w\u00e4hrend die Finanzierung der Zwischen- und Endlagerung \u00fcber den \u00f6ffentlich-rechtlichen Fonds zur Finanzierung der kerntechnischen Entsorgung (KENFO) geregelt wird, in den die Betreiber eingezahlt haben."
+        ]
+      },
+      {
+        "question_id": "q19",
+        "question_text": "Welche Aufsichtsstruktur besteht bei der Genehmigung und \u00dcberwachung des R\u00fcckbaus?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen",
+          "RDB und biologischer Schild",
+          "Kernkraftwerk Gundremmingen (KRB II)"
+        ],
+        "expected_answers": [
+          "Die Landesbeh\u00f6rden erteilen Genehmigungen und f\u00fchren die Aufsicht, das BASE (Bundesamt f\u00fcr die Sicherheit der nuklearen Entsorgung) unterst\u00fctzt fachlich, und das Bundesumweltministerium \u00fcbt die Bundesaufsicht gem\u00e4\u00df \u00a724 AtG aus."
+        ]
+      },
+      {
+        "question_id": "q20",
+        "question_text": "In welchem R\u00fcckbaustadium befindet sich das Kernkraftwerk Greifswald und warum wurde es stillgelegt?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Reststoffe, nicht radioaktiv",
+          "Reststoffe, radioaktiv",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Sicherheitsbericht KKE",
+          "Kontamination",
+          "Reststoffe, nicht radioaktiv",
+          "Reststoffe, radioaktiv",
+          "Strahlenschutzgesetzes",
+          "Strahlenschutzgesetz"
+        ],
+        "expected_answers": [
+          "Das Kernkraftwerk Greifswald (KGR) wurde nach der Wiedervereinigung 1990 aus Sicherheitsgr\u00fcnden stillgelegt und befindet sich im fortgeschrittenen R\u00fcckbau unter Leitung der EWN GmbH."
+        ]
+      },
+      {
+        "question_id": "q21",
+        "question_text": "Welchen Einfluss haben die Sicherungsanforderungen nach \u00a77 AtG auf die zeitliche Planung des R\u00fcckbaus, und wie interagiert das mit den Strahlenschutzanforderungen der StrlSchV beim Freigabeverfahren?",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "StrlSchV",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Freigabe"
+        ],
+        "expected_answers": [
+          "Die Sicherungsanforderungen nach \u00a77 AtG bestimmen, dass Kernbrennstoffe und Sonderabf\u00e4lle zuerst entfernt werden m\u00fcssen, bevor der eigentliche Geb\u00e4uder\u00fcckbau beginnen kann. Parallel dazu erfordert die StrlSchV bei jedem Freigabeschritt eine messtechnische Pr\u00fcfung. Die Kombination beider Anforderungen f\u00fchrt zu einer sequentiellen Planung: Brennelemente entfernen \u2192 Kontrollbereich dekontaminieren \u2192 Freimessung \u2192 konventioneller Abriss."
+        ]
+      },
+      {
+        "question_id": "q22",
+        "question_text": "Wie wirkt sich die \u00c4nderung des AtG durch das Dreizehnte Gesetz zur \u00c4nderung des Atomgesetzes (2011) auf die R\u00fcckbauplanung der deutschen KKW aus?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Sicherheitsbericht KKE",
+          "Strahlenschutzgesetzes",
+          "Strahlenschutzgesetz",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Sicherheitsbericht Datum",
+          "AtG",
+          "Kreislaufwirtschaftsgesetz"
+        ],
+        "expected_answers": [
+          "Das 13. AtG-\u00c4nderungsgesetz (2011) nach Fukushima setzte feste Abschalttermine f\u00fcr alle deutschen KKW und beschleunigte den \u00dcbergang in die R\u00fcckbauplanung. Es erforderte f\u00fcr 8 KKW die sofortige Stilllegung und f\u00fcr die restlichen gestaffelte Abschaltungen bis 2022, was parallel laufende Genehmigungsverfahren f\u00fcr den R\u00fcckbau notwendig machte."
+        ]
+      },
+      {
+        "question_id": "q23",
+        "question_text": "Wie h\u00e4ngen die Freigabepfade nach StrlSchV \u00a735 mit der Abfallhierarchie im Kreislaufwirtschaftsgesetz zusammen?",
+        "retrieved_answers": [
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "StrlSchV",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Obrigheim",
+          "Freigabe",
+          "Nachbetrieb"
+        ],
+        "expected_answers": [
+          "Die StrlSchV \u00a735 definiert Freigabepfade (uneingeschr\u00e4nkte Freigabe, Freigabe zur Deponierung, Freigabe zur Verbrennung etc.). Nach erfolgreicher Freigabe unterliegen die Materialien dem KrWG und seiner Abfallhierarchie (Vermeidung \u2192 Verwertung \u2192 Beseitigung). Der \u00dcbergang vom Atom- zum Abfallrecht ist ein kritischer Schnittstelle."
+        ]
+      },
+      {
+        "question_id": "q24",
+        "question_text": "Vergleiche die R\u00fcckbaustrategie von Obrigheim (sofortiger R\u00fcckbau) mit der von Lingen (sicherer Einschluss) \u2014 welche rechtlichen und technischen Unterschiede ergeben sich?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Obrigheim",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen",
+          "RDB und biologischer Schild"
+        ],
+        "expected_answers": [
+          "Obrigheim w\u00e4hlte den sofortigen R\u00fcckbau (DECON), was eine einzige zusammenh\u00e4ngende Genehmigung nach \u00a77(3) AtG erforderte und den Vorteil bot, dass Betriebspersonal noch verf\u00fcgbar war. Lingen wurde zun\u00e4chst in den sicheren Einschluss (SAFSTOR) \u00fcberf\u00fchrt, was niedrigere laufende Kosten, aber h\u00f6here Langzeit\u00fcberwachungskosten und ein sp\u00e4teres Genehmigungsverfahren bedeutete. Technisch erfordert SAFSTOR eine zus\u00e4tzliche Umschlie\u00dfungsbarriere."
+        ]
+      },
+      {
+        "question_id": "q25",
+        "question_text": "Welche Kette von Verantwortlichkeiten besteht von der Stilllegungsentscheidung bis zur Endlagerung des letzten hochradioaktiven Abfallgebindes?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Gebinde",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Lagerung",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Abfallgebinde",
+          "Stilllegung",
+          "Gebinde",
+          "Brennelementlager- und des Reaktorbeckens"
+        ],
+        "expected_answers": [
+          "Betreiber stellt Stilllegungsantrag \u2192 Landesbeh\u00f6rde erteilt Genehmigung \u2192 Betreiber f\u00fchrt R\u00fcckbau durch \u2192 BGZ \u00fcbernimmt Zwischenlagerung \u2192 BGE w\u00e4hlt Endlagerstandort \u2192 BASE beaufsichtigt \u2192 BGE betreibt Endlager. Finanzierung \u00fcber KENFO."
+        ]
+      },
+      {
+        "question_id": "q26",
+        "question_text": "Wie beeinflusst die radiologische Charakterisierung nach \u00a785 StrlSchV die Wahl der Zerlegetechniken im Kontrollbereich?",
+        "retrieved_answers": [
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "StrlSchV",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Obrigheim",
+          "Kontrollbereich",
+          "Nachbetrieb"
+        ],
+        "expected_answers": [
+          "Die radiologische Charakterisierung bestimmt die Aktivierungsprofile und Kontaminationsmuster der Komponenten. Hochaktivierte Teile (z.B. RDB-Einbauten) erfordern Unterwasser-Zerlegung oder Fernhantierung, kontaminierte Oberfl\u00e4chen k\u00f6nnen durch mechanische oder chemische Dekontamination behandelt werden. Die Ergebnisse flie\u00dfen direkt in die Auswahl der Zerlegetechniken und die Abschirmungsplanung ein."
+        ]
+      },
+      {
+        "question_id": "q27",
+        "question_text": "Welche Wechselwirkungen bestehen zwischen dem Standortauswahlgesetz (StandAG) und der R\u00fcckbauplanung bestehender KKW?",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen",
+          "RDB und biologischer Schild",
+          "Kernkraftwerk Gundremmingen (KRB II)"
+        ],
+        "expected_answers": [
+          "Das StandAG regelt die Suche nach einem Endlager f\u00fcr hochradioaktive Abf\u00e4lle. Solange kein Endlager existiert (voraussichtlich bis nach 2050), m\u00fcssen Castor-Beh\u00e4lter in Zwischenlagern verbleiben. Dies beeinflusst den R\u00fcckbau, da Zwischenlager am KKW-Standort l\u00e4nger betrieben werden m\u00fcssen und die R\u00fcckbauplanung die Zwischenlagerfl\u00e4chen ber\u00fccksichtigen muss."
+        ]
+      },
+      {
+        "question_id": "q28",
+        "question_text": "Welche Auswirkungen hat die \u00d6ffentlichkeitsbeteiligung nach \u00a76 UVPG auf die Dauer des R\u00fcckbau-Genehmigungsverfahrens?",
+        "retrieved_answers": [
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Nachbetrieb",
+          "Nachbetriebsphase",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Kreislaufwirtschaftsgesetz",
+          "Nichtleistungs- / Nachbetrieb"
+        ],
+        "expected_answers": [
+          "Nach \u00a76 UVPG ist f\u00fcr wesentliche R\u00fcckbauvorhaben eine Umweltvertr\u00e4glichkeitspr\u00fcfung mit \u00d6ffentlichkeitsbeteiligung durchzuf\u00fchren. Dies umfasst die Bekanntmachung, Auslegung der Unterlagen, Einwendungsfrist und ggf. Er\u00f6rterungstermin, was das Genehmigungsverfahren um 6-18 Monate verl\u00e4ngern kann."
+        ]
+      },
+      {
+        "question_id": "q29",
+        "question_text": "Wie unterscheiden sich die R\u00fcckbaukosten pro MW installierter Leistung zwischen Druckwasser- und Siedewasserreaktoren, und welche Faktoren sind daf\u00fcr urs\u00e4chlich?",
+        "retrieved_answers": [
+          "Reaktor",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Sicherheitsbericht KKE",
+          "Reaktor",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Leistungsbetrieb",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Sicherheitsbericht Datum"
+        ],
+        "expected_answers": [
+          "Siedewasserreaktoren haben tendenziell h\u00f6here spezifische R\u00fcckbaukosten (ca. 1,5-2 Mio \u20ac/MW) als Druckwasserreaktoren (ca. 1-1,5 Mio \u20ac/MW), da bei SWR die Turbine radioaktiv kontaminiert ist (direkter Dampfkreislauf), gr\u00f6\u00dfere kontaminierte Volumina vorliegen und komplexere Zerlegungsarbeiten am Reaktordruckbeh\u00e4lter n\u00f6tig sind."
+        ]
+      },
+      {
+        "question_id": "q30",
+        "question_text": "In welcher Reihenfolge werden die Geb\u00e4udestrukturen beim R\u00fcckbau eines KKW nach KTA 1301 freigegeben?",
+        "retrieved_answers": [
+          "Kernkraftwerk Grafenrheinfeld",
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "Gebinde",
+          "Herausbringen",
+          "Kontamination",
+          "Nachbetrieb"
+        ],
+        "expected_answers": [
+          "Die Freigabe erfolgt von innen nach au\u00dfen: 1) Kontrollbereich-Systeme, 2) Geb\u00e4udestrukturen im Kontrollbereich, 3) \u00dcberwachungsbereich, 4) \u00e4u\u00dfere Geb\u00e4ude. KTA 1301 definiert die sicherheitstechnischen Anforderungen an die Stilllegung, die diese Reihenfolge begr\u00fcnden."
+        ]
+      },
+      {
+        "question_id": "q31",
+        "question_text": "Konstruiere den vollst\u00e4ndigen rechtlichen Pfad von einem kontaminierten Rohr im Kontrollbereich des KKW Neckarwestheim bis zu seiner endg\u00fcltigen Beseitigung, einschlie\u00dflich aller beteiligten Gesetze, Verordnungen und verantwortlichen Akteure.",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Obrigheim",
+          "Kontrollbereich",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen"
+        ],
+        "expected_answers": [
+          "Kontaminiertes Rohr im Kontrollbereich \u2192 radiologische Charakterisierung (\u00a785 StrlSchV) \u2192 Zerlegung unter Strahlenschutzaufsicht (\u00a772 StrlSchG) \u2192 Freimessungsversuch nach StrlSchV Anlage 4 \u2192 Falls Freigabe: konventionelle Entsorgung nach KrWG \u2192 Falls nicht: Konditionierung als radioaktiver Abfall \u2192 Zwischenlagerung bei BGZ (\u00a72 Entsorgungs\u00fcbergangsgesetz) \u2192 Endlagerung durch BGE (StandAG). Betreiber EnBW tr\u00e4gt R\u00fcckbaukosten, KENFO finanziert Entsorgung."
+        ]
+      },
+      {
+        "question_id": "q32",
+        "question_text": "Wie interagieren das Atomgesetz, das Strahlenschutzgesetz, die Strahlenschutzverordnung, das Standortauswahlgesetz und das Entsorgungs\u00fcbergangsgesetz bei der Stilllegung und dem R\u00fcckbau eines Kernkraftwerks? Zeige die Abh\u00e4ngigkeiten auf.",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Strahlenschutzgesetz",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen",
+          "RDB und biologischer Schild"
+        ],
+        "expected_answers": [
+          "Das AtG bildet den Rahmen (Genehmigung nach \u00a77(3)). Das StrlSchG konkretisiert Strahlenschutzpflichten. Die StrlSchV operationalisiert Freigabewerte und Dosisgrenzwerte. Das StandAG regelt die Endlagersuche und bestimmt dadurch die Dauer der Zwischenlagerung. Das Entsorgungs\u00fcbergangsgesetz regelt die Zust\u00e4ndigkeits\u00fcbergabe von den Betreibern auf die BGZ. Die Gesetze bilden eine Kaskade: AtG \u2192 StrlSchG \u2192 StrlSchV f\u00fcr den R\u00fcckbau selbst, und AtG \u2192 StandAG \u2192 Entsorgungs\u00fcbergangsgesetz f\u00fcr die Abfallentsorgung."
+        ]
+      },
+      {
+        "question_id": "q33",
+        "question_text": "Welche Szenarien ergeben sich f\u00fcr den R\u00fcckbau des KKW Brokdorf, wenn das Endlager sp\u00e4ter als 2060 verf\u00fcgbar wird, und welche gesetzlichen \u00c4nderungen w\u00e4ren dann erforderlich?",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Sicherheitsbericht KKE",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Sicherheitsbericht Datum",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen"
+        ],
+        "expected_answers": [
+          "Bei Verz\u00f6gerung des Endlagers \u00fcber 2060 hinaus m\u00fcssten die Betriebsgenehmigungen der Zwischenlager verl\u00e4ngert werden (\u00a76 AtG). Der Betreiber PreussenElektra m\u00fcsste ggf. Nachr\u00fcstungen an den Zwischenlagern finanzieren. M\u00f6glicherweise w\u00e4re eine Novellierung des StandAG oder des Entsorgungs\u00fcbergangsgesetzes erforderlich. Es entst\u00fcnden zus\u00e4tzliche Kosten, die durch den KENFO m\u00f6glicherweise nicht gedeckt sind."
+        ]
+      },
+      {
+        "question_id": "q34",
+        "question_text": "Vergleiche die Genehmigungsverfahren f\u00fcr den R\u00fcckbau der KKW Greifswald (DDR-Bauart WWER) und Neckarwestheim (westliche DWR-Bauart). Welche spezifischen rechtlichen und technischen Herausforderungen ergeben sich aus den unterschiedlichen Reaktortypen?",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Reaktor",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Sicherheitsbericht KKE",
+          "Reaktor",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "massen- oder fl\u00e4chenspezifische Aktivit\u00e4t",
+          "Herausbringen",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Herausgabe"
+        ],
+        "expected_answers": [
+          "Greifswald (WWER-440): Kein origin\u00e4res Genehmigungsverfahren nach bundesdeutschem AtG, da unter DDR-Recht gebaut; Nachgenehmigung nach der Wiedervereinigung; gr\u00f6\u00dfere kontaminierte Graphitmengen; RBMK-\u00e4hnliche Besonderheiten. Neckarwestheim (DWR): Standard-Genehmigung nach \u00a77(3) AtG; konventionellere Komponentengeometrie; aber h\u00f6here Neutronenfl\u00fcsse im RDB. Greifswald erforderte Sonderregelungen im Einigungsvertrag."
+        ]
+      },
+      {
+        "question_id": "q35",
+        "question_text": "Welche R\u00fcckkopplungsschleifen bestehen zwischen Erkenntnissen aus dem laufenden R\u00fcckbau (z.B. unerwartete Kontaminationsfunde) und dem Genehmigungsverfahren nach AtG und StrlSchG?",
+        "retrieved_answers": [
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Herausbringen",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Herausgabe",
+          "Kontamination"
+        ],
+        "expected_answers": [
+          "Unerwartete Funde (z.B. h\u00f6here Kontamination als im Sicherheitsbericht angenommen) l\u00f6sen eine Meldepflicht nach \u00a7108 StrlSchG aus, k\u00f6nnen eine \u00c4nderung des Stilllegungsberichts nach \u00a77(3) AtG erfordern, zu Nachgenehmigungsverfahren f\u00fchren und die Freigabebedingungen nach StrlSchV \u00e4ndern. Die Beh\u00f6rde kann Anordnungen nach \u00a719 AtG treffen, um den R\u00fcckbau zu modifizieren."
+        ]
+      },
+      {
+        "question_id": "q36",
+        "question_text": "Erstelle eine vollst\u00e4ndige Zuordnung aller Akteure im deutschen R\u00fcckbau-\u00d6kosystem zu ihren gesetzlichen Grundlagen und gegenseitigen Abh\u00e4ngigkeiten.",
+        "retrieved_answers": [
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Obrigheim",
+          "Kernkraftwerk Gundremmingen GmbH",
+          "Abbau des Kernkraftwerks Gundremmingen",
+          "Begriffe und Definitionen",
+          "Kernkraftwerk Gundremmingen",
+          "RDB und biologischer Schild"
+        ],
+        "expected_answers": [
+          "Betreiber (\u00a77 AtG: R\u00fcckbaupflicht) \u2192 Landesbeh\u00f6rde (\u00a724 AtG: Aufsicht/Genehmigung) \u2192 BASE (\u00a7\u00a723a-d AtG: Bundesaufsicht Entsorgung) \u2192 BMU (Bundesaufsicht) \u2192 BGZ (Entsorgungs\u00fcbergangsgesetz: Zwischenlager) \u2192 BGE (StandAG: Endlager) \u2192 KENFO (Entsorgungsfondsgesetz: Finanzierung) \u2192 ESK/SSK (\u00a737 StrlSchG: Beratungskommissionen) \u2192 T\u00dcV/Sachverst\u00e4ndige (\u00a720 AtG: Gutachten). Die Akteure bilden ein gerichtetes Netzwerk mit Aufsichts-, Finanzierungs- und Zulieferbeziehungen."
+        ]
+      },
+      {
+        "question_id": "q37",
+        "question_text": "Wie beeinflussen internationale IAEA-Sicherheitsstandards \u00fcber das StrlSchG den konkreten R\u00fcckbau eines deutschen Kernkraftwerks? Nenne den normativen Pfad.",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Direkter R\u00fcckbau",
+          "Absturz eines Fasses mit Filterst\u00e4uben",
+          "Kernkraftwerk",
+          "StrlSchG",
+          "Schadensersatzverpflichtungen",
+          "Verordnung \u00fcber die Deckungsvorsorge nach dem Atomgesetz",
+          "Stilllegungsleitfaden",
+          "\u00dcberwachungsbereich"
+        ],
+        "expected_answers": [
+          "IAEA Safety Standards (GSR Part 6) \u2192 Euratom-Richtlinie 2014/87 (BSS) \u2192 Umsetzung in StrlSchG (2017) \u2192 Konkretisierung in StrlSchV \u2192 Allgemeine Verwaltungsvorschriften \u2192 KTA-Regelwerk \u2192 Betreiber-interne Anweisungen. Die IAEA-Standards haben keinen unmittelbaren Rechtscharakter, wirken aber \u00fcber die EU-Richtlinien bindend auf das deutsche Recht."
+        ]
+      },
+      {
+        "question_id": "q38",
+        "question_text": "Welche Wechselwirkungen bestehen zwischen dem R\u00fcckbau-Projektmanagement (Meilensteine, Kosten, Ressourcen) und den drei regulatorischen Genehmigungsphasen nach AtG?",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Nachbetrieb",
+          "Nachbetriebsphase",
+          "Kernkraftwerk Gundremmingen GmbH"
+        ],
+        "expected_answers": [
+          "Die drei Genehmigungsphasen (1. Stilllegung/FAKR, 2. Restbetrieb, 3. konventioneller Abriss) determinieren die Projektmeilensteine. Jede Phase erfordert Nachweisdokumente (Sicherheitsbericht, Abfallbilanz, Strahlenschutzplan), die Personalqualifikation muss aufrechterhalten werden (sinkender Betriebspersonalbedarf vs. steigender R\u00fcckbaubedarf), und die Kostenplanung muss Unsicherheiten aus regulatorischen Verz\u00f6gerungen abbilden."
+        ]
+      },
+      {
+        "question_id": "q39",
+        "question_text": "Welche technischen Ma\u00dfnahmen zur Emissionsminderung sind beim R\u00fcckbau nach BImSchG und TA Luft im Zusammenspiel mit den strahlenschutzrechtlichen Anforderungen zu beachten?",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Kontamination",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "Anlage 4, Tabelle 1",
+          "Gammaspektrometrische Nuklidspezifische Aktivit\u00e4tsbestimmung",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2"
+        ],
+        "expected_answers": [
+          "Beim R\u00fcckbau fallen sowohl konventionelle Emissionen (Staub, L\u00e4rm nach BImSchG/TA Luft) als auch radiologische Ableitungen (nach \u00a7101 StrlSchG) an. Die Herausforderung liegt in der \u00dcberlagerung: Abbrucharbeiten m\u00fcssen sowohl TA-Luft-Grenzwerte f\u00fcr Staub als auch \u00a747 StrlSchG-Grenzwerte f\u00fcr luftgetragene Radioaktivit\u00e4t einhalten. Umschlie\u00dfung, HEPA-Filterung und Nassabbau adressieren beide Anforderungen gleichzeitig."
+        ]
+      },
+      {
+        "question_id": "q40",
+        "question_text": "Berechne den ungef\u00e4hren Gesamtmaterialfluss (in Tonnen) beim R\u00fcckbau eines typischen 1300-MW-DWR-Blocks und ordne die Fraktionen den jeweiligen Entsorgungspfaden nach StrlSchV und KrWG zu.",
+        "retrieved_answers": [
+          "Geb\u00e4uden",
+          "Nachzerfallsw\u00e4rme",
+          "Landesamt f\u00fcr Geoinformation und Landesvermessung Niedersachsen",
+          "Nachzerfallsw\u00e4rme",
+          "T\u00e4tigkeiten nach \u00a7 4 Absatz 1 Satz 1 Nummer 1",
+          "atom- und strahlenschutzrechtliche \u00dcberwachung",
+          "StrlSchV",
+          "Sicherheitsbericht \u2013 Stilllegung und Abbau des KKI 2",
+          "Nachbetrieb",
+          "Nachbetriebsphase"
+        ],
+        "expected_answers": [
+          "Gesamtmasse ca. 300.000-500.000 t. Davon: ~97% konventionelle Abf\u00e4lle (Beton, Stahl) nach Freigabe \u2192 KrWG. ~2-3% schwach-/mittelradioaktive Abf\u00e4lle \u2192 Konditionierung \u2192 Endlager Konrad (genehmigt). ~0.1% hochradioaktive Abf\u00e4lle (Brennelemente, RDB-Einbauten) \u2192 Castor \u2192 Zwischenlager \u2192 Endlager (StandAG). Die Freigabe nach StrlSchV \u00a735 ist der entscheidende Sortierungspunkt."
+        ]
+      }
+    ],
+    "qa_dataset": {
+      "name": "GraphQA benchmark_v3",
+      "source": "GraphQA benchmark_v3",
+      "path": "data/evaluation/benchmark_v3_kgbuilder.json",
+      "total_questions": 50,
+      "scored_questions": 40,
+      "exploratory_questions": 10,
+      "exploratory_answered": 10,
+      "exploratory_answer_rate": 1.0
+    },
+    "qa_similarity_threshold": 0.8
+  },
+  "error": null,
+  "metadata": {
+    "run_id": "exp_20260422_134930_4b044a48_E_gemma31b_3",
+    "variant_name": "E_gemma31b",
+    "started_at": "2026-04-22T22:21:57.871377",
+    "params": {
+      "model": "gemma4:31b",
+      "max_iterations": 5,
+      "similarity_threshold": 0.85,
+      "confidence_threshold": 0.6,
+      "classes_limit": null,
+      "questions_per_class": 3,
+      "law_graph_enabled": false
+    },
+    "completed_at": "2026-04-22T23:51:39.593753"
+  },
+  "accuracy": 0.0,
+  "f1_score": 0.0,
+  "coverage": 1.0
+}
