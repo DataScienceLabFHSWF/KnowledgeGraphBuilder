@@ -86,6 +86,7 @@ nav:
       - Overview: architecture/overview.md
       - Pipeline Layers: architecture/pipeline-layers.md
       - Domain Pluggability: architecture/domain-pluggability.md
+      - Agentic Pipeline (Skills/Tools/Subagents): architecture/agentic-pipeline.md
   - User Guide:
       - Full Pipeline: guide/full-pipeline.md
       - Law Graph: guide/law-graph.md

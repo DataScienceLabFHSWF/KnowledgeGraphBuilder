@@ -39,6 +39,59 @@ class OrchestratorAgent(BaseAgent):
         super().__init__(name="orchestrator_agent", skills=[JoinModuleResultsSkill])
         self._max_workers = max_workers
 
+    @staticmethod
+    def build_module_bindings(
+        module_map: dict[str, list[Any]],
+        questions: list[Any],
+        retriever: Any,
+        extractor: Any,
+        top_k: int = 10,
+    ) -> list[ModuleBinding]:
+        """Construct one `ModuleBinding` per module from an ontology module map.
+
+        Each question is assigned to the module(s) matching its `entity_class`.
+        If a class is not present in the module map, the question is kept with the
+        first available module as a safe fallback so the pipeline still works for
+        partial or noisy ontology metadata.
+        """
+        if not module_map:
+            return []
+
+        class_to_modules: dict[str, list[str]] = {}
+        for module_name, classes in module_map.items():
+            for class_name in classes:
+                class_to_modules.setdefault(str(class_name).lower(), []).append(module_name)
+
+        questions_by_module: dict[str, list[Any]] = {module_name: [] for module_name in module_map}
+        fallback_module = next(iter(module_map))
+
+        for question in questions:
+            entity_class = getattr(question, "entity_class", None)
+            module_names: list[str] = []
+            if entity_class:
+                module_names = class_to_modules.get(str(entity_class).lower(), [])
+            if not module_names:
+                module_names = [fallback_module]
+            for module_name in module_names:
+                questions_by_module.setdefault(module_name, []).append(question)
+
+        bindings: list[ModuleBinding] = []
+        for module_name, module_classes in module_map.items():
+            module_questions = questions_by_module.get(module_name, [])
+            if not module_questions:
+                continue
+            bindings.append(
+                ModuleBinding(
+                    module_name=module_name,
+                    ontology_classes=list(module_classes),
+                    retriever=retriever,
+                    extractor=extractor,
+                    questions=module_questions,
+                    top_k=top_k,
+                )
+            )
+        return bindings
+
     def run(self, prompt: str, **kwargs: Any) -> Any:
         """Compatibility hook; prefer `run_modules()` for the real workflow."""
         raise NotImplementedError("OrchestratorAgent.run_modules() is the entry point")

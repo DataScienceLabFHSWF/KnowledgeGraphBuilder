@@ -69,5 +69,18 @@ or no new questions generated.
 - **Ontology-agnostic** -- swap ontology + documents for a new domain
   without code changes
 
+## Agentic Refactor: Skills, Tools, and Module Subagents
+
+The discovery loop's extraction and validation steps are also available as
+composable **tools** (`kgbuilder.tools`), **skills** (`kgbuilder.skills`),
+and **subagents** (`kgbuilder.agents`): one `ModuleExtractionAgent` per
+ontology module (grouped via the `kg:module` annotation), dispatched
+concurrently by `OrchestratorAgent` and joined by dedup; a `ValidationAgent`
+that consumes VCQ (validating) competency questions instead of silently
+dropping them; and a `SwarmModelConfig` for assigning different models to
+different modules. See
+[Agentic Pipeline (Skills/Tools/Subagents)](agentic-pipeline.md) for the
+full breakdown, including Ollama-vs-vLLM guidance for concurrent subagents.
+
 For full details, see
 [Planning/02_ARCHITECTURE.md](https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder/blob/main/Planning/02_ARCHITECTURE.md).

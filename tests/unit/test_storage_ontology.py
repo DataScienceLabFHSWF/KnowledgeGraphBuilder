@@ -69,3 +69,24 @@ def test_get_class_hierarchy_for_class_returns_dict(sample_hierarchy_result: dic
     # Unknown class returns empty structure
     empty = svc.get_class_hierarchy("NonExistent")
     assert empty == {"parents": [], "children": [], "depth": 0}
+
+
+def test_get_module_class_map_groups_classes_by_kg_module() -> None:
+    svc = object.__new__(FusekiOntologyService)
+    svc.store = MagicMock()
+    svc.store.query_sparql.return_value = {
+        "results": {
+            "bindings": [
+                {"class": {"value": "http://example.org/ontology/Asset"}, "label": {"value": "Asset"}, "module": {"value": "Assets and Locations"}},
+                {"class": {"value": "http://example.org/ontology/Building"}, "label": {"value": "Building"}, "module": {"value": "Assets and Locations"}},
+                {"class": {"value": "http://example.org/ontology/Activity"}, "label": {"value": "Activity"}, "module": {"value": "Workflow and Change Measures"}},
+            ]
+        }
+    }
+    svc._classes_cache = None
+    svc._class_uri_map = {}
+
+    module_map = svc.get_module_class_map()
+
+    assert module_map["Assets and Locations"] == ["Asset", "Building"]
+    assert module_map["Workflow and Change Measures"] == ["Activity"]

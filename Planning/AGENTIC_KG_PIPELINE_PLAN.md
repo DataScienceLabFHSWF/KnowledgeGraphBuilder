@@ -180,12 +180,45 @@ alignment stage exists in this repo).
   where the same entity is found independently by two module subagents with
   different confidence/evidence.
 
-Not yet done (tracked below): assigning ontology classes and research
-questions to modules automatically from the OWL `kg:module` annotations (today
-`ModuleBinding` takes the module→classes mapping and per-module questions as
-plain arguments — the *mapping itself* still needs a loader against
-`OntologyService`); wiring `OrchestratorAgent` into the main discovery loop;
-a validation-stage consumer for VCQ questions.
+Also implemented (this session):
+
+- `OntologyService.get_module_class_map()` — loads the module→classes mapping
+  from the OWL `kg:module` annotations via SPARQL, so `ModuleBinding`s no
+  longer need that mapping supplied by hand.
+- `OrchestratorAgent.build_module_bindings()` is now wired into
+  `IterativeDiscoveryLoop` (`module_map`/`orchestrator` constructor args):
+  when a module map is supplied, discovery short-circuits to the module
+  orchestration path instead of the legacy per-question loop.
+- `kgbuilder.tools.validation_tool.ValidationTool` +
+  `kgbuilder.skills.question_validation_skill.QuestionValidationSkill` +
+  `kgbuilder.agents.validation_agent.ValidationAgent` — the VCQ-driven
+  validation-stage consumer: retrieves evidence for a VCQ question, then asks
+  a validator whether existing KG content correctly/completely answers it.
+  `IterativeDiscoveryLoop` now splits VCQ questions out of every batch
+  (initial + follow-ups) and routes them to `ValidationAgent` instead of
+  silently dropping them; results land on `DiscoveryResult.validation_results`.
+- Post-assembly validation tools (`kgbuilder.tools.kg_validation_tools`:
+  `SHACLValidationTool`, `RulesEngineTool`, `ConsistencyCheckTool`) and
+  `kgbuilder.tools.static_validation_tool.StaticValidationTool` +
+  `kgbuilder.tools.relation_extraction_tool.RelationExtractionTool` — thin
+  wrappers around the existing `SHACLValidator`, `RulesEngine`,
+  `ConsistencyChecker`, `StaticValidator`, and `RelationExtractor`
+  implementations, matching the pattern already used for extraction/
+  retrieval. `kgbuilder.skills.kg_validation_skill.KGValidationSkill`
+  combines the three post-assembly checks (mirrors `api.routes.validate`)
+  into one skill call with an aggregate `valid` flag.
+- Tests: `tests/unit/test_orchestrator_agent.py::test_validation_agent_runs_only_vcq_questions`,
+  `tests/unit/test_kg_validation_tools_and_skill.py` (new file).
+
+Not yet done (tracked below): stage 2 (assembly tools/skill), stage 4/5
+extensions (per-enricher tools, combined law-linking skill wired into the
+discovery-loop plan), and stage 6 (swap `BuildPipeline`/`pipeline/orchestrator.py`
+for a `PipelineAgent` driven by `pipeline.md`). The tool/skill wrappers above
+are additive — `IterativeDiscoveryLoop._process_question` and
+`pipeline/orchestrator.py` still call SHACL/rules/consistency/static
+validation directly rather than through the new tools; per the working
+agreement, that rewire happens once each stage's tool/skill coverage is
+proven and not before.
 
 ---
 

@@ -78,6 +78,12 @@ All three are orchestrated together via [KGPlatform](https://github.com/DataScie
     checkpointing, automated SHACL quality scoring, and HTML reports.
 11. **KG versioning** -- snapshot, restore, and diff operations for
     reproducible experiment tracking.
+12. **Agentic orchestration** -- extraction and validation are also exposed
+    as composable tools/skills/subagents: one extraction subagent per
+    ontology module (dispatched concurrently, optionally on different
+    models), and a dedicated validation subagent that consumes VCQ
+    (validating) competency questions instead of only SCQ/RCQ (scoping/
+    relationship) ones. See [Agentic Pipeline](docs/architecture/agentic-pipeline.md).
 
 The pipeline is **ontology-agnostic**: it reads whatever OWL ontology is
 provided and auto-generates extraction prompts, SHACL shapes, and validation
@@ -326,7 +332,13 @@ src/kgbuilder/
   storage/          Neo4j, Qdrant, Fuseki, RDF, export, law retrieval
   analytics/        OWL-RL inference, SKOS enrichment, graph metrics
   retrieval/        BM25 + dense fusion retrieval
-  agents/           Iterative discovery loop, question generator
+  agents/           Question generation (CQType-routed), iterative discovery
+                    loop, module extraction subagents, orchestrator,
+                    VCQ validation agent, agent-swarm model config
+  skills/           Composable skill wrappers (retrieval, extraction, join,
+                    ontology gap analysis, question/KG validation)
+  tools/            Stateless tool wrappers around extractors, validators,
+                    retrievers, and the SHACL/rules/consistency checks
   experiment/       Experiment manager, checkpoint, analyzer, plotter, reporter
   pipeline/         Orchestrators (build pipeline, confidence tuning,
                     stopping criterion, checkpoint CLI)
@@ -449,6 +461,24 @@ Planning/           Architecture docs, interface specs, evaluation notes
 | `pipeline/confidence_tuning.py` | `ConfidenceTuningPipeline` | Six-stage confidence refinement orchestrator |
 | `pipeline/checkpoint_cli.py` | `enrich_from_checkpoint` | Standalone checkpoint re-enrichment |
 
+### Agents, Skills, and Tools (`agents/`, `skills/`, `tools/`)
+
+See [docs/architecture/agentic-pipeline.md](docs/architecture/agentic-pipeline.md)
+for the full design. Summary:
+
+| Module | Key Classes | Purpose |
+|--------|------------|---------|
+| `agents/question_generator.py` | `QuestionGenerationAgent`, `ResearchQuestion`, `CQType` | Generates research questions from ontology gaps, typed SCQ/VCQ/RCQ/FCQ/MpCQ (Keet & Khan QuO model) |
+| `agents/module_extraction_agent.py` | `ModuleExtractionAgent` | Runs SCQ/RCQ extraction for one ontology module (own retriever/extractor pair) |
+| `agents/orchestrator_agent.py` | `OrchestratorAgent`, `ModuleBinding` | Builds one subagent per module from `OntologyService.get_module_class_map()`, runs them concurrently, joins/dedupes results |
+| `agents/validation_agent.py` | `ValidationAgent` | Runs VCQ questions: retrieves evidence, asks a validator if KG content answers it correctly/completely |
+| `agents/swarm_config.py` | `SwarmModelConfig`, `build_module_bindings_with_swarm_config` | Per-module model assignment + concurrency limits for the module orchestrator |
+| `agents/discovery_loop.py` | `IterativeDiscoveryLoop` | Top-level loop; routes SCQ/RCQ to module orchestration (when `module_map` supplied) and VCQ to `ValidationAgent` |
+| `skills/module_extraction_skill.py`, `skills/join_skill.py` | `ModuleExtractionSkill`, `JoinModuleResultsSkill` | Retrieve+extract for one module; merge/dedupe results across modules |
+| `skills/question_validation_skill.py`, `skills/kg_validation_skill.py` | `QuestionValidationSkill`, `KGValidationSkill` | VCQ-question validation; combined post-assembly SHACL+rules+consistency validation |
+| `tools/extraction_tool.py`, `tools/relation_extraction_tool.py`, `tools/static_validation_tool.py` | `ExtractionTool`, `RelationExtractionTool`, `StaticValidationTool` | Stateless wrappers around entity/relation extractors and the SHACL2FOL pre-commit check |
+| `tools/kg_validation_tools.py`, `tools/validation_tool.py` | `SHACLValidationTool`, `RulesEngineTool`, `ConsistencyCheckTool`, `ValidationTool` | Stateless wrappers around post-assembly and VCQ validators |
+
 ---
 
 ## Domain Pluggability
@@ -567,7 +597,7 @@ ablation study setup.
 | Component | Technology |
 |-----------|-----------|
 | Language | Python 3.11+ |
-| LLM | Ollama (qwen3:8b, llama3.1:8b) |
+| LLM | Ollama (qwen3:8b, llama3.1:8b) -- see [agent-swarm scaling notes](docs/architecture/agentic-pipeline.md#ollama-vs-vllm-for-concurrent-subagents) for vLLM tradeoffs at higher subagent concurrency |
 | Embeddings | Ollama (qwen3-embedding, nomic-embed-text, 384-dim) |
 | Graph DB | Neo4j 5.x |
 | Vector DB | Qdrant |
@@ -598,6 +628,14 @@ Per-domain overrides via JSON profiles in `data/profiles/`:
 ```bash
 python scripts/full_kg_pipeline.py --profile data/profiles/legal.json
 ```
+
+Agent-swarm model assignment (which module gets which model, and how many
+module subagents run concurrently) is a separate, optional config layer --
+see [`data/profiles/agent_swarm.example.json`](data/profiles/agent_swarm.example.json)
+and `SwarmModelConfig` in
+[docs/architecture/agentic-pipeline.md](docs/architecture/agentic-pipeline.md#agent-swarm-configuration).
+`experiment.config.KGBuilderParams.swarm_config_path` lets experiment/
+benchmark variants reference one.
 
 See [Planning/03_INTERFACES.md](Planning/03_INTERFACES.md) for all protocol
 definitions and configuration models.
@@ -662,6 +700,8 @@ The documentation is generated from module docstrings using
 | [Planning/04_ISSUES_BACKLOG.md](Planning/04_ISSUES_BACKLOG.md) | Implementation status and roadmap |
 | [Planning/VALIDATION_PLAN.md](Planning/VALIDATION_PLAN.md) | SHACL validation and scoring architecture |
 | [Planning/LANGEXTRACT_EVAL.md](Planning/LANGEXTRACT_EVAL.md) | Evaluation of Google LangExtract (adopted patterns) |
+| [Planning/AGENTIC_KG_PIPELINE_PLAN.md](Planning/AGENTIC_KG_PIPELINE_PLAN.md) | Skills/tools/subagents migration plan and status |
+| [docs/architecture/agentic-pipeline.md](docs/architecture/agentic-pipeline.md) | Agent swarm design: CQType routing, module subagents, VCQ validation, model/concurrency config |
 | [Planning/IMPLEMENTATION_SUMMARY.md](Planning/IMPLEMENTATION_SUMMARY.md) | Law graph implementation summary |
 | [Planning/LAW_ONTOLOGY_RATIONALE.md](Planning/LAW_ONTOLOGY_RATIONALE.md) | Legal ontology design decisions |
 | [docs/getting-started/quickstart-law-graph.md](docs/getting-started/quickstart-law-graph.md) | Quick start for German law graph |
