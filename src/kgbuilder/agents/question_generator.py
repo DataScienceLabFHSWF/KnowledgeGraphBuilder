@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
+from enum import Enum
 from functools import partial
 from typing import Any, Protocol, runtime_checkable
 
@@ -19,6 +20,27 @@ from kgbuilder.agents.base_agent import BaseAgent
 from kgbuilder.core.models import ExtractedEntity
 from kgbuilder.skills import FollowUpGapAnalysisSkill, OntologyGapAnalysisSkill
 from kgbuilder.tools import CoverageSnapshotTool, OntologyQueryTool
+
+
+class CQType(str, Enum):
+    """Competency question type, per Keet & Khan's QuO model (arXiv:2412.13688).
+
+    - SCQ (Scoping): demarcates what the KG/ontology should cover -> drives extraction.
+    - VCQ (Validating): checks content already in the KG is correct/complete -> drives validation.
+    - RCQ (Relationship): probes relationship arity/domain-range/properties -> drives relation extraction.
+    - FCQ (Foundational): aligns a domain entity to a foundational ontology (e.g. CCO/BFO).
+    - MpCQ (Metaproperty): classifies an entity by metaproperties (rigidity, identity, ...).
+
+    Only SCQ/RCQ are currently consumed by extraction subagents; VCQ feeds the
+    validation skill/tool chain. FCQ/MpCQ are modeled but not yet wired to a
+    pipeline stage (no foundational-ontology alignment stage exists yet).
+    """
+
+    SCQ = "SCQ"
+    VCQ = "VCQ"
+    FCQ = "FCQ"
+    RCQ = "RCQ"
+    MPCQ = "MpCQ"
 
 
 @runtime_checkable
@@ -86,12 +108,13 @@ class ResearchQuestion:
     reason: str
     aspect: str = "existence"  # existence, properties, relations
     follow_up: bool = False  # Is this a follow-up from earlier findings?
+    cq_type: CQType = CQType.SCQ  # SCQ/VCQ/FCQ/RCQ/MpCQ (see CQType docstring)
 
     def __repr__(self) -> str:
         """Return string representation."""
         return (
             f"Q[{self.priority:.2f}]: {self.text}\n"
-            f"  Class: {self.entity_class}, Aspect: {self.aspect}"
+            f"  Class: {self.entity_class}, Aspect: {self.aspect}, CQ Type: {self.cq_type.value}"
         )
 
 

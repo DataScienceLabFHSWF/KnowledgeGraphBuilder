@@ -17,6 +17,8 @@ from kgbuilder.skills import (
     RetrievalSkill,
 )
 from kgbuilder.skills.base import AgentSkill
+from kgbuilder.skills.join_skill import JoinModuleResultsSkill
+from kgbuilder.skills.module_extraction_skill import ModuleExtractionSkill
 from kgbuilder.tools import (
     CoverageSnapshotTool,
     EnrichmentTool,
@@ -27,6 +29,7 @@ from kgbuilder.tools import (
     RetrievalTool,
 )
 from kgbuilder.tools.base import AgentTool
+from kgbuilder.tools.extraction_tool import ExtractionTool
 
 ALL_SKILLS: list[AgentSkill] = [
     OntologyGapAnalysisSkill,
@@ -36,6 +39,8 @@ ALL_SKILLS: list[AgentSkill] = [
     RetrievalEvaluationSkill,
     LawLinkingSkill,
     LawContextSkill,
+    ModuleExtractionSkill,
+    JoinModuleResultsSkill,
 ]
 
 ALL_TOOLS: list[AgentTool] = [
@@ -46,6 +51,7 @@ ALL_TOOLS: list[AgentTool] = [
     EvaluationTool,
     LawLinkingTool,
     LawContextTool,
+    ExtractionTool,
 ]
 
 SKILL_REGISTRY: dict[str, AgentSkill] = {skill.name: skill for skill in ALL_SKILLS}

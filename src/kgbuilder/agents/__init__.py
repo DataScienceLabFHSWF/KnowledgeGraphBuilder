@@ -11,6 +11,7 @@ from kgbuilder.agents.discovery_loop import (
     IterativeDiscoveryLoop,
 )
 from kgbuilder.agents.question_generator import (
+    CQType,
     OntologyService,
     QuestionGenerationAgent,
     ResearchQuestion,
@@ -20,6 +21,7 @@ __all__ = [
     "QuestionGenerationAgent",
     "OntologyService",
     "ResearchQuestion",
+    "CQType",
     "IterativeDiscoveryLoop",
     "DiscoveryResult",
     "IterationResult",

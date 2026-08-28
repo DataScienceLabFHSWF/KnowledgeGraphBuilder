@@ -1,6 +1,7 @@
 # Agentic KG-Building Pipeline — Migration Plan
 
-**Status**: Phase 1 (foundation) complete. Phases 2–6 not yet started.
+**Status**: Phases 1–3 (foundation, markdown pipeline, modular subagents) complete.
+Phases 4–6 not yet started.
 **Branch**: `refactor/clean-agent-skills-tools` (based on `main`)
 **Scope boundary** (explicit, do not expand):
 - Document preprocessing/indexing (loading, chunking, embedding into Qdrant) **stays a
@@ -122,7 +123,73 @@ like the Python-constructed steps from Phase 1 — the loader only changes
 
 ---
 
-## 3. Migration stages for the KG-building pipeline itself
+## 3. Modular per-ontology-module subagents + orchestrator (Phase 3 — this session)
+
+Motivation: the decommissioning ontology is already organized into modules via
+`kg:module` annotations on classes (e.g. "Radiological Characterization",
+"Assets and Locations", "Technical Safety Assessment", "Waste and Materials",
+"Measure Description", "Workflow and Change Measures", "Document Structure and
+Evidence", "Documentation and References" — see
+`data/ontology/domain/decommissioning.owl`). Rather than one monolithic
+extraction pass over the whole ontology, each module gets its own extraction
+subagent, run independently (optionally on a smaller/cheaper model), then an
+orchestrator joins their results.
+
+### 3.1 Competency question typology grounds question routing
+
+Per Keet & Khan's QuO model (arXiv:2412.13688) and the AskCQ comparative study
+(arXiv:2507.02989), not all competency questions serve the same purpose. We
+adopt their five-way typology as `kgbuilder.agents.question_generator.CQType`:
+
+- **SCQ** (Scoping) — demarcates what the ontology/KG should cover → drives extraction.
+- **VCQ** (Validating) — checks KG content is correct/complete → drives validation, not extraction.
+- **RCQ** (Relationship) — probes relationship arity/domain-range/properties → drives relation extraction.
+- **FCQ** (Foundational) — aligns a domain entity to a foundational ontology (e.g. CCO/BFO, present under `data/ontology/external/cco/`).
+- **MpCQ** (Metaproperty) — classifies an entity by metaproperties (rigidity, identity, ...).
+
+`ResearchQuestion.cq_type` now carries this typology. Extraction subagents
+(`ModuleExtractionAgent.run_questions`) only act on **SCQ** and **RCQ**
+questions; **VCQ** questions are meant for a future validation-stage skill
+(not yet wired — tracked as a migration stage below); **FCQ**/**MpCQ** are
+modeled but have no consuming pipeline stage yet (no foundational-ontology
+alignment stage exists in this repo).
+
+### 3.2 Implemented (this session)
+
+- `kgbuilder.tools.extraction_tool.ExtractionTool` — thin wrapper around any
+  `EntityExtractor.extract(text, ontology_classes, existing_entities)`.
+- `kgbuilder.skills.module_extraction_skill.ModuleExtractionSkill` — retrieve
+  documents for one question, then extract entities scoped to one module's
+  ontology classes.
+- `kgbuilder.skills.join_skill.JoinModuleResultsSkill` — merges entity lists
+  from multiple modules, deduping by `(label, entity_type)` with the same
+  strategy `IterativeDiscoveryLoop` already uses (highest confidence wins,
+  evidence merged).
+- `kgbuilder.agents.module_extraction_agent.ModuleExtractionAgent` — a
+  `BaseAgent` scoped to exactly one ontology module: holds that module's
+  class definitions, and a retriever/extractor pair that can differ per
+  module (e.g. a smaller model for a simpler module). Filters incoming
+  questions to SCQ/RCQ via `EXTRACTION_CQ_TYPES`.
+- `kgbuilder.agents.orchestrator_agent.OrchestratorAgent` — given a list of
+  `ModuleBinding` (module name, ontology classes, retriever, extractor,
+  questions), dynamically builds one `ModuleExtractionAgent` per module, runs
+  them concurrently (`ThreadPoolExecutor`, configurable `max_workers`), and
+  joins results via `join_module_results`.
+- Tests: `tests/unit/test_orchestrator_agent.py` — covers per-module
+  retrieve→extract, CQ-type filtering (VCQ skipped), and cross-module dedup
+  where the same entity is found independently by two module subagents with
+  different confidence/evidence.
+
+Not yet done (tracked below): assigning ontology classes and research
+questions to modules automatically from the OWL `kg:module` annotations (today
+`ModuleBinding` takes the module→classes mapping and per-module questions as
+plain arguments — the *mapping itself* still needs a loader against
+`OntologyService`); wiring `OrchestratorAgent` into the main discovery loop;
+a validation-stage consumer for VCQ questions.
+
+---
+
+## 4. Migration stages for the KG-building pipeline itself
 
 Each stage below turns one more hardcoded call site into a tool/skill the
 `PipelineAgent` (or a `LangChainReactAgent`) invokes, and keeps the existing
@@ -158,7 +225,7 @@ embedding into Qdrant) is explicitly **out of scope** and stays as-is.
 
 ---
 
-## 4. Working agreement for this migration
+## 5. Working agreement for this migration
 
 - One stage at a time, in the order above; do not start stage *n+1* before
   stage *n*'s tests are green.
