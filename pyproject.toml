@@ -36,6 +36,7 @@ dependencies = [
     # Utilities
     "click>=8.1",
     "typer>=0.9",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
