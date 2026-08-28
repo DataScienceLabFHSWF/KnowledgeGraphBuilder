@@ -143,6 +143,23 @@ def test_question_generator_with_existing_entities(
     assert agent._existing[0].label == "Kernkraftwerk Emsland"
 
 
+def test_question_generator_exposes_skill_and_tool_workflow(
+    mock_ontology_service: MagicMock,
+    sample_entities: list[ExtractedEntity],
+) -> None:
+    """Test the agent exposes skills and tool-backed execution hooks."""
+    agent = QuestionGenerationAgent(mock_ontology_service, sample_entities)
+
+    assert hasattr(agent, "skills")
+    assert hasattr(agent, "tools")
+    assert len(agent.skills) > 0
+    assert len(agent.tools) > 0
+
+    skill_result = agent.run_skill("ontology_gap_analysis", max_questions=3)
+    assert isinstance(skill_result, list)
+    assert all(isinstance(q, ResearchQuestion) for q in skill_result)
+
+
 # ============================================================================
 # Tests: Question Generation
 # ============================================================================

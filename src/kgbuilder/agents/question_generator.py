@@ -9,12 +9,16 @@ coverage gaps. These questions guide the iterative discovery loop.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from functools import partial
 from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
+from kgbuilder.agents.base_agent import BaseAgent
 from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.skills import FollowUpGapAnalysisSkill, OntologyGapAnalysisSkill
+from kgbuilder.tools import CoverageSnapshotTool, OntologyQueryTool
 
 
 @runtime_checkable
@@ -91,7 +95,7 @@ class ResearchQuestion:
         )
 
 
-class QuestionGenerationAgent:
+class QuestionGenerationAgent(BaseAgent):
     """Generates research questions from ontology gaps.
 
     Strategy:
@@ -119,6 +123,22 @@ class QuestionGenerationAgent:
         self._ontology = ontology_service
         self._existing = existing_entities or []
         self._logger = structlog.get_logger(__name__)
+
+        # Bind shared skill/tool definitions to this agent instance so callers
+        # can invoke them via run_skill()/run_tool() without extra plumbing.
+        skills = [
+            replace(OntologyGapAnalysisSkill, handler=partial(OntologyGapAnalysisSkill.handler, self)),
+            replace(FollowUpGapAnalysisSkill, handler=partial(FollowUpGapAnalysisSkill.handler, self)),
+        ]
+        tools = [
+            replace(OntologyQueryTool, handler=partial(OntologyQueryTool.handler, self._ontology)),
+            replace(CoverageSnapshotTool, handler=partial(CoverageSnapshotTool.handler, self)),
+        ]
+        super().__init__(name="question_generation_agent", skills=skills, tools=tools)
+
+    def run(self, prompt: str, **kwargs: Any) -> Any:
+        """Compatibility hook for a generic base agent interface."""
+        return self.generate_questions(**kwargs)
 
     def generate_questions(
         self,
