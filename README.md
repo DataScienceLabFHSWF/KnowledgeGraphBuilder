@@ -701,6 +701,7 @@ The documentation is generated from module docstrings using
 | [Planning/VALIDATION_PLAN.md](Planning/VALIDATION_PLAN.md) | SHACL validation and scoring architecture |
 | [Planning/LANGEXTRACT_EVAL.md](Planning/LANGEXTRACT_EVAL.md) | Evaluation of Google LangExtract (adopted patterns) |
 | [Planning/AGENTIC_KG_PIPELINE_PLAN.md](Planning/AGENTIC_KG_PIPELINE_PLAN.md) | Skills/tools/subagents migration plan and status |
+| [Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md](Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md) | Gap analysis and phased plan informed by SEMANTiCS 2026 (provenance, reasoning, repair agents, CQ-driven testing) |
 | [docs/architecture/agentic-pipeline.md](docs/architecture/agentic-pipeline.md) | Agent swarm design: CQType routing, module subagents, VCQ validation, model/concurrency config |
 | [Planning/IMPLEMENTATION_SUMMARY.md](Planning/IMPLEMENTATION_SUMMARY.md) | Law graph implementation summary |
 | [Planning/LAW_ONTOLOGY_RATIONALE.md](Planning/LAW_ONTOLOGY_RATIONALE.md) | Legal ontology design decisions |
