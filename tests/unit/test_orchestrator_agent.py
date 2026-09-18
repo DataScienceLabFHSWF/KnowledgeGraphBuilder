@@ -9,6 +9,8 @@ from kgbuilder.agents.orchestrator_agent import ModuleBinding, OrchestratorAgent
 from kgbuilder.agents.question_generator import CQType, ResearchQuestion
 from kgbuilder.agents.validation_agent import ValidationAgent
 from kgbuilder.core.models import Evidence, ExtractedEntity
+from kgbuilder.evaluation.cq_sparql import CQSparqlResult, CQSparqlTranslation
+from kgbuilder.provenance.rationale_log import RationaleLog
 
 
 def _make_entity(label: str, entity_type: str, confidence: float, source_id: str) -> ExtractedEntity:
@@ -199,3 +201,162 @@ def test_validation_agent_runs_only_vcq_questions() -> None:
     assert results == [{"valid": True, "question_id": "q-vcq"}]
     retriever.retrieve.assert_called_once_with(query="Does the KG contain the facility Reactor A?", top_k=10)
     validator.validate_question.assert_called_once()
+
+
+def test_module_extraction_agent_records_rationale_when_log_supplied() -> None:
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [{"content": "chunk text", "doc_id": "doc1"}]
+    extractor = MagicMock()
+    extractor.extract.return_value = [_make_entity("Reactor A", "Facility", 0.9, "doc1")]
+    rationale_log = RationaleLog()
+
+    agent = ModuleExtractionAgent(
+        module_name="Assets and Locations",
+        ontology_classes=["Facility"],
+        retriever=retriever,
+        extractor=extractor,
+        rationale_log=rationale_log,
+    )
+    question = ResearchQuestion(
+        question_id="q1", text="Which facilities are mentioned?", entity_class="Facility",
+        priority=1.0, reason="not covered", cq_type=CQType.SCQ,
+    )
+
+    entities = agent.run_questions([question])
+
+    assert len(entities) == 1
+    entries = rationale_log.entries_for(entities[0].id)
+    assert len(entries) == 1
+    assert entries[0].agent == "module_extraction_agent:Assets and Locations"
+    assert entries[0].action == "extracted"
+    assert entries[0].triggered_by == "q1"
+    assert entries[0] in entities[0].rationale
+
+
+def test_validation_agent_records_rationale_when_log_supplied() -> None:
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [{"content": "evidence text", "doc_id": "doc-1"}]
+    validator = MagicMock()
+    validator.validate_question.return_value = {"valid": True, "question_id": "q-vcq"}
+    rationale_log = RationaleLog()
+
+    agent = ValidationAgent(retriever=retriever, validator=validator, rationale_log=rationale_log)
+    vcq = ResearchQuestion(
+        question_id="q-vcq", text="Does the KG contain a Facility?", entity_class="Facility",
+        priority=1.0, reason="validation", cq_type=CQType.VCQ,
+    )
+
+    agent.run_questions([vcq])
+
+    entries = rationale_log.entries_for("q-vcq")
+    assert len(entries) == 1
+    assert entries[0].agent == "validation_agent"
+    assert entries[0].action == "validated"
+    assert entries[0].triggered_by == "q-vcq"
+
+
+def test_validation_agent_prefers_sparql_functional_test_when_translation_succeeds() -> None:
+    retriever = MagicMock()
+    validator = MagicMock()
+    sparql_translator = MagicMock()
+    sparql_runner = MagicMock()
+    rdf_store = MagicMock()
+
+    vcq = ResearchQuestion(
+        question_id="q-vcq", text="Does a Facility exist?", entity_class="Facility",
+        priority=1.0, reason="validation", cq_type=CQType.VCQ,
+    )
+    translation = CQSparqlTranslation(
+        question_id="q-vcq", question_text=vcq.text, sparql="ASK { ?f a ?t }",
+    )
+    sparql_result = CQSparqlResult(
+        question_id="q-vcq", translation=translation, executed=True, passed=True,
+    )
+    sparql_runner.translate_and_run.return_value = sparql_result
+
+    agent = ValidationAgent(
+        retriever=retriever,
+        validator=validator,
+        sparql_translator=sparql_translator,
+        sparql_runner=sparql_runner,
+        rdf_store=rdf_store,
+    )
+
+    results = agent.run_questions([vcq])
+
+    assert results == [sparql_result]
+    sparql_runner.translate_and_run.assert_called_once_with(vcq, rdf_store, sparql_translator)
+    retriever.retrieve.assert_not_called()
+    validator.validate_question.assert_not_called()
+
+
+def test_validation_agent_falls_back_to_llm_judgment_when_sparql_translation_fails() -> None:
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [{"content": "evidence text", "doc_id": "doc-1"}]
+    validator = MagicMock()
+    validator.validate_question.return_value = {"valid": True}
+    sparql_translator = MagicMock()
+    sparql_runner = MagicMock()
+    rdf_store = MagicMock()
+
+    vcq = ResearchQuestion(
+        question_id="q-vcq", text="Does a Facility exist?", entity_class="Facility",
+        priority=1.0, reason="validation", cq_type=CQType.VCQ,
+    )
+    failed_translation = CQSparqlTranslation(
+        question_id="q-vcq",
+        question_text=vcq.text,
+        sparql=None,
+        translation_error="could not translate",
+    )
+    sparql_runner.translate_and_run.return_value = CQSparqlResult(
+        question_id="q-vcq", translation=failed_translation, executed=False,
+    )
+
+    agent = ValidationAgent(
+        retriever=retriever,
+        validator=validator,
+        sparql_translator=sparql_translator,
+        sparql_runner=sparql_runner,
+        rdf_store=rdf_store,
+    )
+
+    results = agent.run_questions([vcq])
+
+    assert results == [{"valid": True}]
+    validator.validate_question.assert_called_once()
+
+
+def test_validation_agent_rationale_notes_which_validation_method_was_used() -> None:
+    retriever = MagicMock()
+    validator = MagicMock()
+    sparql_translator = MagicMock()
+    sparql_runner = MagicMock()
+    rdf_store = MagicMock()
+    rationale_log = RationaleLog()
+
+    vcq = ResearchQuestion(
+        question_id="q-vcq", text="Does a Facility exist?", entity_class="Facility",
+        priority=1.0, reason="validation", cq_type=CQType.VCQ,
+    )
+    translation = CQSparqlTranslation(
+        question_id="q-vcq", question_text=vcq.text, sparql="ASK { ?f a ?t }",
+    )
+    sparql_runner.translate_and_run.return_value = CQSparqlResult(
+        question_id="q-vcq", translation=translation, executed=True, passed=True,
+    )
+
+    agent = ValidationAgent(
+        retriever=retriever,
+        validator=validator,
+        rationale_log=rationale_log,
+        sparql_translator=sparql_translator,
+        sparql_runner=sparql_runner,
+        rdf_store=rdf_store,
+    )
+
+    agent.run_questions([vcq])
+
+    entries = rationale_log.entries_for("q-vcq")
+    assert len(entries) == 1
+    assert "sparql functional test" in entries[0].reason

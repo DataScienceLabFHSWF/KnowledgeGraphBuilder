@@ -2,10 +2,15 @@
 
 **Source**: [local-docs/SEMANTiCS2026-Summary.md](../local-docs/SEMANTiCS2026-Summary.md)
 (22nd Int. Conf. on Semantic Systems, Ghent, Sep 2026)
-**Status**: Planning only — no implementation in this document. Follows the
-same "one stage at a time, tests before rewiring" discipline as
-[AGENTIC_KG_PIPELINE_PLAN.md](AGENTIC_KG_PIPELINE_PLAN.md).
-**Branch**: `refactor/clean-agent-skills-tools`
+**Status**: Phase A (provenance/rationale log) and Phase B (CQ→SPARQL
+functional testing) implemented. Phase C partially implemented (G2 OWL DL
+consistency reasoning, G3 OOPS! pitfall detection, and a consolidated
+ontology validation report are done and verified against the real
+decommissioning ontology; G4 repair agents are not implemented). Phases
+D–G not started. Follows the same "one stage at a time, tests before
+rewiring" discipline as [AGENTIC_KG_PIPELINE_PLAN.md](AGENTIC_KG_PIPELINE_PLAN.md).
+**Branch**: `feat/semantics2026-phase-a-provenance` (off
+`refactor/clean-agent-skills-tools`)
 
 ---
 
@@ -80,88 +85,162 @@ tools/skills/agents, cover with mocked unit tests (no live Neo4j/Qdrant/
 Ollama/HermiT/OOPS! dependency in unit tests), keep existing call sites
 working, do not start phase *n+1* before phase *n* is green.
 
-### Phase A — Provenance & rationale log (G1)
+### Phase A — Provenance & rationale log (G1) ✅ implemented
 
 **Why first**: every other phase (repair loops, pitfall resolution, quorum
 voting) becomes far more valuable once decisions are explainable, and this is
 the cheapest, lowest-risk change — additive fields plus one new small module.
 
-- Extend `core/models.py`: add a `RationaleEntry` dataclass
-  (`agent: str`, `action: str`, `reason: str`, `triggered_by: str | None`
-  — e.g. a CQ id, a pitfall id, or a SHACL violation id — `timestamp`).
-  Add `rationale: list[RationaleEntry]` to `ExtractedEntity` and
-  `ExtractedRelation` (default empty list — backward compatible).
-- New `kgbuilder/provenance/rationale_log.py`: `RationaleLog` — an
-  append-only in-memory/JSONL log keyed by entity/relation id, with
-  `record(entity_id, agent, action, reason, triggered_by)` and
-  `export_jsonld(base_uri)` producing PROV-O-shaped output
-  (`prov:wasGeneratedBy`, `prov:wasDerivedFrom`, `dc:source`) so it composes
-  with the existing JSON-LD exporter rather than inventing a new vocabulary.
-- Wire `ModuleExtractionAgent`, `ValidationAgent`, and (once built) the
-  repair agents from Phase C to call `RationaleLog.record(...)` at each
-  decision point.
-- Tests: unit tests for `RationaleEntry`/`RationaleLog` round-trip and
-  JSON-LD shape; extend existing orchestrator tests to assert a rationale
-  entry is recorded per module dispatch.
+**Status**: implemented on `feat/semantics2026-phase-a-provenance`.
 
-### Phase B — CQ→SPARQL functional testing (G5)
+- `core/models.RationaleEntry` (`agent`, `action`, `reason`,
+  `triggered_by: str | None`, `timestamp`). Added
+  `rationale: list[RationaleEntry] = field(default_factory=list)` to
+  `ExtractedEntity` and `ExtractedRelation` (backward compatible).
+- `kgbuilder/provenance/rationale_log.py`: `RationaleLog` — append-only,
+  keyed by subject id. `record(subject, agent, action, reason,
+  triggered_by=None)` for entities/relations (also appends to
+  `subject.rationale`); `record_for_id(subject_id, ...)` for decisions with
+  no entity/relation carrier (e.g. a VCQ question's validation outcome).
+  `export_jsonld(base_uri)` produces PROV-O/VAEM/Dublin-Core-shaped output
+  (`prov:wasGeneratedBy`, `prov:generatedAtTime`, `dc:source`,
+  `vaem:rationale`) — see full citations in the module docstring and in
+  §8 below.
+- Wired (optional `rationale_log` param, `None` by default — no behavior
+  change unless supplied) into `ModuleExtractionAgent.run_questions()`
+  (records `action="extracted"`, `triggered_by=question_id` per entity) and
+  `ValidationAgent.run_questions()` (records `action="validated"`, keyed by
+  `question_id`, via `record_for_id` since a VCQ result isn't itself an
+  entity/relation).
+- Tests: `tests/unit/test_rationale_log.py` (log + JSON-LD shape),
+  extended `tests/unit/test_orchestrator_agent.py` (rationale recorded by
+  both agents when a log is supplied, no-op when it isn't).
+
+Deferred to Phase C (repair agents haven't been built yet): wiring
+`RepairAgent` to call `rationale_log.record(..., action="repaired", ...)`.
+
+### Phase B — CQ→SPARQL functional testing (G5) ✅ implemented
 
 **Why second**: this closes the loop on whether generated CQs (SCQ/RCQ/VCQ)
 actually hold against the KG, which is the functional-test pattern used
 everywhere at the conference and directly strengthens `ValidationAgent`.
 
-- New `kgbuilder/evaluation/cq_sparql.py`: `CompetencyQuestionTranslator`
-  (LLM-assisted NL question -> SPARQL ASK/SELECT, ontology-guided, reusing
-  the existing `OntologyService` for class/property URIs) and
-  `CQSparqlRunner` (executes against `RDFStore`/Fuseki, returns
-  boolean/bindings + timing).
-- New tool `tools/cq_sparql_tool.py` wrapping `CQSparqlRunner.run(cq, store)`.
-- Extend `ValidationAgent`/`QuestionValidationSkill` with an optional
-  `sparql_runner` so VCQ validation can be backed by an executable query
-  instead of only an LLM judgment call — the LLM-judgment path
-  (`validate_question`) stays as the default/fallback for CQs that don't
-  translate cleanly to SPARQL.
-- Regression metric: report **CQCoverage** (fraction of SCQ/VCQ/RCQ
-  questions with a passing SPARQL translation) per KG build, following
-  CQ4OE's naming so results are comparable across our own runs over time.
-- Tests: mock `RDFStore`/Fuseki; verify ASK-query translation + execution
-  path and the fallback-to-LLM-judgment path when translation fails.
+**Status**: implemented on `feat/semantics2026-phase-a-provenance`.
 
-### Phase C — Validation cascade with repair agents (G2, G3, G4)
+- New `kgbuilder/evaluation/cq_sparql.py`:
+  - `CompetencyQuestionTranslator.translate(question) -> CQSparqlTranslation`
+    — LLM-assisted NL question -> SPARQL ASK/SELECT (any `LLMProvider`-shaped
+    `generate(prompt) -> str`), ontology-guided via `OntologyService`
+    (resolves `question.entity_class` to a class URI hint when available).
+    Extracts the query from a fenced or bare LLM response; returns
+    `sparql=None` + `translation_error` (not an exception) when the LLM
+    declines or fails, so callers treat "not translatable" as a normal,
+    handleable outcome rather than an error.
+  - `CQSparqlRunner.run(translation, store) -> CQSparqlResult` — executes
+    against any `RDFStore`-shaped `query_sparql(sparql) -> dict` (Fuseki
+    response shape). ASK -> boolean `passed`; SELECT -> `passed = len(bindings) > 0`.
+    `translate_and_run(question, store, translator)` convenience wrapper.
+  - `compute_cq_translation_coverage(results) -> float` — fraction of
+    results with a successful translation, named **CQCoverage** to match
+    CQ4OE's dimension naming for cross-run comparability.
+- New tool `tools/cq_sparql_tool.py::CQSparqlTool` wrapping
+  `runner.translate_and_run(question, store, translator)`.
+- New skill `skills/question_validation_skill.py::SparqlQuestionValidationSkill`
+  (`question_validation_sparql`) composing the above.
+- `ValidationAgent` gained optional `sparql_translator`, `sparql_runner`,
+  `rdf_store` constructor params. When all three are supplied,
+  `run_questions()` attempts the SPARQL functional test first for each VCQ
+  question; only when translation doesn't produce a usable query
+  (`translation.sparql is None`) does it fall back to the existing
+  `question_validation` (retrieve + LLM-judgment) skill. Rationale entries
+  (Phase A) now note which method was used
+  (`"VCQ validation via sparql functional test: ..."` vs.
+  `"... via LLM judgment: ..."`).
+- Tests: `tests/unit/test_cq_sparql.py` (translator fence/bare extraction,
+  ontology hint injection, LLM-failure handling, ASK/SELECT execution,
+  store-error handling, no-op on failed translation, coverage metric);
+  extended `tests/unit/test_orchestrator_agent.py` with three tests covering
+  the SPARQL-preferred path, the LLM-judgment fallback, and rationale-method
+  tagging.
+
+Deferred to Phase C: no `CQSparqlRunner`/`CompetencyQuestionTranslator`
+wiring into repair agents yet (they don't exist until Phase C); the
+`compute_cq_translation_coverage` metric isn't yet surfaced anywhere in a
+KG-build report (no reporting consumer built — the function exists and is
+tested, but nothing calls it end-to-end over a real discovery run yet).
+
+### Phase C — Validation cascade with repair agents (G2, G3, G4) ⚠️ partially implemented
 
 **Why third**: builds directly on Phases A (rationale) and B (functional
 tests) — every repair now has both "why" and "does it now pass" available.
 
-- New `validation/consistency_reasoner.py`: `ConsistencyReasoner` wrapping
-  `owlready2` (bundles HermiT) as an **optional extra**
-  (`pip install -e ".[reasoning]"`), mirroring how `StaticValidator` already
-  treats SHACL2FOL/Vampire as optional. Exposes
-  `check_consistency(ontology_path) -> ConsistencyResult` (consistent: bool,
-  unsatisfiable_classes: list[str]).
-- New `validation/pitfall_detector.py`: `OOPSPitfallDetector` — thin HTTP
-  client for the public OOPS! REST API (no local install), with a
-  **local rule-based fallback** for the handful of pitfall checks that are
-  cheap to reimplement (e.g. P08 missing annotations, P11 missing
-  domain/range) so the pipeline degrades gracefully without network access —
-  this also mirrors G6's "rule-based validator" pattern instead of adding a
-  second hard external dependency.
-- New tools: `tools/consistency_reasoner_tool.py`,
-  `tools/pitfall_detector_tool.py`, both following the existing
-  `kg_validation_tools.py` pattern (stateless wrapper + `.handler`).
-- New `agents/repair_agent.py`: `RepairAgent` — one instance per failure
-  class (`SyntaxRepairAgent` isn't needed, we don't hand-author OWL; start
-  with `ConsistencyRepairAgent` and `PitfallRepairAgent`), each taking a
-  validation failure + `RationaleLog` context and re-invoking the relevant
-  extraction/assembly step with the failure as additional prompt context,
-  then re-validating. Bounded retry count (default 2, configurable) to avoid
-  infinite loops — this is the one new piece of control flow, kept as small
-  and inspectable as the existing `ModuleExtractionAgent.run_questions` loop.
-- Extend `KGValidationSkill` with an optional `consistency_reasoner` and
-  `pitfall_detector` param, following the exact pattern already used for
-  `shacl_validator`/`rules_engine`/`consistency_checker` (only runs if
-  configured, aggregates into the same `valid` flag).
-- Tests: mock owlready2/OOPS! clients; verify repair-agent retry bound,
-  rationale logging per repair attempt, and aggregate `valid` flag semantics.
+**Status**: G2 (consistency reasoning) and G3 (pitfall detection) implemented
+and verified against the real `data/ontology/domain/decommissioning.owl`,
+plus a consolidated report generator (not in the original plan text, added
+because it was needed to make the two checks actually useful together).
+**G4 (repair agents) is not implemented.**
+
+- `validation/consistency_reasoner.py`: `ConsistencyReasoner` wraps
+  `owlready2` (bundles HermiT *and* Pellet — both usable via
+  `reasoner="hermit"|"pellet"`) as an **optional extra**
+  (`pip install -e ".[reasoning]"`, added to `pyproject.toml`), mirroring
+  how `StaticValidator` treats SHACL2FOL/Vampire as optional. No separate
+  JAR download needed (unlike SHACL2FOL) — owlready2 bundles HermiT.jar/
+  Pellet's jars itself; only a Java runtime on PATH is required, which is
+  already a `StaticValidator` prerequisite. `check_consistency(ontology_path)
+  -> ConsistencyCheckResult` (`consistent: bool`, `unsatisfiable_classes:
+  list[str]`, `error: str | None` — never raises, degrades to `error` set).
+  **Verified live**: ran against the real decommissioning ontology (58
+  classes, 120 object properties, 29 data properties) — reports
+  `consistent=True`, zero unsatisfiable classes.
+- `validation/pitfall_detector.py`: `OOPSPitfallDetector` — HTTP client
+  (`httpx`, already a core dependency) for the public OOPS! REST API, with a
+  **local rule-based fallback** (rdflib-based, no network) covering P08
+  (missing `rdfs:label`/`rdfs:comment`) and P11 (missing `rdfs:domain`/
+  `rdfs:range` on object properties) so the pipeline degrades gracefully
+  without network access — mirrors G6's "rule-based validator" pattern
+  instead of adding a second hard external dependency. **Verified live**
+  against the real decommissioning ontology: OOPS! reports **P10** (missing
+  disjointness, Important), **P08** (missing annotations, 64 elements,
+  Minor), **P04** (2 unconnected elements, Minor), **P22** (naming
+  convention inconsistency, Minor) — concrete findings to address before
+  publication.
+- New tools in the existing `tools/kg_validation_tools.py` (not separate
+  files as originally sketched — same pattern, consolidated file):
+  `OntologyConsistencyReasoningTool` (`ontology_consistency_reasoning`),
+  `OntologyPitfallScanTool` (`ontology_pitfall_scan`). Both take an
+  `ontology_path`, distinct from the existing KG-instance-data
+  `consistency_check` tool.
+- `KGValidationSkill` extended with optional `consistency_reasoner`,
+  `pitfall_detector`, and `ontology_path` params — only runs when
+  configured, following the exact pattern already used for
+  `shacl_validator`/`rules_engine`/`consistency_checker`. Ontology
+  inconsistency (when the check actually completes) now gates the
+  aggregate `valid` flag; pitfalls are informational only and never gate it.
+- **Hardened `StaticValidator._parse_output`** (separately-tracked TODO in
+  `VALIDATION_PLAN.md`, resolved as part of this phase): added the missing
+  **containment**-mode branch (`"contained in the second?"` — previously
+  unhandled, always fell through to "could not parse"), verified against
+  real JAR/Vampire output for all three modes (satisfiability, containment,
+  static validation), and improved the unparseable-output error message to
+  include a text snippet for debugging. **Verified live**: real
+  satisfiability check against shapes generated from a toy ontology returns
+  `valid=True` in 0.005s using the vendored `lib/SHACL2FOL.jar`/`lib/vampire`.
+- New `validation/ontology_report.py`: `OntologyValidationReportBuilder` +
+  `OntologyValidationReport` — consolidates OWL DL consistency, SHACL shape
+  satisfiability, OOPS! pitfalls, and CQ coverage (Phase B) into one
+  artifact with `to_dict()`/`to_markdown()`, intended for a publication's
+  reproducibility appendix. **Verified live**: generated a full markdown
+  report for the decommissioning ontology (consistency + pitfalls; CQ
+  coverage needs a live LLM + RDF store, not exercised in this environment).
+- **Not implemented**: `agents/repair_agent.py` (G4 — no automatic
+  re-invocation of extraction/assembly when a check fails; findings are
+  reported, not yet acted on). This remains the next step if pursued.
+- Tests: `tests/unit/test_consistency_reasoner.py`,
+  `tests/unit/test_pitfall_detector.py`, `tests/unit/test_ontology_report.py`
+  (all mock owlready2/HTTP — no live Java/network dependency in unit tests),
+  extended `tests/unit/test_kg_validation_tools_and_skill.py` and
+  `tests/validation/test_static_validator.py`.
 
 ### Phase D — Prompt diversity + rule-based extraction validator (G6)
 
@@ -230,15 +309,15 @@ tests) — every repair now has both "why" and "does it now pass" available.
 
 ## 5. Priority and sequencing
 
-| Phase | Priority | Rough size | Depends on |
-|---|---|---|---|
-| A — Rationale log | High | Small | — |
-| B — CQ→SPARQL tests | High | Medium | A (for logging translation failures) |
-| C — Validation cascade + repair agents | High | Large | A, B |
-| D — Prompt diversity + rule validator | Medium | Medium | — (independent, can run parallel to A–C) |
-| E — Quorum voting | Medium | Small | D helpful but not required |
-| F — GraphML prompt context | Low | Small | — (independent) |
-| G — CQ coaching | Low (exploratory) | Small | B (reuses SPARQL-translatability as one specificity signal) |
+| Phase | Priority | Rough size | Depends on | Status |
+|---|---|---|---|---|
+| A — Rationale log | High | Small | — | ✅ Done |
+| B — CQ→SPARQL tests | High | Medium | A (for logging translation failures) | ✅ Done |
+| C — Validation cascade + repair agents | High | Large | A, B | ⚠️ Partial (G2/G3 + report done; G4 repair agents not started) |
+| D — Prompt diversity + rule validator | Medium | Medium | — (independent, can run parallel to A–C) | Not started |
+| E — Quorum voting | Medium | Small | D helpful but not required | Not started |
+| F — GraphML prompt context | Low | Small | — (independent) | Not started |
+| G — CQ coaching | Low (exploratory) | Small | B (reuses SPARQL-translatability as one specificity signal) | Not started |
 
 Recommended order: **A → B → C**, with **D** picked up opportunistically in
 parallel since it touches a different subsystem (`extraction/`) than A–C
@@ -251,8 +330,8 @@ follow-ups once A–D are stable.
 
 | Dependency | Used by | Install extra |
 |---|---|---|
-| `owlready2` | Phase C consistency reasoning (HermiT) | `pip install -e ".[reasoning]"` |
-| none (HTTP client only, `requests`/`httpx` already available transitively) | Phase C OOPS! pitfall detection | — |
+| `owlready2` | Phase C consistency reasoning (HermiT/Pellet) — **added to `pyproject.toml`** | `pip install -e ".[reasoning]"` |
+| none (HTTP client only, `httpx` already a core dependency) | Phase C OOPS! pitfall detection | — |
 
 No new required dependency changes `pyproject.toml`'s default install.
 
@@ -264,3 +343,34 @@ No new required dependency changes `pyproject.toml`'s default install.
 - Current agentic architecture this plan builds on: [AGENTIC_KG_PIPELINE_PLAN.md](AGENTIC_KG_PIPELINE_PLAN.md)
 - Validation architecture this plan extends: [VALIDATION_PLAN.md](VALIDATION_PLAN.md)
 - Agent/skill/tool design reference: [docs/architecture/agentic-pipeline.md](../docs/architecture/agentic-pipeline.md)
+
+---
+
+## 8. Attribution / sources
+
+Every phase above is inspired by a specific paper, tool, or talk from
+SEMANTiCS 2026 (Ghent, 15–17 Sep 2026). Proceedings: IOS Press, *Studies on
+the Semantic Web* vol. 63, ISBN 978-1-64368-686-8, doi:10.3233/SSW63, CC BY
+4.0. Cited per-phase, so contributions can be traced back to their source
+when this plan is implemented.
+
+| Phase / gap | Source | Citation |
+|---|---|---|
+| A (G1) — rationale log | **MASEO** (Multi-Agent System for Explainable Ontology Generation), OEG-UPM | Repo: <https://github.com/oeg-upm/maseo> (Apache-2.0) · Docs: <https://maseo.readthedocs.io> · doi:10.5281/zenodo.19052003 · funded by SOEL, <https://w3id.org/soel>, grant PID2023-152703NA-I00 |
+| A (G1) — provenance-as-trust framing | Sabou, M. — *"Beyond Data: Why the Future of AI is Neurosymbolic"* | NeSy workshop keynote, SEMANTiCS 2026, WU Wien, 14 Sep 2026 |
+| A (G1) — JSON-LD vocabulary | W3C PROV Ontology (PROV-O) | <https://www.w3.org/TR/prov-o/> |
+| A (G1) — JSON-LD vocabulary | Dublin Core Metadata Terms (`dc:`) | <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/> |
+| A (G1) — JSON-LD vocabulary | VAEM (Vocabulary for Attaching Essential Metadata), used by MASEO for `vaem:rationale` | <http://www.linkedmodel.org/schema/vaem> |
+| B (G5) — CQ→SPARQL functional testing | **CQ4OE** benchmark, OEG-UPM | <https://oeg-upm.github.io/cq4oe-benchmark/> · leaderboard: <https://oeg-upm.github.io/cq4oe-benchmark/leaderboard/> · HF dataset `oeg/CQ4OE` · doi:10.5281/zenodo.20080309 |
+| C (G2) — DL consistency reasoning | MASEO's Logical Consistency Agent (HermiT reasoner) | See MASEO citation above; HermiT: <http://www.hermit-reasoner.com/> |
+| C (G3) — ontology pitfall detection | MASEO's Pitfall Resolution Agent (OOPS! REST API) | See MASEO citation above; OOPS!: <http://oops.linkeddata.es/> |
+| C (G4) — per-failure-class repair agents | MASEO's 4-stage sequential agent pipeline | See MASEO citation above |
+| C (G2–G4) — RAG-scoped, requirement-driven extension pattern | **OntoExtend** — Lippolis, Saeedizade, Schmid, Blattner, Keskisärkkä, Gangemi, Blomqvist, Nuzzolese (Bologna / Linköping / Bosch / ISTC-CNR) | Proceedings pp. 107–122, doi:10.3233/SSW260011 |
+| D (G6) — prompt diversity + rule-based validator | **Ontology-Aware Prompting for KG Construction from Text** — Tiwari, Lopes Oliveira, Firmansyah, Zahera, Hopfgartner, Ngonga Ngomo (Paderborn / Koblenz) | Proceedings pp. 87–102, doi:10.3233/SSW260009 · code: <https://github.com/dice-group/ontology-aware-kg-construction> |
+| D (G6) — self-demonstration pattern (related, not directly adopted) | **Surprising Effectiveness of Self-Demonstrations in Schema–Ontology Mapping** — Thombre, Patwardhan, Sarawagi (TCS Research / IIT Bombay) | Proceedings pp. 70–85, doi:10.3233/SSW260008 |
+| E (G8) — heterogeneous-LLM quorum voting | **HARP: Navigating Schema Drift** — Diettrich, Friedenberger, Both (HTWK Leipzig / DB Systel) | Proceedings pp. 160–174, doi:10.3233/SSW260014 |
+| F (G9) — GraphML LLM-context serialization | **GraphRAG Best Practices** — Liao, Collarana, Pack, Grass, Both, Decker, Beecks (RWTH / Fraunhofer FIT / HTWK) | Proceedings pp. 141–156, doi:10.3233/SSW260013 |
+| G (G7) — CQ-quality coaching, underspecified-CQ failure mode | OntoExtend (see above); also motivated by SoCK's expert-in-the-loop disagreement handling — Ehrenmüller, Kook, Ekaputra, Sabou (WU Wien) | SoCK: proceedings pp. 19–33, doi:10.3233/SSW260004 |
+| §1 — CQ typology underpinning `CQType` (pre-existing, not new in this plan) | Keet, C.M. & Khan, Z.C. — Question-answering ontology model (QuO) | arXiv:2412.13688 |
+| §2 non-goal — cold-start / scope-revelation (deferred to GraphQAAgent/OntologyExtender) | McNamara, C. — *"The Initial Exploration Problem in KG Exploration"* | UKG workshop, SEMANTiCS 2026 |
+

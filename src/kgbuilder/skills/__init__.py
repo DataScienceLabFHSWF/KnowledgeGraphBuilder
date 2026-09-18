@@ -8,7 +8,10 @@ from kgbuilder.skills.kg_validation_skill import KGValidationSkill
 from kgbuilder.skills.linking_skill import LawContextSkill, LawLinkingSkill
 from kgbuilder.skills.module_extraction_skill import ModuleExtractionSkill
 from kgbuilder.skills.ontology_gap_analysis import OntologyGapAnalysisSkill
-from kgbuilder.skills.question_validation_skill import QuestionValidationSkill
+from kgbuilder.skills.question_validation_skill import (
+    QuestionValidationSkill,
+    SparqlQuestionValidationSkill,
+)
 from kgbuilder.skills.retrieval_skill import RetrievalEvaluationSkill, RetrievalSkill
 
 __all__ = [
@@ -23,5 +26,6 @@ __all__ = [
     "ModuleExtractionSkill",
     "JoinModuleResultsSkill",
     "QuestionValidationSkill",
+    "SparqlQuestionValidationSkill",
     "KGValidationSkill",
 ]

@@ -175,3 +175,31 @@ class TestStaticValidator:
         res = v._parse_output(msg, "staticValidation")
         assert res.valid is False
         assert "counterexample" in res.counterexample.lower()
+
+    def test_parse_output_containment_positive(self) -> None:
+        """Real SHACL2FOL/Vampire output for containment mode, captured via lib/SHACL2FOL.jar."""
+        v = StaticValidator()
+        raw = (
+            "Does shape graph /tmp/a.ttl\n"
+            "... contain shape graph /tmp/b.ttl?\n"
+            "Is the first shape graph contained in the second? true\n"
+            "Whenever a data graph is validated by the first, it is also validated by the second "
+            "(no model has been found).\n"
+            "Memory (KB) 442\nTime (s) 0.002\n"
+        )
+        res = v._parse_output(raw, "containment")
+        assert res.valid is True
+        assert res.duration_ms == pytest.approx(2.0)
+
+    def test_parse_output_containment_negative(self) -> None:
+        v = StaticValidator()
+        raw = "Is the first shape graph contained in the second? false\na model has been found\nMemory (KB) 1\nTime (s) 0.1"
+        res = v._parse_output(raw, "containment")
+        assert res.valid is False
+        assert res.counterexample != ""
+
+    def test_parse_output_unparseable_includes_snippet_in_error(self) -> None:
+        v = StaticValidator()
+        res = v._parse_output("some unexpected prover crash output", "satisfiability")
+        assert res.valid is False
+        assert "some unexpected prover crash output" in res.error

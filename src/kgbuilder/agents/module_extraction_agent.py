@@ -16,6 +16,7 @@ from typing import Any
 from kgbuilder.agents.base_agent import BaseAgent
 from kgbuilder.agents.question_generator import CQType
 from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.provenance.rationale_log import RationaleLog
 from kgbuilder.skills.module_extraction_skill import ModuleExtractionSkill
 
 # CQ types this subagent acts on: SCQ (scoping -> "what exists") and RCQ
@@ -34,6 +35,7 @@ class ModuleExtractionAgent(BaseAgent):
         retriever: Any,
         extractor: Any,
         top_k: int = 10,
+        rationale_log: RationaleLog | None = None,
     ) -> None:
         """Initialize a module extraction subagent.
 
@@ -43,6 +45,9 @@ class ModuleExtractionAgent(BaseAgent):
             retriever: Retriever used to fetch source documents.
             extractor: EntityExtractor used to extract module-scoped entities.
             top_k: Documents to retrieve per research question.
+            rationale_log: Optional `RationaleLog` to record why each entity
+                was extracted (which agent, which question). See
+                `Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md` Phase A.
         """
         super().__init__(name=f"module_extraction_agent:{module_name}", skills=[ModuleExtractionSkill])
         self.module_name = module_name
@@ -50,6 +55,7 @@ class ModuleExtractionAgent(BaseAgent):
         self._retriever = retriever
         self._extractor = extractor
         self._top_k = top_k
+        self._rationale_log = rationale_log
 
     def run(self, prompt: str, **kwargs: Any) -> list[ExtractedEntity]:
         """Run module extraction for a single research question (`prompt` = query text)."""
@@ -75,5 +81,16 @@ class ModuleExtractionAgent(BaseAgent):
             if cq_type not in EXTRACTION_CQ_TYPES:
                 continue
             query_text = getattr(question, "text", question)
-            entities.extend(self.run(query_text, existing_entities=entities))
+            new_entities = self.run(query_text, existing_entities=entities)
+            if self._rationale_log is not None:
+                question_id = getattr(question, "question_id", None)
+                for entity in new_entities:
+                    self._rationale_log.record(
+                        entity,
+                        agent=self.name,
+                        action="extracted",
+                        reason=f"matched module '{self.module_name}' for question: {query_text}",
+                        triggered_by=question_id,
+                    )
+            entities.extend(new_entities)
         return entities

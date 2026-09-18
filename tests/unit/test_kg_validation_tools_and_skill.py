@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 from kgbuilder.skills.kg_validation_skill import KGValidationSkill
 from kgbuilder.tools.kg_validation_tools import (
     ConsistencyCheckTool,
+    OntologyConsistencyReasoningTool,
+    OntologyPitfallScanTool,
     RulesEngineTool,
     SHACLValidationTool,
 )
@@ -94,3 +96,82 @@ def test_kg_validation_skill_fails_when_consistency_has_conflicts() -> None:
     assert result["valid"] is False
     assert "shacl" not in result
     assert "rules" not in result
+
+
+def test_ontology_consistency_and_pitfall_tools_delegate() -> None:
+    consistency_reasoner = MagicMock()
+    consistency_reasoner.check_consistency.return_value = "consistency-result"
+    pitfall_detector = MagicMock()
+    pitfall_detector.scan.return_value = "pitfall-result"
+
+    assert (
+        OntologyConsistencyReasoningTool.handler(consistency_reasoner, ontology_path="onto.owl")
+        == "consistency-result"
+    )
+    consistency_reasoner.check_consistency.assert_called_once_with("onto.owl")
+
+    assert (
+        OntologyPitfallScanTool.handler(pitfall_detector, ontology_path="onto.owl")
+        == "pitfall-result"
+    )
+    pitfall_detector.scan.assert_called_once_with("onto.owl")
+
+
+def test_kg_validation_skill_includes_ontology_checks_when_configured() -> None:
+    store = MagicMock()
+    consistency_reasoner = MagicMock()
+    consistency_reasoner.check_consistency.return_value = MagicMock(consistent=True, error=None)
+    pitfall_detector = MagicMock()
+    pitfall_detector.scan.return_value = MagicMock(pitfalls=[])
+
+    result = KGValidationSkill.handler(
+        store=store,
+        consistency_reasoner=consistency_reasoner,
+        pitfall_detector=pitfall_detector,
+        ontology_path="onto.owl",
+    )
+
+    assert result["valid"] is True
+    assert "ontology_consistency" in result
+    assert "pitfalls" in result
+    consistency_reasoner.check_consistency.assert_called_once_with("onto.owl")
+    pitfall_detector.scan.assert_called_once_with("onto.owl")
+
+
+def test_kg_validation_skill_fails_when_ontology_is_dl_inconsistent() -> None:
+    store = MagicMock()
+    consistency_reasoner = MagicMock()
+    consistency_reasoner.check_consistency.return_value = MagicMock(
+        consistent=False, error=None, unsatisfiable_classes=["Facility"],
+    )
+
+    result = KGValidationSkill.handler(
+        store=store, consistency_reasoner=consistency_reasoner, ontology_path="onto.owl",
+    )
+
+    assert result["valid"] is False
+
+
+def test_kg_validation_skill_ignores_ontology_consistency_when_check_errored() -> None:
+    """A failed *check* (e.g. owlready2 missing) should not itself flip valid to False."""
+    store = MagicMock()
+    consistency_reasoner = MagicMock()
+    consistency_reasoner.check_consistency.return_value = MagicMock(
+        consistent=False, error="owlready2 not installed",
+    )
+
+    result = KGValidationSkill.handler(
+        store=store, consistency_reasoner=consistency_reasoner, ontology_path="onto.owl",
+    )
+
+    assert result["valid"] is True
+
+
+def test_kg_validation_skill_skips_ontology_checks_without_ontology_path() -> None:
+    store = MagicMock()
+    consistency_reasoner = MagicMock()
+
+    result = KGValidationSkill.handler(store=store, consistency_reasoner=consistency_reasoner)
+
+    assert "ontology_consistency" not in result
+    consistency_reasoner.check_consistency.assert_not_called()

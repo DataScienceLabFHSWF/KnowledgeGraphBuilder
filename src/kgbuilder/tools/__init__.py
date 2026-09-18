@@ -1,10 +1,13 @@
 """Agent tools for ontology inspection and coverage reasoning."""
 
 from kgbuilder.tools.coverage_snapshot import CoverageSnapshotTool
+from kgbuilder.tools.cq_sparql_tool import CQSparqlTool
 from kgbuilder.tools.enrichment_tool import EnrichmentTool
 from kgbuilder.tools.evaluation_tool import EvaluationTool
 from kgbuilder.tools.kg_validation_tools import (
     ConsistencyCheckTool,
+    OntologyConsistencyReasoningTool,
+    OntologyPitfallScanTool,
     RulesEngineTool,
     SHACLValidationTool,
 )
@@ -29,4 +32,7 @@ __all__ = [
     "SHACLValidationTool",
     "RulesEngineTool",
     "ConsistencyCheckTool",
+    "OntologyConsistencyReasoningTool",
+    "OntologyPitfallScanTool",
+    "CQSparqlTool",
 ]

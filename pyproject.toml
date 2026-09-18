@@ -72,6 +72,13 @@ analytics = [
     "scipy>=1.11",
     "matplotlib>=3.8",
 ]
+reasoning = [
+    # Bundles the HermiT and Pellet OWL DL reasoners (Java JARs); requires a
+    # Java runtime on PATH (already required by SHACL2FOL/Vampire static
+    # validation — see validation/static_validator.py). No separate JAR
+    # download needed. See Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md Phase C.
+    "owlready2>=0.47",
+]
 analytics-gpu = [
     "torch>=2.0",
     "torch-geometric>=2.4",

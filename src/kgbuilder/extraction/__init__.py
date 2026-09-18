@@ -4,6 +4,7 @@ Implementation of Issues #5.1-#5.3: Knowledge Extraction
 
 Provides:
 - LLMEntityExtractor: Ontology-guided entity extraction with confidence scores
+- SmartEntityExtractor: LFM-compatible extractor with semantic ontology filtering
 - RuleBasedExtractor: Fast regex-based entity extraction
 - EnsembleExtractor: Combines multiple extraction methods
 - LLMRelationExtractor: Entity relation extraction
@@ -31,6 +32,10 @@ from kgbuilder.extraction.relation import (
     OntologyRelationDef,
     RelationExtractor,
 )
+from kgbuilder.extraction.smart_entity_extractor import (
+    FilteringMetrics,
+    SmartEntityExtractor,
+)
 from kgbuilder.extraction.rules import RuleBasedExtractor
 from kgbuilder.extraction.schemas import (
     EntityExtractionOutput,
@@ -51,6 +56,8 @@ __all__ = [
     "RelationExtractor",
     # Implementations
     "LLMEntityExtractor",
+    "SmartEntityExtractor",
+    "FilteringMetrics",
     "RuleBasedExtractor",
     "EnsembleExtractor",
     "LLMRelationExtractor",
