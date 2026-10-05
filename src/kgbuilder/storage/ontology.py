@@ -434,6 +434,46 @@ class FusekiOntologyService:
             logger.warning("hierarchy_load_failed", error=str(e))
             return [] if class_name is None else {"parents": [], "children": [], "depth": 0}
 
+    def get_module_class_map(self) -> dict[str, list[str]]:
+        """Return ontology classes grouped by their OWL `kg:module` annotation.
+
+        Returns:
+            Dictionary keyed by module name, with each value a de-duplicated
+            list of class labels belonging to that module.
+        """
+        try:
+            sparql = """
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX kg: <https://kg-workbench.local/ontology#>
+            SELECT DISTINCT ?class ?label ?module
+            WHERE {
+                ?class a owl:Class .
+                OPTIONAL { ?class rdfs:label ?label . }
+                OPTIONAL { ?class kg:module ?module . }
+                FILTER(BOUND(?module))
+            }
+            ORDER BY ?module ?label
+            """
+            result = self.store.query_sparql(sparql)
+            grouped: dict[str, list[str]] = {}
+            for binding in result.get("results", {}).get("bindings", []):
+                class_uri = binding.get("class", {}).get("value", "")
+                label = binding.get("label", {}).get("value")
+                module_name = binding.get("module", {}).get("value")
+                if not module_name:
+                    continue
+                class_name = label or class_uri.split("#")[-1].split("/")[-1]
+                if not class_name:
+                    continue
+                grouped.setdefault(module_name, [])
+                if class_name not in grouped[module_name]:
+                    grouped[module_name].append(class_name)
+            return {module: sorted(classes) for module, classes in grouped.items()}
+        except Exception as e:
+            logger.warning("module_class_map_load_failed", error=str(e))
+            return {}
+
     def get_special_properties(self) -> dict[str, list[str]]:
         """Get properties with special OWL characteristics.
         

@@ -237,8 +237,11 @@ class FindingsSynthesizer:
 
         # Merge all evidence
         all_evidence: list[Evidence] = []
+        merged_attributes: dict[str, Any] = dict(primary.properties)
         for entity in group:
             all_evidence.extend(entity.evidence)
+            for attribute, value in entity.properties.items():
+                merged_attributes.setdefault(attribute, value)
 
         # Aggregate confidence
         avg_confidence = sum(e.confidence for e in group) / len(group)
@@ -277,6 +280,7 @@ class FindingsSynthesizer:
             evidence=all_evidence,
             sources=sources or ["ensemble"],  # Default to ensemble if no source
             merged_count=len(group),
+            attributes=merged_attributes,
         )
 
     def _calculate_similarity(

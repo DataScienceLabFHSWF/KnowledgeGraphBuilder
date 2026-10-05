@@ -1,0 +1,102 @@
+{
+  "name": "KG extraction smoke benchmark",
+  "version": "0.1.0",
+  "split": "smoke",
+  "description": "Small manually specified German and English fixture for exercising the benchmark harness; not a quality leaderboard.",
+  "items": [
+    {
+      "id": "supply-en-001",
+      "language": "en",
+      "text": "Acme GmbH ships batteries to Berlin Recycling GmbH.",
+      "classes": [
+        {
+          "uri": "urn:kg:Company",
+          "label": "Company",
+          "description": "A commercial or other formal organization."
+        },
+        {
+          "uri": "urn:kg:Product",
+          "label": "Product",
+          "description": "A product supplied by an organization."
+        }
+      ],
+      "relations": [
+        {
+          "uri": "urn:kg:supplies",
+          "label": "supplies",
+          "description": "The subject supplies the object.",
+          "domain": ["Company"],
+          "range": ["Product"]
+        },
+        {
+          "uri": "urn:kg:supplies_to",
+          "label": "supplies to",
+          "description": "The subject supplies goods to the object.",
+          "domain": ["Company"],
+          "range": ["Company"]
+        }
+      ],
+      "gold_entities": [
+        {"text": "Acme GmbH", "entity_type": "Company"},
+        {"text": "batteries", "entity_type": "Product"},
+        {"text": "Berlin Recycling GmbH", "entity_type": "Company"}
+      ],
+      "gold_triples": [
+        {
+          "subject": "Acme GmbH",
+          "predicate": "urn:kg:supplies",
+          "object": "batteries",
+          "evidence": "Acme GmbH ships batteries"
+        },
+        {
+          "subject": "Acme GmbH",
+          "predicate": "urn:kg:supplies_to",
+          "object": "Berlin Recycling GmbH",
+          "evidence": "Acme GmbH ships batteries to Berlin Recycling GmbH."
+        }
+      ]
+    },
+    {
+      "id": "employment-de-001",
+      "language": "de",
+      "text": "Ada Lovelace arbeitet seit 1843 für Analytical Engines Ltd.",
+      "classes": [
+        {
+          "uri": "urn:kg:Person",
+          "label": "Person",
+          "description": "Eine menschliche Person."
+        },
+        {
+          "uri": "urn:kg:Company",
+          "label": "Company",
+          "description": "Ein Unternehmen oder eine formale Organisation."
+        }
+      ],
+      "relations": [
+        {
+          "uri": "urn:kg:works_for",
+          "label": "arbeitet für",
+          "description": "Die Person ist bei der Organisation beschäftigt.",
+          "domain": ["Person"],
+          "range": ["Company"]
+        }
+      ],
+      "gold_entities": [
+        {"text": "Ada Lovelace", "entity_type": "Person"},
+        {
+          "text": "Analytical Engines Ltd.",
+          "entity_type": "Company",
+          "attributes": {"employment_start_year": "1843"}
+        }
+      ],
+      "gold_triples": [
+        {
+          "subject": "Ada Lovelace",
+          "predicate": "urn:kg:works_for",
+          "object": "Analytical Engines Ltd.",
+          "evidence": "Ada Lovelace arbeitet seit 1843 für Analytical Engines Ltd."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+    "_comment": "Agent-swarm config: per-module model assignment + concurrency for the module orchestrator.",
+    "_usage": "SwarmModelConfig.from_json('data/profiles/agent_swarm.example.json')",
+
+    "backend": "ollama",
+    "base_url": "http://localhost:11434",
+    "default_model": "qwen3:8b",
+
+    "module_models": {
+        "Assets and Locations": "qwen3:1.7b",
+        "Document Structure and Evidence": "qwen3:1.7b",
+        "Documentation and References": "qwen3:1.7b",
+        "Workflow and Change Measures": "qwen3:4b",
+        "Measure Description": "qwen3:4b",
+        "Waste and Materials": "qwen3:8b",
+        "Technical Safety Assessment": "qwen3:8b",
+        "Radiological Characterization": "qwen3:8b"
+    },
+
+    "max_concurrent_agents": 3,
+    "request_timeout_s": 120
+}

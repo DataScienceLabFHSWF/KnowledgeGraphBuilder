@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -87,6 +87,35 @@ class Evidence:
     confidence: float = 1.0
 
 
+@dataclass
+class RationaleEntry:
+    """One provenance/rationale record: why an agent made a decision.
+
+    Distinct from `Evidence` (which grounds a fact in *source text*):
+    a `RationaleEntry` grounds a *decision* (why an entity/relation was kept,
+    changed, or flagged) in the agent and trigger that caused it. Modeled
+    after MASEO's append-only per-axiom provenance log (`vaem:rationale` +
+    `dc:source`), see `kgbuilder.provenance.rationale_log` for the full
+    attribution and the PROV-O-shaped export.
+
+    Attributes:
+        agent: Name of the agent that made the decision (e.g. a
+            `ModuleExtractionAgent`/`ValidationAgent` instance name).
+        action: Short verb phrase describing what happened
+            (e.g. "extracted", "validated", "repaired").
+        reason: Human-readable justification.
+        triggered_by: Optional id of what motivated this action (a CQ id,
+            a SHACL violation id, an OOPS! pitfall id, ...).
+        timestamp: UTC ISO-8601 timestamp of the decision.
+    """
+
+    agent: str
+    action: str
+    reason: str
+    triggered_by: str | None = None
+    timestamp: str = field(default_factory=lambda: datetime.now(tz=UTC).isoformat())
+
+
 def generate_entity_id(label: str, entity_type: str) -> str:
     """Generate a deterministic, content-based entity ID.
 
@@ -148,6 +177,7 @@ class ExtractedEntity:
     properties: dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.0
     evidence: list[Evidence] = field(default_factory=list)
+    rationale: list[RationaleEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -161,3 +191,4 @@ class ExtractedRelation:
     properties: dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.0
     evidence: list[Evidence] = field(default_factory=list)
+    rationale: list[RationaleEntry] = field(default_factory=list)

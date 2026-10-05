@@ -1,5 +1,6 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 
 from kgbuilder.extraction.chains import ExtractionChains
 
@@ -107,8 +108,30 @@ def test_relation_chain_creation_and_invoke(monkeypatch):
         "relations_section": "",  # empty relations description
         "text": "foo",
     })
-    # because RecordingParser returns entities by default, we expect at least one of these attributes
+    # RecordingParser returns entities by default; either output field is acceptable.
     assert hasattr(res, "entities") or hasattr(res, "relations")
+
+
+def test_entity_chain_uses_structured_provider():
+    from kgbuilder.extraction.schemas import EntityExtractionOutput
+
+    expected = EntityExtractionOutput(entities=[])
+
+    class Provider:
+        model_name = "test-model"
+
+        def generate(self, prompt, **kwargs):
+            raise AssertionError("generate_structured should be used")
+
+        def generate_structured(self, prompt, schema, **kwargs):
+            assert schema is EntityExtractionOutput
+            assert "TEXT:" in prompt
+            return expected
+
+    chain = ExtractionChains.create_entity_extraction_chain(llm_provider=Provider())
+    result = chain.invoke({"ontology_section": "Organization", "text": "Acme"})
+
+    assert result is expected
 
 
 def test_format_helpers_and_pipeline():

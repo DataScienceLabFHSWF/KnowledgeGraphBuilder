@@ -21,7 +21,9 @@ from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
-from kgbuilder.agents.question_generator import QuestionGenerationAgent, ResearchQuestion
+from kgbuilder.agents.orchestrator_agent import OrchestratorAgent
+from kgbuilder.agents.question_generator import CQType, QuestionGenerationAgent, ResearchQuestion
+from kgbuilder.agents.validation_agent import ValidationAgent
 from kgbuilder.core.models import ExtractedEntity
 
 logger = structlog.get_logger(__name__)
@@ -96,6 +98,7 @@ class DiscoveryResult:
     entities: list[ExtractedEntity] = field(default_factory=list)
     relations: list[Any] = field(default_factory=list)  # NEW: Phase 5 relations
     iterations: list[IterationResult] = field(default_factory=list)
+    validation_results: list[Any] = field(default_factory=list)
     error_message: str | None = None
 
 
@@ -131,6 +134,10 @@ class IterativeDiscoveryLoop:
         context_provider: Any | None = None,  # Optional law graph context provider
         static_validator: Any | None = None,
         static_shapes_path: str | None = None,
+        module_map: dict[str, list[Any]] | None = None,
+        orchestrator: OrchestratorAgent | None = None,
+        content_validator: Any | None = None,
+        validation_agent: ValidationAgent | None = None,
     ) -> None:
         """Initialize discovery loop.
 
@@ -142,6 +149,11 @@ class IterativeDiscoveryLoop:
             relation_extractor: Optional RelationExtractor for Phase 5 (NEW)
             ontology_relations: Optional list of ontology relation definitions (NEW)
             context_provider: Optional callable(text) -> str that provides additional context
+            content_validator: Optional object exposing `validate_question(question, evidence)`,
+                used to build a default `ValidationAgent` for VCQ questions when
+                `validation_agent` is not supplied directly.
+            validation_agent: Optional `ValidationAgent` that consumes CQType.VCQ questions.
+                Built from `content_validator` + `retriever` if not provided.
         """
         self._retriever = retriever
         self._extractor = extractor
@@ -152,10 +164,18 @@ class IterativeDiscoveryLoop:
         self._context_provider = context_provider
         self._static_validator = static_validator
         self._static_shapes_path = static_shapes_path
+        self._module_map = module_map or {}
+        self._orchestrator = orchestrator or OrchestratorAgent()
+        self._validation_agent = validation_agent or (
+            ValidationAgent(retriever=retriever, validator=content_validator)
+            if content_validator is not None
+            else None
+        )
         self._ontology_service: Any | None = None
         self._findings: dict[tuple[str, str], ExtractedEntity] = {}
         self._provenance: dict[tuple[str, str], set[str]] = {}  # (label, type) -> source docs
         self._relations: list[Any] = []  # NEW: Store extracted relations
+        self._validation_results: list[Any] = []
         self._logger = structlog.get_logger(__name__)
 
     def run_discovery(
@@ -198,6 +218,7 @@ class IterativeDiscoveryLoop:
         # Initialize
         self._findings: dict[tuple[str, str], ExtractedEntity] = {}
         self._provenance: dict[tuple[str, str], set[str]] = {}
+        self._validation_results = []
         iterations: list[IterationResult] = []
 
         try:
@@ -205,6 +226,61 @@ class IterativeDiscoveryLoop:
             if initial_questions is None:
                 self._logger.info("generating_initial_questions")
                 initial_questions = self._question_gen.generate_questions(max_questions=20)
+
+            # VCQ questions drive validation, not extraction — route them to the
+            # validation agent (if configured) and keep the rest for extraction.
+            vcq_questions = [q for q in initial_questions if getattr(q, "cq_type", CQType.SCQ) == CQType.VCQ]
+            initial_questions = [q for q in initial_questions if getattr(q, "cq_type", CQType.SCQ) != CQType.VCQ]
+            if vcq_questions and self._validation_agent is not None:
+                self._logger.info("validation_agent_active", question_count=len(vcq_questions))
+                self._validation_results = self._validation_agent.run_questions(vcq_questions)
+
+            if self._module_map:
+                bindings = self._orchestrator.build_module_bindings(
+                    module_map=self._module_map,
+                    questions=list(initial_questions),
+                    retriever=self._retriever,
+                    extractor=self._extractor,
+                    top_k=top_k_docs,
+                )
+                if bindings:
+                    self._logger.info(
+                        "module_orchestration_active",
+                        module_count=len(bindings),
+                        question_count=len(initial_questions),
+                    )
+                    merged = self._orchestrator.run_modules(bindings, parallel=True)
+                    self._findings = {
+                        (entity.label.lower().strip(), entity.entity_type.lower().strip()): entity
+                        for entity in merged
+                    }
+                    self._provenance = {
+                        (entity.label.lower().strip(), entity.entity_type.lower().strip()): {
+                            ev.source_id for ev in entity.evidence if getattr(ev, "source_id", None)
+                        }
+                        for entity in merged
+                    }
+                    return DiscoveryResult(
+                        success=True,
+                        total_iterations=1,
+                        final_coverage=self._calculate_coverage(),
+                        total_entities_discovered=len(merged),
+                        total_time_sec=time.time() - start_time,
+                        entities=merged,
+                        relations=self._relations,
+                        validation_results=self._validation_results,
+                        iterations=[
+                            IterationResult(
+                                iteration=1,
+                                questions_processed=len(initial_questions),
+                                entities_discovered=len(merged),
+                                total_entities=len(merged),
+                                coverage=self._calculate_coverage(),
+                                processing_time_sec=time.time() - start_time,
+                                new_entity_types={e.entity_type for e in merged},
+                            )
+                        ],
+                    )
 
             current_questions = initial_questions
             iteration = 0
@@ -298,6 +374,13 @@ class IterativeDiscoveryLoop:
                     self._logger.info("no_more_questions")
                     break
 
+                # Follow-ups may include VCQ questions — route those to validation,
+                # keep the rest for the next extraction iteration.
+                follow_up_vcqs = [q for q in follow_ups if getattr(q, "cq_type", CQType.SCQ) == CQType.VCQ]
+                follow_ups = [q for q in follow_ups if getattr(q, "cq_type", CQType.SCQ) != CQType.VCQ]
+                if follow_up_vcqs and self._validation_agent is not None:
+                    self._validation_results.extend(self._validation_agent.run_questions(follow_up_vcqs))
+
                 # Update questions for next iteration
                 current_questions = follow_ups if follow_ups else []
 
@@ -313,6 +396,7 @@ class IterativeDiscoveryLoop:
                 total_time_sec=total_time,
                 entities=final_entities,
                 relations=self._relations,  # NEW: Include Phase 5 relations
+                validation_results=self._validation_results,
                 iterations=iterations,
             )
 
@@ -346,6 +430,7 @@ class IterativeDiscoveryLoop:
                 total_time_sec=total_time,
                 entities=list(self._findings.values()),
                 relations=self._relations,  # NEW: Return partial relations
+                validation_results=self._validation_results,
                 iterations=iterations,
                 error_message=str(e),
             )

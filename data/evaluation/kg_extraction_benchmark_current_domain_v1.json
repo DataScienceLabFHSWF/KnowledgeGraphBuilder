@@ -1,0 +1,544 @@
+{
+  "name": "KGBuilder nuclear decommissioning bilingual pilot",
+  "version": "1.0.0",
+  "split": "pilot-evaluation",
+  "description": "Twenty-four manually annotated, authored/paraphrased German and English examples grounded in the repository's German decommissioning PDFs. English items are paired translations of German facts; variant_of groups translations for split integrity and bootstrap confidence intervals. This is a development pilot, not an independent expert-reviewed held-out benchmark.",
+  "classes": [
+    {
+      "uri": "urn:kgb:Organization",
+      "label": "Organization",
+      "description": "An operator, applicant, authorization holder, or other organization mentioned in a decommissioning project."
+    },
+    {
+      "uri": "urn:kgb:NuclearFacility",
+      "label": "Nuclear Facility",
+      "description": "A nuclear power station or reactor unit; German: Kernkraftwerk, Kernanlage, Anlage.",
+      "properties": [
+        {
+          "name": "operation_end_date",
+          "data_type": "xsd:date",
+          "description": "The documented end date for authorization to generate electricity."
+        }
+      ]
+    },
+    {
+      "uri": "urn:kgb:FacilityUnit",
+      "label": "Facility Unit",
+      "description": "A named reactor block or unit within a nuclear facility.",
+      "properties": [
+        {
+          "name": "operation_end_date",
+          "data_type": "xsd:date",
+          "description": "The documented end date for authorization to generate electricity."
+        }
+      ]
+    },
+    {
+      "uri": "urn:kgb:FacilityComponent",
+      "label": "Facility Component",
+      "description": "A physical structure or technical component of a nuclear facility."
+    },
+    {
+      "uri": "urn:kgb:Location",
+      "label": "Location",
+      "description": "A named city, site, or storage location."
+    },
+    {
+      "uri": "urn:kgb:DecommissioningProject",
+      "label": "Decommissioning Project",
+      "description": "A planned or authorized decommissioning, shutdown, or dismantling project."
+    },
+    {
+      "uri": "urn:kgb:ApplicationDocument",
+      "label": "Application Document",
+      "description": "A formal application submitted to request an authorization."
+    },
+    {
+      "uri": "urn:kgb:Report",
+      "label": "Report",
+      "description": "A safety report, environmental assessment, or public-facing project summary."
+    },
+    {
+      "uri": "urn:kgb:Regulation",
+      "label": "Regulation",
+      "description": "A named law or regulation, such as the German Atomic Energy Act (AtG)."
+    },
+    {
+      "uri": "urn:kgb:NuclearMaterial",
+      "label": "Nuclear Material",
+      "description": "Nuclear fuel or radioactive material referred to in the source."
+    },
+    {
+      "uri": "urn:kgb:StorageFacility",
+      "label": "Storage Facility",
+      "description": "An interim or final storage facility for nuclear material or radioactive waste."
+    }
+  ],
+  "relations": [
+    {
+      "uri": "urn:kgb:authorized_for",
+      "label": "authorized for",
+      "description": "An organization holds authorization associated with a nuclear facility.",
+      "domain": ["Organization"],
+      "range": ["Nuclear Facility"]
+    },
+    {
+      "uri": "urn:kgb:located_in",
+      "label": "located in",
+      "description": "A nuclear facility is located in a named geographic location.",
+      "domain": ["Nuclear Facility"],
+      "range": ["Location"]
+    },
+    {
+      "uri": "urn:kgb:part_of_facility",
+      "label": "part of facility",
+      "description": "A reactor unit belongs to a larger nuclear facility.",
+      "domain": ["Facility Unit"],
+      "range": ["Nuclear Facility"]
+    },
+    {
+      "uri": "urn:kgb:contains_component",
+      "label": "contains component",
+      "description": "A nuclear facility or component physically contains another component.",
+      "domain": ["Nuclear Facility", "Facility Component"],
+      "range": ["Facility Component"]
+    },
+    {
+      "uri": "urn:kgb:submitted_by",
+      "label": "submitted by",
+      "description": "An application document was submitted by an organization.",
+      "domain": ["Application Document"],
+      "range": ["Organization"]
+    },
+    {
+      "uri": "urn:kgb:requests_approval_for",
+      "label": "requests approval for",
+      "description": "An application requests authorization for a decommissioning project.",
+      "domain": ["Application Document"],
+      "range": ["Decommissioning Project"]
+    },
+    {
+      "uri": "urn:kgb:operates",
+      "label": "operates",
+      "description": "An organization operates a nuclear facility.",
+      "domain": ["Organization"],
+      "range": ["Nuclear Facility"]
+    },
+    {
+      "uri": "urn:kgb:targets_facility",
+      "label": "targets facility",
+      "description": "A decommissioning project targets a nuclear facility.",
+      "domain": ["Decommissioning Project"],
+      "range": ["Nuclear Facility"]
+    },
+    {
+      "uri": "urn:kgb:includes_report",
+      "label": "includes report",
+      "description": "An application package includes a supporting report.",
+      "domain": ["Application Document"],
+      "range": ["Report"]
+    },
+    {
+      "uri": "urn:kgb:planned_storage_at",
+      "label": "planned storage at",
+      "description": "Nuclear material is planned to be stored at a storage facility.",
+      "domain": ["Nuclear Material"],
+      "range": ["Storage Facility"]
+    },
+    {
+      "uri": "urn:kgb:requires_approval_under",
+      "label": "requires approval under",
+      "description": "A decommissioning project requires approval under a regulation.",
+      "domain": ["Decommissioning Project"],
+      "range": ["Regulation"]
+    }
+  ],
+  "items": [
+    {
+      "id": "krb-authorization-de",
+      "language": "de",
+      "text": "Für den Abbau des Kernkraftwerks Gundremmingen (KRB II) werden RWE Power AG und PreussenElektra GmbH als Genehmigungsinhaber genannt.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Abschnitt 1, Vorhaben",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "krb-authorization",
+      "gold_entities": [
+        {"text": "Kernkraftwerks Gundremmingen (KRB II)", "entity_type": "Nuclear Facility"},
+        {"text": "RWE Power AG", "entity_type": "Organization"},
+        {"text": "PreussenElektra GmbH", "entity_type": "Organization"}
+      ],
+      "gold_triples": [
+        {"subject": "RWE Power AG", "predicate": "urn:kgb:authorized_for", "object": "Kernkraftwerks Gundremmingen (KRB II)", "evidence": "RWE Power AG und PreussenElektra GmbH als Genehmigungsinhaber"},
+        {"subject": "PreussenElektra GmbH", "predicate": "urn:kgb:authorized_for", "object": "Kernkraftwerks Gundremmingen (KRB II)", "evidence": "RWE Power AG und PreussenElektra GmbH als Genehmigungsinhaber"}
+      ]
+    },
+    {
+      "id": "krb-authorization-en",
+      "language": "en",
+      "text": "RWE Power AG and PreussenElektra GmbH are named as authorization holders for dismantling the Gundremmingen nuclear power plant (KRB II).",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Section 1, project description",
+      "text_origin": "human-translation",
+      "variant_of": "krb-authorization",
+      "gold_entities": [
+        {"text": "Gundremmingen nuclear power plant (KRB II)", "entity_type": "Nuclear Facility"},
+        {"text": "RWE Power AG", "entity_type": "Organization"},
+        {"text": "PreussenElektra GmbH", "entity_type": "Organization"}
+      ],
+      "gold_triples": [
+        {"subject": "RWE Power AG", "predicate": "urn:kgb:authorized_for", "object": "Gundremmingen nuclear power plant (KRB II)", "evidence": "RWE Power AG and PreussenElektra GmbH are named as authorization holders"},
+        {"subject": "PreussenElektra GmbH", "predicate": "urn:kgb:authorized_for", "object": "Gundremmingen nuclear power plant (KRB II)", "evidence": "RWE Power AG and PreussenElektra GmbH are named as authorization holders"}
+      ]
+    },
+    {
+      "id": "kke-location-de",
+      "language": "de",
+      "text": "Das Kernkraftwerk Emsland (KKE) befindet sich im Industriepark Süd auf dem Gebiet der Stadt Lingen.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Abschnitt 3.1, geografische Lage",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kke-location",
+      "gold_entities": [
+        {"text": "Kernkraftwerk Emsland (KKE)", "entity_type": "Nuclear Facility"},
+        {"text": "Lingen", "entity_type": "Location"}
+      ],
+      "gold_triples": [
+        {"subject": "Kernkraftwerk Emsland (KKE)", "predicate": "urn:kgb:located_in", "object": "Lingen", "evidence": "Kernkraftwerk Emsland (KKE) befindet sich im Industriepark Süd auf dem Gebiet der Stadt Lingen"}
+      ]
+    },
+    {
+      "id": "kke-location-en",
+      "language": "en",
+      "text": "The Emsland nuclear power plant (KKE) is situated in the city of Lingen, in the Süd industrial park.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Section 3.1, geographic location",
+      "text_origin": "human-translation",
+      "variant_of": "kke-location",
+      "gold_entities": [
+        {"text": "Emsland nuclear power plant (KKE)", "entity_type": "Nuclear Facility"},
+        {"text": "Lingen", "entity_type": "Location"}
+      ],
+      "gold_triples": [
+        {"subject": "Emsland nuclear power plant (KKE)", "predicate": "urn:kgb:located_in", "object": "Lingen", "evidence": "Emsland nuclear power plant (KKE) is situated in the city of Lingen"}
+      ]
+    },
+    {
+      "id": "kke-containment-de",
+      "language": "de",
+      "text": "Im Reaktorsicherheitsbehälter des KKE befinden sich der Reaktordruckbehälter und die Dampferzeuger.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Abschnitt 4.2, Reaktorgebäude",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kke-containment",
+      "gold_entities": [
+        {"text": "Kernkraftwerk Emsland (KKE)", "entity_type": "Nuclear Facility"},
+        {"text": "Reaktorsicherheitsbehälter", "entity_type": "Facility Component"},
+        {"text": "Reaktordruckbehälter", "entity_type": "Facility Component"},
+        {"text": "Dampferzeuger", "entity_type": "Facility Component"}
+      ],
+      "gold_triples": [
+        {"subject": "Reaktorsicherheitsbehälter", "predicate": "urn:kgb:contains_component", "object": "Reaktordruckbehälter", "evidence": "Im Reaktorsicherheitsbehälter des KKE befinden sich der Reaktordruckbehälter"},
+        {"subject": "Reaktorsicherheitsbehälter", "predicate": "urn:kgb:contains_component", "object": "Dampferzeuger", "evidence": "Im Reaktorsicherheitsbehälter des KKE befinden sich der Reaktordruckbehälter und die Dampferzeuger"}
+      ]
+    },
+    {
+      "id": "kke-containment-en",
+      "language": "en",
+      "text": "Inside the Emsland plant's reactor containment are the reactor pressure vessel and the steam generators.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Section 4.2, reactor building",
+      "text_origin": "human-translation",
+      "variant_of": "kke-containment",
+      "gold_entities": [
+        {"text": "Emsland plant", "entity_type": "Nuclear Facility"},
+        {"text": "reactor containment", "entity_type": "Facility Component"},
+        {"text": "reactor pressure vessel", "entity_type": "Facility Component"},
+        {"text": "steam generators", "entity_type": "Facility Component"}
+      ],
+      "gold_triples": [
+        {"subject": "reactor containment", "predicate": "urn:kgb:contains_component", "object": "reactor pressure vessel", "evidence": "reactor containment are the reactor pressure vessel and the steam generators"},
+        {"subject": "reactor containment", "predicate": "urn:kgb:contains_component", "object": "steam generators", "evidence": "reactor containment are the reactor pressure vessel and the steam generators"}
+      ]
+    },
+    {
+      "id": "krb-units-de",
+      "language": "de",
+      "text": "Die Stromerzeugung der Blöcke B und C des Kernkraftwerks Gundremmingen endet laut Planung am 31.12.2017 beziehungsweise 31.12.2021.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Abschnitt 1, Vorhaben",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "krb-units",
+      "gold_entities": [
+        {"text": "Block B", "entity_type": "Facility Unit", "attributes": {"operation_end_date": "2017-12-31"}},
+        {"text": "Block C", "entity_type": "Facility Unit", "attributes": {"operation_end_date": "2021-12-31"}},
+        {"text": "Kernkraftwerk Gundremmingen", "entity_type": "Nuclear Facility"}
+      ],
+      "gold_triples": [
+        {"subject": "Block B", "predicate": "urn:kgb:part_of_facility", "object": "Kernkraftwerk Gundremmingen", "evidence": "Blöcke B und C des Kernkraftwerks Gundremmingen"},
+        {"subject": "Block C", "predicate": "urn:kgb:part_of_facility", "object": "Kernkraftwerk Gundremmingen", "evidence": "Blöcke B und C des Kernkraftwerks Gundremmingen"}
+      ]
+    },
+    {
+      "id": "krb-units-en",
+      "language": "en",
+      "text": "Electricity generation at Gundremmingen units B and C is scheduled to end on 31 December 2017 and 31 December 2021, respectively.",
+      "source_document": "data/Decommissioning_Files/1.2_KKE-SAG_Kurzbeschreibung.pdf",
+      "source_reference": "Section 1, project description",
+      "text_origin": "human-translation",
+      "variant_of": "krb-units",
+      "gold_entities": [
+        {"text": "Gundremmingen unit B", "entity_type": "Facility Unit", "attributes": {"operation_end_date": "2017-12-31"}},
+        {"text": "Gundremmingen unit C", "entity_type": "Facility Unit", "attributes": {"operation_end_date": "2021-12-31"}},
+        {"text": "Gundremmingen", "entity_type": "Nuclear Facility"}
+      ],
+      "gold_triples": [
+        {"subject": "Gundremmingen unit B", "predicate": "urn:kgb:part_of_facility", "object": "Gundremmingen", "evidence": "Gundremmingen units B and C"},
+        {"subject": "Gundremmingen unit C", "predicate": "urn:kgb:part_of_facility", "object": "Gundremmingen", "evidence": "Gundremmingen units B and C"}
+      ]
+    },
+    {
+      "id": "gkn-application-de",
+      "language": "de",
+      "text": "Die EnBW Kernkraft GmbH beantragt als Inhaberin der Kernanlage GKN I die Stilllegungs- und Abbaugenehmigung nach § 7 Absatz 3 AtG.",
+      "source_document": "data/Decommissioning_Files/130424_Genehmigungsantrag_1-SAG_GKN-I.pdf",
+      "source_reference": "Antrag, Abschnitt I.1",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "gkn-application",
+      "gold_entities": [
+        {"text": "EnBW Kernkraft GmbH", "entity_type": "Organization"},
+        {"text": "GKN I", "entity_type": "Nuclear Facility"},
+        {"text": "Stilllegungs- und Abbaugenehmigung", "entity_type": "Decommissioning Project"},
+        {"text": "AtG", "entity_type": "Regulation"},
+        {"text": "1. SAG", "entity_type": "Application Document"}
+      ],
+      "gold_triples": [
+        {"subject": "EnBW Kernkraft GmbH", "predicate": "urn:kgb:authorized_for", "object": "GKN I", "evidence": "EnBW Kernkraft GmbH beantragt als Inhaberin der Kernanlage GKN I"},
+        {"subject": "1. SAG", "predicate": "urn:kgb:submitted_by", "object": "EnBW Kernkraft GmbH", "evidence": "Die EnBW Kernkraft GmbH beantragt"},
+        {"subject": "1. SAG", "predicate": "urn:kgb:requests_approval_for", "object": "Stilllegungs- und Abbaugenehmigung", "evidence": "beantragt als Inhaberin der Kernanlage GKN I die Stilllegungs- und Abbaugenehmigung"}
+      ]
+    },
+    {
+      "id": "gkn-application-en",
+      "language": "en",
+      "text": "As holder of the GKN I nuclear installation, EnBW Kernkraft GmbH applies for the first decommissioning and dismantling authorization under section 7(3) of the Atomic Energy Act.",
+      "source_document": "data/Decommissioning_Files/130424_Genehmigungsantrag_1-SAG_GKN-I.pdf",
+      "source_reference": "Application, section I.1",
+      "text_origin": "human-translation",
+      "variant_of": "gkn-application",
+      "gold_entities": [
+        {"text": "EnBW Kernkraft GmbH", "entity_type": "Organization"},
+        {"text": "GKN I", "entity_type": "Nuclear Facility"},
+        {"text": "first decommissioning and dismantling authorization", "entity_type": "Decommissioning Project"},
+        {"text": "Atomic Energy Act", "entity_type": "Regulation"},
+        {"text": "first application", "entity_type": "Application Document"}
+      ],
+      "gold_triples": [
+        {"subject": "EnBW Kernkraft GmbH", "predicate": "urn:kgb:authorized_for", "object": "GKN I", "evidence": "holder of the GKN I nuclear installation"},
+        {"subject": "first application", "predicate": "urn:kgb:submitted_by", "object": "EnBW Kernkraft GmbH", "evidence": "EnBW Kernkraft GmbH applies"},
+        {"subject": "first application", "predicate": "urn:kgb:requests_approval_for", "object": "first decommissioning and dismantling authorization", "evidence": "EnBW Kernkraft GmbH applies for the first decommissioning and dismantling authorization"}
+      ]
+    },
+    {
+      "id": "gkn-fuel-storage-de",
+      "language": "de",
+      "text": "Die noch vorhandenen Brennelemente des Kernkraftwerks Neckarwestheim Block I sollen während des Nachbetriebs in das standortnahe Zwischenlager Neckarwestheim verbracht werden.",
+      "source_document": "data/Decommissioning_Files/130424_Genehmigungsantrag_1-SAG_GKN-I.pdf",
+      "source_reference": "Antrag, Abschnitt II",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "gkn-fuel-storage",
+      "gold_entities": [
+        {"text": "Brennelemente", "entity_type": "Nuclear Material"},
+        {"text": "Zwischenlager Neckarwestheim", "entity_type": "Storage Facility"},
+        {"text": "Kernkraftwerk Neckarwestheim Block I", "entity_type": "Nuclear Facility"}
+      ],
+      "gold_triples": [
+        {"subject": "Brennelemente", "predicate": "urn:kgb:planned_storage_at", "object": "Zwischenlager Neckarwestheim", "evidence": "Brennelemente des Kernkraftwerks Neckarwestheim Block I sollen während des Nachbetriebs in das standortnahe Zwischenlager Neckarwestheim verbracht werden"}
+      ]
+    },
+    {
+      "id": "gkn-fuel-storage-en",
+      "language": "en",
+      "text": "The remaining fuel assemblies from Neckarwestheim unit 1 are planned to be transferred to the nearby Neckarwestheim interim storage facility during post-operation.",
+      "source_document": "data/Decommissioning_Files/130424_Genehmigungsantrag_1-SAG_GKN-I.pdf",
+      "source_reference": "Application, section II",
+      "text_origin": "human-translation",
+      "variant_of": "gkn-fuel-storage",
+      "gold_entities": [
+        {"text": "fuel assemblies", "entity_type": "Nuclear Material"},
+        {"text": "Neckarwestheim interim storage facility", "entity_type": "Storage Facility"},
+        {"text": "Neckarwestheim unit 1", "entity_type": "Nuclear Facility"}
+      ],
+      "gold_triples": [
+        {"subject": "fuel assemblies", "predicate": "urn:kgb:planned_storage_at", "object": "Neckarwestheim interim storage facility", "evidence": "fuel assemblies from Neckarwestheim unit 1 are planned to be transferred to the nearby Neckarwestheim interim storage facility"}
+      ]
+    },
+    {
+      "id": "kkp2-operator-de",
+      "language": "de",
+      "text": "Die EnBW Kernkraft GmbH betreibt das Kernkraftwerk Philippsburg Block 2 und will es nach Ende des Leistungsbetriebs direkt abbauen.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Einleitung, gedruckte Seite 5",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kkp2-operator",
+      "gold_entities": [
+        {"text": "EnBW Kernkraft GmbH", "entity_type": "Organization"},
+        {"text": "Kernkraftwerk Philippsburg Block 2", "entity_type": "Nuclear Facility"},
+        {"text": "direkter Abbau", "entity_type": "Decommissioning Project"}
+      ],
+      "gold_triples": [
+        {"subject": "EnBW Kernkraft GmbH", "predicate": "urn:kgb:operates", "object": "Kernkraftwerk Philippsburg Block 2", "evidence": "EnBW Kernkraft GmbH betreibt das Kernkraftwerk Philippsburg Block 2"},
+        {"subject": "direkter Abbau", "predicate": "urn:kgb:targets_facility", "object": "Kernkraftwerk Philippsburg Block 2", "evidence": "will es nach Ende des Leistungsbetriebs direkt abbauen"}
+      ]
+    },
+    {
+      "id": "kkp2-operator-en",
+      "language": "en",
+      "text": "EnBW Kernkraft GmbH operates Philippsburg nuclear power plant unit 2 and plans to dismantle it directly after power generation ends.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Introduction, printed page 5",
+      "text_origin": "human-translation",
+      "variant_of": "kkp2-operator",
+      "gold_entities": [
+        {"text": "EnBW Kernkraft GmbH", "entity_type": "Organization"},
+        {"text": "Philippsburg nuclear power plant unit 2", "entity_type": "Nuclear Facility"},
+        {"text": "direct dismantling", "entity_type": "Decommissioning Project"}
+      ],
+      "gold_triples": [
+        {"subject": "EnBW Kernkraft GmbH", "predicate": "urn:kgb:operates", "object": "Philippsburg nuclear power plant unit 2", "evidence": "EnBW Kernkraft GmbH operates Philippsburg nuclear power plant unit 2"},
+        {"subject": "direct dismantling", "predicate": "urn:kgb:targets_facility", "object": "Philippsburg nuclear power plant unit 2", "evidence": "plans to dismantle it directly after power generation ends"}
+      ]
+    },
+    {
+      "id": "kkp2-deadline-de",
+      "language": "de",
+      "text": "Die Berechtigung zum Leistungsbetrieb des Kernkraftwerks Philippsburg Block 2 erlischt spätestens am 31.12.2019.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Einleitung, gedruckte Seite 5",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kkp2-deadline",
+      "gold_entities": [
+        {"text": "Kernkraftwerk Philippsburg Block 2", "entity_type": "Nuclear Facility", "attributes": {"operation_end_date": "2019-12-31"}}
+      ],
+      "gold_triples": []
+    },
+    {
+      "id": "kkp2-deadline-en",
+      "language": "en",
+      "text": "Authorization to operate Philippsburg nuclear power plant unit 2 expires no later than 31 December 2019.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Introduction, printed page 5",
+      "text_origin": "human-translation",
+      "variant_of": "kkp2-deadline",
+      "gold_entities": [
+        {"text": "Philippsburg nuclear power plant unit 2", "entity_type": "Nuclear Facility", "attributes": {"operation_end_date": "2019-12-31"}}
+      ],
+      "gold_triples": []
+    },
+    {
+      "id": "kkp2-application-reports-de",
+      "language": "de",
+      "text": "Zum Genehmigungsantrag für den Abbau des KKP 2 gehören ein Sicherheitsbericht, eine Umweltverträglichkeitsuntersuchung und eine Kurzbeschreibung.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Zweck der Kurzbeschreibung, gedruckte Seite 3",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kkp2-application-reports",
+      "gold_entities": [
+        {"text": "Genehmigungsantrag für den Abbau des KKP 2", "entity_type": "Application Document"},
+        {"text": "Sicherheitsbericht", "entity_type": "Report"},
+        {"text": "Umweltverträglichkeitsuntersuchung", "entity_type": "Report"},
+        {"text": "Kurzbeschreibung", "entity_type": "Report"}
+      ],
+      "gold_triples": [
+        {"subject": "Genehmigungsantrag für den Abbau des KKP 2", "predicate": "urn:kgb:includes_report", "object": "Sicherheitsbericht", "evidence": "Zum Genehmigungsantrag für den Abbau des KKP 2 gehören ein Sicherheitsbericht"},
+        {"subject": "Genehmigungsantrag für den Abbau des KKP 2", "predicate": "urn:kgb:includes_report", "object": "Umweltverträglichkeitsuntersuchung", "evidence": "gehören ein Sicherheitsbericht, eine Umweltverträglichkeitsuntersuchung"},
+        {"subject": "Genehmigungsantrag für den Abbau des KKP 2", "predicate": "urn:kgb:includes_report", "object": "Kurzbeschreibung", "evidence": "Umweltverträglichkeitsuntersuchung und eine Kurzbeschreibung"}
+      ]
+    },
+    {
+      "id": "kkp2-application-reports-en",
+      "language": "en",
+      "text": "The Philippsburg unit 2 dismantling application package includes a safety report, an environmental assessment, and a plain-language summary.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Purpose of the summary, printed page 3",
+      "text_origin": "human-translation",
+      "variant_of": "kkp2-application-reports",
+      "gold_entities": [
+        {"text": "Philippsburg unit 2 dismantling application package", "entity_type": "Application Document"},
+        {"text": "safety report", "entity_type": "Report"},
+        {"text": "environmental assessment", "entity_type": "Report"},
+        {"text": "plain-language summary", "entity_type": "Report"}
+      ],
+      "gold_triples": [
+        {"subject": "Philippsburg unit 2 dismantling application package", "predicate": "urn:kgb:includes_report", "object": "safety report", "evidence": "application package includes a safety report"},
+        {"subject": "Philippsburg unit 2 dismantling application package", "predicate": "urn:kgb:includes_report", "object": "environmental assessment", "evidence": "a safety report, an environmental assessment"},
+        {"subject": "Philippsburg unit 2 dismantling application package", "predicate": "urn:kgb:includes_report", "object": "plain-language summary", "evidence": "an environmental assessment, and a plain-language summary"}
+      ]
+    },
+    {
+      "id": "kkp2-waste-storage-de",
+      "language": "de",
+      "text": "Radioaktive Abfälle aus dem Rückbau des KKP 2 sollen bis zur Ablieferung an ein Bundesendlager am Standort Philippsburg gelagert werden.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Abschnitt 8, gedruckte Seite 26",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kkp2-waste-storage",
+      "gold_entities": [
+        {"text": "Radioaktive Abfälle", "entity_type": "Nuclear Material"},
+        {"text": "Standort Philippsburg", "entity_type": "Storage Facility"},
+        {"text": "Bundesendlager", "entity_type": "Storage Facility"}
+      ],
+      "gold_triples": [
+        {"subject": "Radioaktive Abfälle", "predicate": "urn:kgb:planned_storage_at", "object": "Standort Philippsburg", "evidence": "Radioaktive Abfälle aus dem Rückbau des KKP 2 sollen bis zur Ablieferung an ein Bundesendlager am Standort Philippsburg gelagert werden"}
+      ]
+    },
+    {
+      "id": "kkp2-waste-storage-en",
+      "language": "en",
+      "text": "Radioactive waste from dismantling Philippsburg unit 2 is to remain at the Philippsburg site until delivery to a federal repository.",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Section 8, printed page 26",
+      "text_origin": "human-translation",
+      "variant_of": "kkp2-waste-storage",
+      "gold_entities": [
+        {"text": "Radioactive waste", "entity_type": "Nuclear Material"},
+        {"text": "Philippsburg site", "entity_type": "Storage Facility"},
+        {"text": "federal repository", "entity_type": "Storage Facility"}
+      ],
+      "gold_triples": [
+        {"subject": "Radioactive waste", "predicate": "urn:kgb:planned_storage_at", "object": "Philippsburg site", "evidence": "Radioactive waste from dismantling Philippsburg unit 2 is to remain at the Philippsburg site"}
+      ]
+    },
+    {
+      "id": "kkp2-approval-law-de",
+      "language": "de",
+      "text": "Die Stilllegung und der Abbau von Anlagenteilen des KKP 2 benötigen eine Genehmigung nach § 7 Absatz 3 des Atomgesetzes (AtG).",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Zweck der Kurzbeschreibung, gedruckte Seite 3",
+      "text_origin": "authored-paraphrase",
+      "variant_of": "kkp2-approval-law",
+      "gold_entities": [
+        {"text": "Stilllegung und Abbau von Anlagenteilen des KKP 2", "entity_type": "Decommissioning Project"},
+        {"text": "Atomgesetz (AtG)", "entity_type": "Regulation"}
+      ],
+      "gold_triples": [
+        {"subject": "Stilllegung und Abbau von Anlagenteilen des KKP 2", "predicate": "urn:kgb:requires_approval_under", "object": "Atomgesetz (AtG)", "evidence": "benötigen eine Genehmigung nach § 7 Absatz 3 des Atomgesetzes (AtG)"}
+      ]
+    },
+    {
+      "id": "kkp2-approval-law-en",
+      "language": "en",
+      "text": "Decommissioning and dismantling parts of Philippsburg unit 2 require authorization under section 7(3) of the Atomic Energy Act (AtG).",
+      "source_document": "data/Decommissioning_Files/180116_Kurzbeschreibung_Stilllegung_und_Abbau_KKP2.pdf",
+      "source_reference": "Purpose of the summary, printed page 3",
+      "text_origin": "human-translation",
+      "variant_of": "kkp2-approval-law",
+      "gold_entities": [
+        {"text": "Decommissioning and dismantling parts of Philippsburg unit 2", "entity_type": "Decommissioning Project"},
+        {"text": "Atomic Energy Act (AtG)", "entity_type": "Regulation"}
+      ],
+      "gold_triples": [
+        {"subject": "Decommissioning and dismantling parts of Philippsburg unit 2", "predicate": "urn:kgb:requires_approval_under", "object": "Atomic Energy Act (AtG)", "evidence": "require authorization under section 7(3) of the Atomic Energy Act (AtG)"}
+      ]
+    }
+  ]
+}

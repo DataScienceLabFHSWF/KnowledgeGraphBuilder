@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from kgbuilder.api.middleware import ErrorHandlingMiddleware, RateLimitMiddleware
 from kgbuilder.api.routes.build import router as build_router
 from kgbuilder.api.routes.export import router as export_router
+from kgbuilder.api.routes.extract import router as extract_router
 from kgbuilder.api.routes.hitl import router as hitl_router
 from kgbuilder.api.routes.status import router as status_router
 from kgbuilder.api.routes.validate import router as validate_router
@@ -59,6 +60,7 @@ app.add_middleware(RateLimitMiddleware, rate_limit=60, window_seconds=60)
 # Mount route modules
 app.include_router(status_router, prefix="/api/v1", tags=["status"])
 app.include_router(build_router, prefix="/api/v1", tags=["build"])
+app.include_router(extract_router, prefix="/api", tags=["extract"])
 app.include_router(validate_router, prefix="/api/v1", tags=["validate"])
 app.include_router(export_router, prefix="/api/v1", tags=["export"])
 app.include_router(hitl_router, prefix="/api/v1/hitl", tags=["hitl"])

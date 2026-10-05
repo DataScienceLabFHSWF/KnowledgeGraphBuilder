@@ -1,11 +1,9 @@
 import logging
 from types import SimpleNamespace
 
-import pytest
-
 from kgbuilder.assembly.core import (
-    GraphStatistics,
     AssemblyResult,
+    GraphStatistics,
     SimpleKGAssembler,
 )
 
@@ -80,6 +78,35 @@ def test_build_extraction_pipeline_returns_chain(monkeypatch):
     asm = SimpleKGAssembler(graph_store=DummyGraphStore())
     result = asm.build_extraction_pipeline()
     assert result == "entity"
+
+
+def test_build_extraction_pipeline_passes_configured_provider(monkeypatch):
+    calls = []
+
+    def create_entity_extraction_chain(**kwargs):
+        calls.append(("entity", kwargs))
+        return "entity"
+
+    def create_relation_extraction_chain(**kwargs):
+        calls.append(("relation", kwargs))
+        return "relation"
+
+    monkeypatch.setattr(
+        "kgbuilder.assembly.core.ExtractionChains",
+        SimpleNamespace(
+            create_entity_extraction_chain=create_entity_extraction_chain,
+            create_relation_extraction_chain=create_relation_extraction_chain,
+        ),
+    )
+    monkeypatch.setattr("kgbuilder.assembly.core.CharacterTextSplitter", DummySplitter)
+    provider = object()
+    assembler = SimpleKGAssembler(graph_store=DummyGraphStore(), llm_provider=provider)
+
+    assert assembler.build_extraction_pipeline() == "entity"
+    assert calls == [
+        ("entity", {"llm_provider": provider}),
+        ("relation", {"llm_provider": provider}),
+    ]
 
 
 def test_assemble_logs(monkeypatch, caplog):

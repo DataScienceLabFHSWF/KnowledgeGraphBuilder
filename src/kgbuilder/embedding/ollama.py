@@ -24,9 +24,10 @@ import numpy as np
 import requests
 import structlog
 from pydantic import BaseModel, ValidationError
-from kgbuilder.core.exceptions import LLMError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+from kgbuilder.core.exceptions import LLMError
 
 logger = structlog.get_logger(__name__)
 
@@ -51,6 +52,7 @@ class OllamaProvider:
         top_p: float = 0.9,
         timeout: int = 600,
         seed: int | None = None,
+        cache_enabled: bool = True,
     ) -> None:
         """Initialize Ollama provider with resilient connection pooling and retry logic.
 
@@ -71,6 +73,14 @@ class OllamaProvider:
         self.top_p = top_p
         self.timeout = timeout
         self.seed = seed
+        self.cache_enabled = cache_enabled
+        self.last_usage: dict[str, Any] = {
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "source": "unavailable",
+        }
+        self.usage_history: list[dict[str, Any]] = []
 
         # Circuit breaker state for fault tolerance
         self.consecutive_timeouts = 0
@@ -290,7 +300,13 @@ class OllamaProvider:
         Raises:
             RuntimeError: If API call fails after retries or circuit breaker is open
         """
-        use_cache = kwargs.pop("use_cache", True)
+        self.last_usage = {
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "source": "unavailable",
+        }
+        use_cache = kwargs.pop("use_cache", self.cache_enabled)
 
         # Check cache first
         cache_key = self._get_cache_key(prompt, **kwargs)
@@ -333,7 +349,20 @@ class OllamaProvider:
                 response.raise_for_status()
                 result = response.json()
                 completion = result.get("response", "")
-                completion_tokens = len(completion.split())
+                prompt_tokens = result.get("prompt_eval_count")
+                completion_tokens = result.get("eval_count")
+                usage_source = "server"
+                if prompt_tokens is None or completion_tokens is None:
+                    prompt_tokens = len(prompt.split())
+                    completion_tokens = len(completion.split())
+                    usage_source = "estimated_whitespace"
+                self.last_usage = {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                    "source": usage_source,
+                }
+                self.usage_history.append(self.last_usage.copy())
 
                 # Save to cache only for cache-enabled calls.
                 if use_cache:
@@ -448,13 +477,13 @@ class OllamaProvider:
                     augmented_prompt += f"\n\nAttempt {retry_count + 1}/{max_retries}. "
                     augmented_prompt += "Ensure ALL required fields are present and valid."
 
-                raw_output = self.generate(
-                    augmented_prompt,
-                    temperature=temperature,
-                    format="json",
-                    use_cache=False,
+                generation_kwargs = {
                     **kwargs,
-                )
+                    "temperature": temperature,
+                    "format": "json",
+                    "use_cache": False,
+                }
+                raw_output = self.generate(augmented_prompt, **generation_kwargs)
 
                 # Extract JSON from response (handle markdown code blocks)
                 json_str = self._extract_json_from_response(raw_output)
@@ -801,4 +830,3 @@ class OllamaProvider:
                 raise LLMError(f"Embedding error: {e}") from e
 
         raise LLMError("Embedding failed: unknown error after all retries")
-

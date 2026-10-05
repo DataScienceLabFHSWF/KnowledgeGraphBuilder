@@ -86,8 +86,11 @@ nav:
       - Overview: architecture/overview.md
       - Pipeline Layers: architecture/pipeline-layers.md
       - Domain Pluggability: architecture/domain-pluggability.md
+      - Agentic Pipeline (Skills/Tools/Subagents): architecture/agentic-pipeline.md
   - User Guide:
       - Full Pipeline: guide/full-pipeline.md
+      - Extraction API: guide/extraction-api.md
+      - Model Providers and Benchmarks: guide/model-providers-and-benchmarks.md
       - Law Graph: guide/law-graph.md
       - Experiments: guide/experiments.md
       - Validation: guide/validation.md

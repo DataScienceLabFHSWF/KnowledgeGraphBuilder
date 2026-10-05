@@ -20,6 +20,7 @@ from kgbuilder.core.models import (
     ExtractedEntity,
     ExtractedRelation,
     FileType,
+    RationaleEntry,
     generate_entity_id,
 )
 from kgbuilder.core.protocols import (
@@ -50,6 +51,7 @@ __all__ = [
     "Evidence",
     "ExtractedEntity",
     "ExtractedRelation",
+    "RationaleEntry",
     # Protocols
     "DocumentLoader",
     "ChunkingStrategy",

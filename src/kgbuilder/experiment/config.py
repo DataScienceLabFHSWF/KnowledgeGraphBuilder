@@ -27,6 +27,10 @@ class KGBuilderParams:
         confidence_threshold: Minimum extraction confidence (0-1)
         classes_limit: Limit classes to process (None = all)
         questions_per_class: Number of questions to generate per class
+        swarm_config_path: Optional path to a `SwarmModelConfig` JSON file
+            assigning per-module models and concurrency limits for the
+            module orchestrator (see `data/profiles/agent_swarm.example.json`).
+            When unset, the single `model` field above is used for all modules.
     """
 
     model: str = "gemma4:e2b"
@@ -36,6 +40,7 @@ class KGBuilderParams:
     classes_limit: int | None = None
     questions_per_class: int = 3
     law_graph_enabled: bool = False
+    swarm_config_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -47,6 +52,7 @@ class KGBuilderParams:
             "classes_limit": self.classes_limit,
             "questions_per_class": self.questions_per_class,
             "law_graph_enabled": self.law_graph_enabled,
+            "swarm_config_path": self.swarm_config_path,
         }
 
     @staticmethod
@@ -60,6 +66,7 @@ class KGBuilderParams:
             classes_limit=data.get("classes_limit"),
             questions_per_class=data.get("questions_per_class", 3),
             law_graph_enabled=data.get("law_graph_enabled", False),
+            swarm_config_path=data.get("swarm_config_path"),
         )
 
 

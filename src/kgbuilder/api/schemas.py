@@ -6,11 +6,10 @@ dataclasses so the API layer stays decoupled from pipeline internals.
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
+from typing import Any
 
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel, ConfigDict, Field
 
 # ------------------------------------------------------------------
 # Build pipeline
@@ -24,6 +23,204 @@ class BuildStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class ExtractionStatusValue(str, Enum):
+    """Status of an extraction request."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ExtractionFile(BaseModel):
+    """Base64-encoded document supplied for extraction."""
+
+    name: str = Field(min_length=1)
+    content_type: str = Field(alias="contentType", min_length=1)
+    base64: str = Field(min_length=1)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExtractionOntologyAttribute(BaseModel):
+    """Class attribute supplied as part of an extraction ontology."""
+
+    id: str
+    name: str
+    data_type: str = Field(alias="dataType")
+    required: bool = False
+    description: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+
+class ExtractionOntologyClass(BaseModel):
+    """Entity class supplied as part of an extraction ontology."""
+
+    id: str
+    name: str
+    module_id: str | None = Field(default=None, alias="moduleId")
+    module: str | None = None
+    description: str | None = None
+    parent_class_id: str | None = Field(default=None, alias="parentClassId")
+    attributes: list[ExtractionOntologyAttribute] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+
+class ExtractionOntologyRelation(BaseModel):
+    """Relation supplied as part of an extraction ontology."""
+
+    id: str
+    name: str
+    domain_class_id: str = Field(alias="domainClassId")
+    range_class_id: str = Field(alias="rangeClassId")
+    description: str | None = None
+    inverse_name: str | None = Field(default=None, alias="inverseName")
+    cardinality: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+
+class ExtractionOntologyModule(BaseModel):
+    """Ontology module grouping entity classes."""
+
+    id: str
+    name: str
+    description: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+
+class ExtractionOntologyExample(BaseModel):
+    """Example value attached to an ontology class or relation."""
+
+    target_type: str = Field(alias="targetType")
+    target_id: str = Field(alias="targetId")
+    value: str
+    subject_label: str | None = Field(default=None, alias="subjectLabel")
+    predicate_label: str | None = Field(default=None, alias="predicateLabel")
+    object_label: str | None = Field(default=None, alias="objectLabel")
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+
+class ExtractionOntology(BaseModel):
+    """Ontology subset and metadata provided to the extraction agent."""
+
+    name: str = Field(min_length=1)
+    default_language: str | None = Field(default=None, alias="defaultLanguage")
+    languages: list[dict[str, str]] = Field(default_factory=list)
+    usecase: str | None = None
+    version: str | None = None
+    modules: list[ExtractionOntologyModule] = Field(default_factory=list)
+    classes: list[ExtractionOntologyClass] = Field(min_length=1)
+    relations: list[ExtractionOntologyRelation] = Field(default_factory=list)
+    competency_questions: list[dict[str, Any]] = Field(
+        default_factory=list,
+        alias="competencyQuestions",
+    )
+    examples: list[ExtractionOntologyExample] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+
+class ExtractionRequest(BaseModel):
+    """Request to start an asynchronous document extraction."""
+
+    run_id: str = Field(alias="runId", min_length=1)
+    document_id: str = Field(alias="documentId", min_length=1)
+    ontology_id: str = Field(alias="ontologyId", min_length=1)
+    file: ExtractionFile
+    ontology: ExtractionOntology
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExtractionStartResponse(BaseModel):
+    """Response returned after accepting an extraction request."""
+
+    run_id: str = Field(alias="runId")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExtractionStatusResponse(BaseModel):
+    """Current state of an extraction run."""
+
+    run_id: str = Field(alias="runId")
+    status: ExtractionStatusValue
+    progress: int = Field(ge=0, le=100)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExtractionParagraph(BaseModel):
+    """Paragraph included in the extracted document outline."""
+
+    id: str
+    content: str
+
+
+class ExtractionSection(BaseModel):
+    """Section included in the extracted document outline."""
+
+    id: str
+    title: str
+    paragraphs: list[ExtractionParagraph]
+
+
+class ExtractionEntityAttribute(BaseModel):
+    """Extracted entity attribute."""
+
+    attribute_name: str
+    value: Any
+
+
+class ExtractionEntityResult(BaseModel):
+    """Entity result in the inter-application extraction contract."""
+
+    temp_id: str
+    text: str
+    class_name: str = Field(alias="className")
+    attributes: list[ExtractionEntityAttribute]
+
+
+class ExtractionEvidence(BaseModel):
+    """Evidence for an extracted relation."""
+
+    quote: str
+    section_title: str | None = Field(alias="sectionTitle")
+    paragraph_id: str | None = Field(alias="paragraphId")
+    page_from: int | None = Field(default=None, alias="pageFrom")
+    page_to: int | None = Field(default=None, alias="pageTo")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExtractionFact(BaseModel):
+    """Relation result in the inter-application extraction contract."""
+
+    subject_temp_id: str
+    relation_text: str
+    object_temp_id: str
+    subject_class_name: str = Field(alias="subjectClassName")
+    object_class_name: str = Field(alias="objectClassName")
+    relation_name: str = Field(alias="relationName")
+    confidence: float = Field(ge=0.0, le=1.0)
+    is_cross_chapter: bool = Field(alias="isCrossChapter")
+    evidence: ExtractionEvidence
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExtractionResults(BaseModel):
+    """Completed extraction result."""
+
+    sections: list[ExtractionSection]
+    entities: list[ExtractionEntityResult]
+    facts: list[ExtractionFact]
 
 
 class BuildRequest(BaseModel):
@@ -187,6 +384,8 @@ class ServiceHealth(BaseModel):
     qdrant: str = "unknown"
     fuseki: str = "unknown"
     ollama: str = "unknown"
+    llm_backend: str = "unknown"
+    llm: str = "unknown"
 
 
 class KGStatistics(BaseModel):

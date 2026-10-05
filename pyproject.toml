@@ -11,7 +11,7 @@ license = { text = "MIT" }
 authors = [
     { name = "KnowledgeGraphBuilder Contributors" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     # Core
     "pydantic>=2.0",
@@ -25,6 +25,7 @@ dependencies = [
     "markitdown<=0.1.5",
     # LLM & embedding
     "httpx>=0.25.0",
+    "requests>=2.32",
     "numpy>=1.24",
     # Graph databases
     "neo4j>=5.19",
@@ -36,6 +37,7 @@ dependencies = [
     # Utilities
     "click>=8.1",
     "typer>=0.9",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -70,6 +72,16 @@ analytics = [
     "scikit-learn>=1.3",
     "scipy>=1.11",
     "matplotlib>=3.8",
+]
+reasoning = [
+    # Bundles the HermiT and Pellet OWL DL reasoners (Java JARs); requires a
+    # Java runtime on PATH (already required by SHACL2FOL/Vampire static
+    # validation — see validation/static_validator.py). No separate JAR
+    # download needed. See Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md Phase C.
+    "owlready2>=0.47",
+]
+gliner = [
+    "gliner>=0.2.21",
 ]
 analytics-gpu = [
     "torch>=2.0",

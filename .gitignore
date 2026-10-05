@@ -263,6 +263,7 @@ graphify-out/
 docs/graphify-out/
 experiment_results/**/reports/
 experiment_results/**/checkpoints/
+experiment_results/benchmark_paper/expanded/
 
 # Experiment results
 results/

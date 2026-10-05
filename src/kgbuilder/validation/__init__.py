@@ -42,6 +42,7 @@ from kgbuilder.validation.action_converter import (
     ShapeAction,
 )
 from kgbuilder.validation.consistency_checker import ConsistencyChecker, ConsistencyReport
+from kgbuilder.validation.consistency_reasoner import ConsistencyCheckResult, ConsistencyReasoner
 from kgbuilder.validation.models import (
     Conflict,
     ConflictType,
@@ -51,6 +52,11 @@ from kgbuilder.validation.models import (
     ValidationViolation,
     ViolationSeverity,
 )
+from kgbuilder.validation.ontology_report import (
+    OntologyValidationReport,
+    OntologyValidationReportBuilder,
+)
+from kgbuilder.validation.pitfall_detector import OOPSPitfallDetector, Pitfall, PitfallScanResult
 from kgbuilder.validation.reporter import ReportGenerator
 from kgbuilder.validation.rules_engine import (
     DomainRangeRule,
@@ -67,6 +73,7 @@ from kgbuilder.validation.static_validator import (
     StaticValidator,
     StaticValidatorConfig,
 )
+
 __all__ = [
     "ValidationResult",
     "ValidationViolation",
@@ -92,5 +99,12 @@ __all__ = [
     "FunctionalPropertyRule",
     "ConsistencyChecker",
     "ConsistencyReport",
+    "ConsistencyReasoner",
+    "ConsistencyCheckResult",
+    "OOPSPitfallDetector",
+    "Pitfall",
+    "PitfallScanResult",
+    "OntologyValidationReport",
+    "OntologyValidationReportBuilder",
     "ReportGenerator",
 ]

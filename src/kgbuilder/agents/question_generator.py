@@ -9,18 +9,44 @@ coverage gaps. These questions guide the iterative discovery loop.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from enum import Enum
+from functools import partial
 from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
+from kgbuilder.agents.base_agent import BaseAgent
 from kgbuilder.core.models import ExtractedEntity
+from kgbuilder.skills import FollowUpGapAnalysisSkill, OntologyGapAnalysisSkill
+from kgbuilder.tools import CoverageSnapshotTool, OntologyQueryTool
+
+
+class CQType(str, Enum):
+    """Competency question type, per Keet & Khan's QuO model (arXiv:2412.13688).
+
+    - SCQ (Scoping): demarcates what the KG/ontology should cover -> drives extraction.
+    - VCQ (Validating): checks content already in the KG is correct/complete -> drives validation.
+    - RCQ (Relationship): probes relationship arity/domain-range/properties -> drives relation extraction.
+    - FCQ (Foundational): aligns a domain entity to a foundational ontology (e.g. CCO/BFO).
+    - MpCQ (Metaproperty): classifies an entity by metaproperties (rigidity, identity, ...).
+
+    Only SCQ/RCQ are currently consumed by extraction subagents; VCQ feeds the
+    validation skill/tool chain. FCQ/MpCQ are modeled but not yet wired to a
+    pipeline stage (no foundational-ontology alignment stage exists yet).
+    """
+
+    SCQ = "SCQ"
+    VCQ = "VCQ"
+    FCQ = "FCQ"
+    RCQ = "RCQ"
+    MPCQ = "MpCQ"
 
 
 @runtime_checkable
 class OntologyService(Protocol):
     """Protocol for ontology query services.
-    
+
     Provides query methods for analyzing ontology structure, class hierarchies,
     and relations to guide question generation and discovery prioritization.
     """
@@ -82,16 +108,17 @@ class ResearchQuestion:
     reason: str
     aspect: str = "existence"  # existence, properties, relations
     follow_up: bool = False  # Is this a follow-up from earlier findings?
+    cq_type: CQType = CQType.SCQ  # SCQ/VCQ/FCQ/RCQ/MpCQ (see CQType docstring)
 
     def __repr__(self) -> str:
         """Return string representation."""
         return (
             f"Q[{self.priority:.2f}]: {self.text}\n"
-            f"  Class: {self.entity_class}, Aspect: {self.aspect}"
+            f"  Class: {self.entity_class}, Aspect: {self.aspect}, CQ Type: {self.cq_type.value}"
         )
 
 
-class QuestionGenerationAgent:
+class QuestionGenerationAgent(BaseAgent):
     """Generates research questions from ontology gaps.
 
     Strategy:
@@ -120,11 +147,28 @@ class QuestionGenerationAgent:
         self._existing = existing_entities or []
         self._logger = structlog.get_logger(__name__)
 
+        # Bind shared skill/tool definitions to this agent instance so callers
+        # can invoke them via run_skill()/run_tool() without extra plumbing.
+        skills = [
+            replace(OntologyGapAnalysisSkill, handler=partial(OntologyGapAnalysisSkill.handler, self)),
+            replace(FollowUpGapAnalysisSkill, handler=partial(FollowUpGapAnalysisSkill.handler, self)),
+        ]
+        tools = [
+            replace(OntologyQueryTool, handler=partial(OntologyQueryTool.handler, self._ontology)),
+            replace(CoverageSnapshotTool, handler=partial(CoverageSnapshotTool.handler, self)),
+        ]
+        super().__init__(name="question_generation_agent", skills=skills, tools=tools)
+
+    def run(self, prompt: str, **kwargs: Any) -> Any:
+        """Compatibility hook for a generic base agent interface."""
+        return self.generate_questions(**kwargs)
+
     def generate_questions(
         self,
         max_questions: int = 50,
         covered_threshold: int = 1,
         coverage_percentage_threshold: float = 0.8,
+        class_filter: list[str] | None = None,
     ) -> list[ResearchQuestion]:
         """Generate prioritized research questions.
 
@@ -144,6 +188,7 @@ class QuestionGenerationAgent:
             covered_threshold: Minimum entity count to consider class "covered"
                 (default: 1 - ask about any class with <1 instance, i.e., none)
             coverage_percentage_threshold: Unused currently, kept for API compatibility
+            class_filter: Optional ontology classes to include in this generation pass.
 
         Returns:
             Sorted list of research questions (highest priority first)
@@ -160,6 +205,13 @@ class QuestionGenerationAgent:
         try:
             # 1. Get all classes from ontology
             all_classes = self._ontology.get_all_classes()
+            if class_filter is not None:
+                allowed_classes = {name.lower() for name in class_filter}
+                all_classes = [
+                    class_name
+                    for class_name in all_classes
+                    if class_name.lower() in allowed_classes
+                ]
             if not all_classes:
                 self._logger.warning("no_ontology_classes_found")
                 return []
@@ -232,6 +284,17 @@ class QuestionGenerationAgent:
                 coverage[entity.entity_type] += 1
 
         return coverage
+
+    def add_existing_entities(self, entities: list[ExtractedEntity]) -> None:
+        """Update coverage state with entities found during an extraction iteration."""
+        existing = {
+            (entity.label.lower().strip(), entity.entity_type.lower().strip()): entity
+            for entity in self._existing
+        }
+        for entity in entities:
+            key = (entity.label.lower().strip(), entity.entity_type.lower().strip())
+            existing[key] = entity
+        self._existing = list(existing.values())
 
     def _generate_question_for_class(
         self, class_name: str, current_count: int

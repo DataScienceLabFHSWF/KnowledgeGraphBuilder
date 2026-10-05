@@ -1,0 +1,276 @@
+# Agentic KG-Building Pipeline — Migration Plan
+
+**Status**: Agentic foundation, markdown pipeline, modular extraction, and the
+`POST /api/v1/build` pipeline cutover are implemented. The API build plan
+composes extraction, relation extraction, synthesis, assembly, and validation
+skills. Remaining work is documented below; this status does not imply that
+every older discovery/CLI entry point has been migrated.
+**Branch**: `refactor/clean-agent-skills-tools` (based on `main`)
+**Scope boundary** (explicit, do not expand):
+- Document preprocessing/indexing (loading, chunking, embedding into Qdrant) **stays a
+  hardcoded pipeline**. It is I/O-heavy, deterministic, and not a good fit for
+  agentic control.
+- Everything from "what to look for next" onward — question generation,
+  retrieval, extraction, enrichment, validation, assembly, law linking — becomes
+  **agentic**: composed from `AgentTool`/`AgentSkill` building blocks, orchestrated
+  by an agent instead of a hardcoded call sequence.
+- The pipeline's behavior must be tweakable **in natural language** by editing
+  markdown files, without touching Python.
+
+---
+
+## 1. Architecture overview
+
+```
+src/kgbuilder/
+  tools/        # atomic, stateless capabilities (AgentTool) — one per module wrapped
+  skills/       # composed capabilities (AgentSkill) — what an agent can be asked to do
+  agents/
+    base_agent.py     # BaseAgent + LangChainReactAgent (LangChain 1.x create_agent)
+    registry.py        # SKILL_REGISTRY / TOOL_REGISTRY — single source of truth
+    pipeline_agent.py  # declarative PipelineAgent, runs an ordered plan of skills
+    markdown_pipeline.py  # loads skills/*.md + pipeline.md into PipelineStep objects
+    question_generator.py, discovery_loop.py  # being migrated onto BaseAgent
+agentic_pipeline/        # NEW: markdown skill + pipeline definitions (human/LLM-editable)
+  skills/<skill_name>.md
+  pipeline.md
+```
+
+Already implemented (Phase 1, this session):
+- `kgbuilder.skills.base.AgentSkill`, `kgbuilder.tools.base.AgentTool` — minimal dataclasses with `.execute(**kwargs)`.
+- `kgbuilder.agents.base_agent.BaseAgent` — generic `run_skill`/`run_tool` registry, abstract `run()`.
+- `kgbuilder.agents.base_agent.LangChainReactAgent` — wraps our tools as LangChain `Tool`s and drives them via `langchain.agents.create_agent` (LangGraph tool-calling loop; the legacy `AgentExecutor`/`create_react_agent` API was removed in LangChain 1.x).
+- `QuestionGenerationAgent` now subclasses `BaseAgent`; its skills/tools are bound instances of shared, reusable skill/tool definitions (`ontology_gap_analysis`, `follow_up_gap_analysis`, `ontology_query`, `coverage_snapshot`).
+- Facade tools/skills wrapping **existing, untouched** implementations:
+  - `semantic_enrichment` → `SemanticEnrichmentPipeline.enrich`
+  - `document_retrieval` → any `Retriever.retrieve`
+  - `retrieval_evaluation` → `kgbuilder.retrieval.evaluation.evaluate_retrieval`
+  - `law_linking` → `KGLawLinker.create_links`
+  - `law_context_lookup` → `LawContextProvider.get_context`
+- `kgbuilder.agents.registry` — `SKILL_REGISTRY`/`TOOL_REGISTRY`, `get_skill()`/`get_tool()`.
+- `kgbuilder.agents.pipeline_agent.PipelineAgent` — runs a `list[PipelineStep]` plan, resolving bound resources (retriever, enrichment pipeline, linker, ...) by name instead of hardcoding call order.
+- Tests: `tests/unit/test_base_agent.py`, `tests/unit/test_agent_tool_skill_facades.py`, extended `tests/unit/test_question_generator.py`. All green; 4 pre-existing unrelated failures confirmed present on `main` too (SHACL/evaluation edge cases).
+
+Deliberately **not** rewritten yet: internals of `enrichment/`, `retrieval/`, `linking/`, `validation/`, `assembly/`, `discovery_loop.py`. They are wrapped, not replaced — this keeps the large existing test surface valid while the orchestration layer above them changes.
+
+---
+
+## 2. Markdown-driven skills and pipeline (Phase 2 — this session)
+
+Goal: a domain expert can change *what the agent does and in what order* by
+editing `.md` files, without touching Python.
+
+### 2.1 `agentic_pipeline/skills/<name>.md` format
+
+```markdown
+---
+name: document_retrieval
+tool: document_retrieval        # maps to TOOL_REGISTRY key
+requires_binding: [retriever]    # resource names PipelineAgent must supply
+---
+
+Retrieve the top-k documents relevant to the current research question.
+Use this before extraction so the extractor has grounded source text.
+```
+
+- YAML front matter is machine-readable (skill/tool name, required bindings,
+  default kwargs).
+- The prose body is the **natural-language description** — this is what gets
+  fed to an LLM-driven planner/ReAct agent as the tool description, and what a
+  human edits to change agent behavior (e.g. "only retrieve German-language
+  sources", "prefer law paragraphs over technical manuals").
+
+### 2.2 `agentic_pipeline/pipeline.md` format
+
+```markdown
+---
+steps:
+  - skill: ontology_gap_analysis
+    kwargs: {max_questions: 20}
+  - skill: document_retrieval
+    bind: {retriever: retriever}
+    kwargs: {top_k: 10}
+  - skill: semantic_enrichment
+    bind: {pipeline: enrichment_pipeline}
+  - skill: retrieval_evaluation
+    kwargs: {}
+---
+
+# KG Build Pipeline
+
+Ordered plan the `PipelineAgent` executes for one discovery iteration.
+Edit the `steps` list to reorder, add, or remove stages — no code changes
+required. Each `skill` must exist in `skills/*.md` and the skill registry.
+```
+
+### 2.3 Loader
+
+`kgbuilder/agents/markdown_pipeline.py`:
+- `load_pipeline(path) -> list[PipelineStep]` — parses YAML front matter,
+  validates each `skill` exists in `SKILL_REGISTRY`, returns
+  `PipelineAgent`-ready steps.
+- `load_skill_doc(path) -> SkillDoc` — parses a single skill markdown file,
+  used to (a) validate `pipeline.md` references and (b) generate tool/skill
+  descriptions for LLM-driven planning instead of hardcoding description
+  strings in Python.
+- Validation errors are explicit (unknown skill name, missing binding,
+  malformed YAML) since these files are meant to be edited by non-engineers.
+- Implemented: `agentic_pipeline/skills/*.md` (7 skill docs matching the
+  Phase 1 registry) and `agentic_pipeline/pipeline.md` (one discovery
+  iteration expressed declaratively). Covered by
+  `tests/unit/test_markdown_pipeline.py`.
+
+This phase's outputs are consumed by `PipelineAgent.run_plan(...)` exactly
+like the Python-constructed steps from Phase 1 — the loader only changes
+*where the plan comes from*, not how it executes.
+
+---
+
+## 3. Modular per-ontology-module subagents + orchestrator (Phase 3 — this session)
+
+Motivation: the decommissioning ontology is already organized into modules via
+`kg:module` annotations on classes (e.g. "Radiological Characterization",
+"Assets and Locations", "Technical Safety Assessment", "Waste and Materials",
+"Measure Description", "Workflow and Change Measures", "Document Structure and
+Evidence", "Documentation and References" — see
+`data/ontology/domain/decommissioning.owl`). Rather than one monolithic
+extraction pass over the whole ontology, each module gets its own extraction
+subagent, run independently (optionally on a smaller/cheaper model), then an
+orchestrator joins their results.
+
+### 3.1 Competency question typology grounds question routing
+
+Per Keet & Khan's QuO model (arXiv:2412.13688) and the AskCQ comparative study
+(arXiv:2507.02989), not all competency questions serve the same purpose. We
+adopt their five-way typology as `kgbuilder.agents.question_generator.CQType`:
+
+- **SCQ** (Scoping) — demarcates what the ontology/KG should cover → drives extraction.
+- **VCQ** (Validating) — checks KG content is correct/complete → drives validation, not extraction.
+- **RCQ** (Relationship) — probes relationship arity/domain-range/properties → drives relation extraction.
+- **FCQ** (Foundational) — aligns a domain entity to a foundational ontology (e.g. CCO/BFO, present under `data/ontology/external/cco/`).
+- **MpCQ** (Metaproperty) — classifies an entity by metaproperties (rigidity, identity, ...).
+
+`ResearchQuestion.cq_type` now carries this typology. Extraction subagents
+(`ModuleExtractionAgent.run_questions`) only act on **SCQ** and **RCQ**
+questions; **VCQ** questions are meant for a future validation-stage skill
+(not yet wired — tracked as a migration stage below); **FCQ**/**MpCQ** are
+modeled but have no consuming pipeline stage yet (no foundational-ontology
+alignment stage exists in this repo).
+
+### 3.2 Implemented (this session)
+
+- `kgbuilder.tools.extraction_tool.ExtractionTool` — thin wrapper around any
+  `EntityExtractor.extract(text, ontology_classes, existing_entities)`.
+- `kgbuilder.skills.module_extraction_skill.ModuleExtractionSkill` — retrieve
+  documents for one question, then extract entities scoped to one module's
+  ontology classes.
+- `kgbuilder.skills.join_skill.JoinModuleResultsSkill` — merges entity lists
+  from multiple modules, deduping by `(label, entity_type)` with the same
+  strategy `IterativeDiscoveryLoop` already uses (highest confidence wins,
+  evidence merged).
+- `kgbuilder.agents.module_extraction_agent.ModuleExtractionAgent` — a
+  `BaseAgent` scoped to exactly one ontology module: holds that module's
+  class definitions, and a retriever/extractor pair that can differ per
+  module (e.g. a smaller model for a simpler module). Filters incoming
+  questions to SCQ/RCQ via `EXTRACTION_CQ_TYPES`.
+- `kgbuilder.agents.orchestrator_agent.OrchestratorAgent` — given a list of
+  `ModuleBinding` (module name, ontology classes, retriever, extractor,
+  questions), dynamically builds one `ModuleExtractionAgent` per module, runs
+  them concurrently (`ThreadPoolExecutor`, configurable `max_workers`), and
+  joins results via `join_module_results`.
+- Tests: `tests/unit/test_orchestrator_agent.py` — covers per-module
+  retrieve→extract, CQ-type filtering (VCQ skipped), and cross-module dedup
+  where the same entity is found independently by two module subagents with
+  different confidence/evidence.
+
+Also implemented (this session):
+
+- `OntologyService.get_module_class_map()` — loads the module→classes mapping
+  from the OWL `kg:module` annotations via SPARQL, so `ModuleBinding`s no
+  longer need that mapping supplied by hand.
+- `OrchestratorAgent.build_module_bindings()` is now wired into
+  `IterativeDiscoveryLoop` (`module_map`/`orchestrator` constructor args):
+  when a module map is supplied, discovery short-circuits to the module
+  orchestration path instead of the legacy per-question loop.
+- `kgbuilder.tools.validation_tool.ValidationTool` +
+  `kgbuilder.skills.question_validation_skill.QuestionValidationSkill` +
+  `kgbuilder.agents.validation_agent.ValidationAgent` — the VCQ-driven
+  validation-stage consumer: retrieves evidence for a VCQ question, then asks
+  a validator whether existing KG content correctly/completely answers it.
+  `IterativeDiscoveryLoop` now splits VCQ questions out of every batch
+  (initial + follow-ups) and routes them to `ValidationAgent` instead of
+  silently dropping them; results land on `DiscoveryResult.validation_results`.
+- Post-assembly validation tools (`kgbuilder.tools.kg_validation_tools`:
+  `SHACLValidationTool`, `RulesEngineTool`, `ConsistencyCheckTool`) and
+  `kgbuilder.tools.static_validation_tool.StaticValidationTool` +
+  `kgbuilder.tools.relation_extraction_tool.RelationExtractionTool` — thin
+  wrappers around the existing `SHACLValidator`, `RulesEngine`,
+  `ConsistencyChecker`, `StaticValidator`, and `RelationExtractor`
+  implementations, matching the pattern already used for extraction/
+  retrieval. `kgbuilder.skills.kg_validation_skill.KGValidationSkill`
+  combines the three post-assembly checks (mirrors `api.routes.validate`)
+  into one skill call with an aggregate `valid` flag.
+- Tests: `tests/unit/test_orchestrator_agent.py::test_validation_agent_runs_only_vcq_questions`,
+  `tests/unit/test_kg_validation_tools_and_skill.py` (new file).
+
+The `/api/v1/build` endpoint now uses a separate markdown-defined plan at
+`agentic_pipeline/build_pipeline.md`. Its build-specific skills cover module
+extraction, evidence-grounded relation extraction, findings synthesis,
+assembly, and post-assembly validation. The endpoint's prior inline
+orchestration has been removed; its Python worker now binds resources and
+executes the plan through `PipelineAgent`.
+
+Remaining work is narrower and applies to other entry points: migrate the
+legacy per-question `IterativeDiscoveryLoop` path, expose individual
+enrichment phases and wire the combined law-linking skill into the discovery
+plan, and decide how to handle the separate `pipeline/orchestrator.py`
+`BuildPipeline` API. None of these paths is called by `/api/v1/build`.
+
+---
+
+## 4. Migration stages for the KG-building pipeline itself
+
+Each stage below turns one more hardcoded call site into a tool/skill the
+`PipelineAgent` (or a `LangChainReactAgent`) invokes, and keeps the existing
+call sites working via thin delegation until the old call site is deleted.
+
+1. **Discovery loop** (`agents/discovery_loop.py`): today `IterativeDiscoveryLoop`
+   directly calls retriever → extractor → relation extractor → static
+   validator in a fixed order per question. Turn `entity_extraction`,
+   `relation_extraction`, and `static_validation` into tools; express one
+   discovery iteration as a `pipeline.md` plan; keep `IterativeDiscoveryLoop`
+   as a thin compatibility wrapper calling `PipelineAgent.run_plan(...)`.
+2. **Assembly** (`assembly/*.py`): wrap `KGAssembler.assemble` /
+   `SimpleKGAssembler` phases (dedup, store, stats) as tools; add an
+   `assembly` skill.
+3. **Validation** (`validation/*.py`): wrap SHACL validation, rules engine,
+   and consistency checker as tools; add a `validation` skill used after
+   assembly.
+4. **Enrichment**: already wrapped (Phase 1) — extend to expose each of the 5
+   enrichers individually as tools so `pipeline.md` can include/exclude
+   phases without code changes.
+5. **Law linking**: already wrapped (Phase 1) — add a skill combining
+   `law_context_lookup` (pre-extraction context) and `law_linking`
+   (post-assembly cross-linking) into the discovery-loop plan.
+6. **Other entry points**: the `/api/v1/build` endpoint now runs
+   `agentic_pipeline/build_pipeline.md` through `PipelineAgent`. Separately
+   assess the compatibility `BuildPipeline` API and migrate it only if it is
+   still a supported KG-building entry point; keep its behavior distinct from
+   the ontology/document-backed API build unless equivalent inputs and
+   coverage are in place.
+
+Preprocessing/indexing (`document/loaders/*`, `document/chunking/*`,
+embedding into Qdrant) is explicitly **out of scope** and stays as-is.
+
+---
+
+## 5. Working agreement for this migration
+
+- One stage at a time, in the order above; do not start stage *n+1* before
+  stage *n*'s tests are green.
+- Never delete or rewrite an existing hardcoded implementation until its
+  tool/skill wrapper has equivalent test coverage.
+- Every new tool/skill gets a unit test using mocks — no live Neo4j/Qdrant/
+  Ollama dependency in unit tests.
+- All work happens on `refactor/clean-agent-skills-tools`; `main` stays
+  untouched until the branch is reviewed and merged deliberately.

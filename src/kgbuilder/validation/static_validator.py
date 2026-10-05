@@ -320,10 +320,14 @@ class StaticValidator:
     def _parse_output(self, stdout: str, mode: str) -> StaticValidationResult:
         """Parse SHACL2FOL stdout into a structured StaticValidationResult.
 
-        SHACL2FOL output patterns:
-          - Satisfiability: ``Is satisfiable? true`` / ``Is satisfiable? false``
-          - Action validation: ``Is validation of the shape graph maintained
-            after performing the actions? true`` / ``... false``
+        SHACL2FOL output patterns (verified against the real JAR/Vampire
+        binary vendored in ``lib/``, not just the tool's documentation —
+        see `Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md` Phase C):
+          - Satisfiability: ``Is satisfiable? true`` / ``... false``
+          - Containment: ``Is the first shape graph contained in the
+            second? true`` / ``... false``
+          - Static validation (actions): ``Is validation of the shape graph
+            maintained after performing the actions? true`` / ``... false``
           - Memory/time stats: ``Memory (KB) NNN`` / ``Time (s) N.NNN``
         """
         out = StaticValidationResult(mode=mode, raw_output=stdout)
@@ -333,7 +337,10 @@ class StaticValidator:
         # --- Satisfiability mode ---
         if "is satisfiable?" in text_lower:
             out.valid = "is satisfiable? true" in text_lower
-        # --- Action validation mode ---
+        # --- Containment mode ---
+        elif "contained in the second?" in text_lower:
+            out.valid = "contained in the second? true" in text_lower
+        # --- Static validation (action) mode ---
         elif "maintained after performing the actions?" in text_lower:
             out.valid = "after performing the actions? true" in text_lower
         # --- Fallback: SZS status from Vampire ---
@@ -343,7 +350,7 @@ class StaticValidator:
             out.valid = False
         else:
             out.valid = False
-            out.error = "Could not parse prover output"
+            out.error = f"Could not parse prover output: {text.strip()[:300]!r}"
 
         # Extract timing/memory stats
         import re
@@ -356,7 +363,7 @@ class StaticValidator:
 
         # Capture counterexample / model snippet only when invalid
         if not out.valid:
-            if "counterexample" in text_lower or "no model has been found" in text_lower:
+            if "counterexample" in text_lower or "a model has been found" in text_lower:
                 out.counterexample = text.strip()[:500]
 
         return out
