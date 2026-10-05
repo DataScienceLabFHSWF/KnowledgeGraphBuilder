@@ -776,6 +776,28 @@ definitions and configuration models.
 
 Python 3.11 or newer is required.
 
+### Branch workflow
+
+- **`main`** is the stable release branch.
+- **`dev`** is the shared integration branch for ongoing development.
+- Create short-lived `feat/...`, `fix/...`, or `docs/...` branches from `dev`
+  and open pull requests targeting `dev`.
+- Promote tested changes with a pull request from `dev` to `main`.
+  Keep `dev` synchronized with `main` after releases or main-only fixes.
+- Existing research and historical branches are not integration targets.
+  Check for unmerged work before deleting them.
+
+```bash
+git fetch origin
+git switch dev
+git pull --ff-only origin dev
+git switch -c feat/my-change
+# After committing and pushing, open a pull request with base branch dev.
+```
+
+This is the collaboration workflow, not an automatically enforced branch rule.
+Required reviews and branch protection are configured separately on GitHub.
+
 The outdated GitHub Actions workflows have been removed. Tests, linting,
 type checks, documentation builds, and SHACL container checks remain available
 locally; they no longer run automatically on pushes or pull requests.
