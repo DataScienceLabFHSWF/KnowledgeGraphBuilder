@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 from kgbuilder.skills.kg_validation_skill import KGValidationSkill
 from kgbuilder.tools.kg_validation_tools import (
     ConsistencyCheckTool,
@@ -26,7 +28,9 @@ def test_relation_extraction_tool_delegates_to_extractor() -> None:
     )
 
     assert result == ["rel1"]
-    extractor.extract.assert_called_once_with(text="text", entities=["e1"], ontology_relations=["r1"])
+    extractor.extract.assert_called_once_with(
+        text="text", entities=["e1"], ontology_relations=["r1"]
+    )
 
 
 def test_static_validation_tool_delegates_to_static_validator() -> None:
@@ -34,7 +38,11 @@ def test_static_validation_tool_delegates_to_static_validator() -> None:
     validator.validate_entities_and_relations.return_value = "sv-result"
 
     result = StaticValidationTool.handler(
-        validator, shapes_path="shapes.ttl", entities=["e1"], relations=["r1"], ontology_service="onto"
+        validator,
+        shapes_path="shapes.ttl",
+        entities=["e1"],
+        relations=["r1"],
+        ontology_service="onto",
     )
 
     assert result == "sv-result"
@@ -52,7 +60,9 @@ def test_shacl_rules_consistency_tools_delegate() -> None:
     consistency_checker.check_consistency.return_value = "consistency-result"
     store = MagicMock()
 
-    assert SHACLValidationTool.handler(shacl_validator, store=store, run_id="run-1") == "shacl-result"
+    assert (
+        SHACLValidationTool.handler(shacl_validator, store=store, run_id="run-1") == "shacl-result"
+    )
     shacl_validator.validate.assert_called_once_with(store, run_id="run-1")
 
     assert RulesEngineTool.handler(rules_engine, store=store) == "rules-result"
@@ -142,36 +152,71 @@ def test_kg_validation_skill_fails_when_ontology_is_dl_inconsistent() -> None:
     store = MagicMock()
     consistency_reasoner = MagicMock()
     consistency_reasoner.check_consistency.return_value = MagicMock(
-        consistent=False, error=None, unsatisfiable_classes=["Facility"],
+        consistent=False,
+        error=None,
+        unsatisfiable_classes=["Facility"],
     )
 
     result = KGValidationSkill.handler(
-        store=store, consistency_reasoner=consistency_reasoner, ontology_path="onto.owl",
+        store=store,
+        consistency_reasoner=consistency_reasoner,
+        ontology_path="onto.owl",
     )
 
     assert result["valid"] is False
 
 
-def test_kg_validation_skill_ignores_ontology_consistency_when_check_errored() -> None:
-    """A failed *check* (e.g. owlready2 missing) should not itself flip valid to False."""
+def test_kg_validation_skill_fails_when_configured_reasoner_errors() -> None:
     store = MagicMock()
     consistency_reasoner = MagicMock()
     consistency_reasoner.check_consistency.return_value = MagicMock(
-        consistent=False, error="owlready2 not installed",
+        consistent=False,
+        error="owlready2 not installed",
     )
 
     result = KGValidationSkill.handler(
-        store=store, consistency_reasoner=consistency_reasoner, ontology_path="onto.owl",
+        store=store,
+        consistency_reasoner=consistency_reasoner,
+        ontology_path="onto.owl",
     )
 
-    assert result["valid"] is True
+    assert result["valid"] is False
+    assert result["ontology_consistency"].error == "owlready2 not installed"
 
 
-def test_kg_validation_skill_skips_ontology_checks_without_ontology_path() -> None:
+def test_kg_validation_skill_rejects_configured_check_without_ontology_path() -> None:
     store = MagicMock()
     consistency_reasoner = MagicMock()
 
-    result = KGValidationSkill.handler(store=store, consistency_reasoner=consistency_reasoner)
+    with pytest.raises(ValueError, match="ontology_path is required"):
+        KGValidationSkill.execute(store=store, consistency_reasoner=consistency_reasoner)
 
-    assert "ontology_consistency" not in result
     consistency_reasoner.check_consistency.assert_not_called()
+
+
+def test_build_validation_requires_shacl_and_propagates_nonconformance() -> None:
+    from kgbuilder.skills.build_pipeline_skills import BuildValidationSkill
+
+    with pytest.raises(ValueError, match="without a validator"):
+        BuildValidationSkill.execute(enabled=True, store=MagicMock(), job_id="build")
+    assert BuildValidationSkill.execute(enabled=False, store=MagicMock(), job_id="build") == {
+        "skipped": True,
+        "valid": True,
+    }
+
+    from unittest.mock import patch
+
+    shacl = MagicMock()
+    shacl.validate.return_value = MagicMock(valid=False)
+    store = MagicMock()
+    with (
+        patch("kgbuilder.validation.rules_engine.RulesEngine") as rules,
+        patch("kgbuilder.validation.consistency_checker.ConsistencyChecker") as consistency,
+    ):
+        rules.return_value.execute_rules.return_value = MagicMock(rule_violations=[])
+        consistency.return_value.check_consistency.return_value = MagicMock(conflict_count=0)
+        result = BuildValidationSkill.execute(
+            enabled=True, store=store, job_id="build", shacl_validator=shacl
+        )
+    assert result["valid"] is False
+    shacl.validate.assert_called_once_with(store, run_id=None)

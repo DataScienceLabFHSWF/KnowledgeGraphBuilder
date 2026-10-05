@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
 from kgbuilder.agents.base_agent import BaseAgent, LangChainReactAgent
@@ -17,16 +17,30 @@ from kgbuilder.tools.base import AgentTool
 class _FakeToolCallingChatModel(BaseChatModel):
     """Minimal fake chat model that answers immediately without calling tools."""
 
-    def bind_tools(self, tools: Any, *, tool_choice: str | None = None, **kwargs: Any) -> "_FakeToolCallingChatModel":
+    def bind_tools(
+        self, tools: Any, *, tool_choice: str | None = None, **kwargs: Any
+    ) -> _FakeToolCallingChatModel:
         return self
 
-    def _generate(self, messages: list[BaseMessage], stop: list[str] | None = None, **kwargs: Any) -> ChatResult:
+    def _generate(
+        self, messages: list[BaseMessage], stop: list[str] | None = None, **kwargs: Any
+    ) -> ChatResult:
+        if not any(isinstance(message, ToolMessage) for message in messages):
+            return ChatResult(
+                generations=[
+                    ChatGeneration(
+                        message=AIMessage(
+                            content="",
+                            tool_calls=[{"name": "double", "args": {"value": 21}, "id": "call-1"}],
+                        )
+                    )
+                ]
+            )
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content="42"))])
 
     @property
     def _llm_type(self) -> str:
         return "fake-tool-calling-chat-model"
-
 
 
 class _EchoAgent(BaseAgent):
@@ -38,7 +52,9 @@ class _EchoAgent(BaseAgent):
 
 @pytest.fixture
 def sample_skill() -> AgentSkill:
-    return AgentSkill(name="greet", description="Return a greeting", handler=lambda name: f"hello {name}")
+    return AgentSkill(
+        name="greet", description="Return a greeting", handler=lambda name: f"hello {name}"
+    )
 
 
 @pytest.fixture
@@ -74,7 +90,7 @@ def test_base_agent_unknown_tool_raises(sample_tool: AgentTool) -> None:
 
 
 def test_langchain_react_agent_executes_with_tool(sample_tool: AgentTool) -> None:
-    """LangChainReactAgent should wrap our tools and run a LangChain tool-calling loop end-to-end."""
+    """Exercise a real tool call through the LangChain graph."""
     fake_llm = _FakeToolCallingChatModel()
     agent = LangChainReactAgent(name="react_agent", llm=fake_llm, tools=[sample_tool])
 
@@ -82,3 +98,34 @@ def test_langchain_react_agent_executes_with_tool(sample_tool: AgentTool) -> Non
 
     assert result is not None
     assert "messages" in result
+    tool_results = [message for message in result["messages"] if isinstance(message, ToolMessage)]
+    assert len(tool_results) == 1
+    assert tool_results[0].content == "42"
+
+
+def test_langchain_react_agent_injects_resources_without_exposing_them() -> None:
+    calls: list[tuple[object, int]] = []
+    resource = object()
+
+    def handler(store: object, value: int) -> int:
+        calls.append((store, value))
+        return value * 2
+
+    tool = AgentTool(
+        name="double",
+        description="Double a number",
+        parameters={
+            "type": "object",
+            "properties": {"value": {"type": "integer"}},
+            "required": ["value"],
+        },
+        handler=handler,
+    )
+    agent = LangChainReactAgent(
+        name="bound",
+        llm=_FakeToolCallingChatModel(),
+        tools=[tool],
+        tool_bindings={"double": {"store": resource}},
+    )
+    agent.run("Double 21")
+    assert calls == [(resource, 21)]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from kgbuilder.agents.pipeline_agent import PipelineStep
@@ -86,7 +87,12 @@ class TestListBuildJobs:
         assert len(jobs) >= 2
 
 
-def test_build_worker_runs_markdown_pipeline_agent() -> None:
+@pytest.mark.parametrize(
+    ("run_validation", "validation_failure"), [(False, False), (True, False), (True, True)]
+)
+def test_build_worker_runs_markdown_pipeline_agent(
+    run_validation: bool, validation_failure: bool
+) -> None:
     class OntologyService:
         def get_all_classes(self) -> list[str]:
             return ["Person", "Organization"]
@@ -100,6 +106,12 @@ def test_build_worker_runs_markdown_pipeline_agent() -> None:
         def get_all_relations(self) -> list[str]:
             return ["works-for"]
 
+        def get_class_properties(self, class_name: str) -> list[tuple[str, str, str]]:
+            return [("age", "DatatypeProperty", "xsd:integer")] if class_name == "Person" else []
+
+        def get_special_properties(self) -> dict[str, list[str]]:
+            return {}
+
     class FakePipelineAgent:
         def __init__(self, bindings: dict[str, object]) -> None:
             self.bindings = bindings
@@ -108,6 +120,30 @@ def test_build_worker_runs_markdown_pipeline_agent() -> None:
             assert [step.id for step in steps] == ["questions"]
             assert kwargs["iterations"] == 4
             assert kwargs["stop_if_empty"] == "questions"
+            validator = self.bindings["shacl_validator"]
+            if run_validation:
+                from rdflib import Namespace
+
+                from kgbuilder.storage.protocol import InMemoryGraphStore, Node
+
+                sh = Namespace("http://www.w3.org/ns/shacl#")
+                assert len(list(validator.shapes_graph.triples((None, sh.targetClass, None)))) == 2
+                store = InMemoryGraphStore()
+                store.add_node(
+                    Node(id="person", node_type="Person", properties={"age": "not an integer"})
+                )
+                result = validator.validate(store)
+                assert not result.valid
+                assert result.violations
+                if validation_failure:
+                    kwargs["on_step"](
+                        PipelineStep(skill="build_validation", id="validation"),
+                        "completed",
+                        {"valid": False},
+                        1,
+                    )
+            else:
+                assert validator is None
             return []
 
     build_route._jobs["agentic-test"] = {
@@ -120,7 +156,7 @@ def test_build_worker_runs_markdown_pipeline_agent() -> None:
         "started_at": "now",
         "error": None,
     }
-    request = BuildRequest(max_iterations=4, run_validation=False)
+    request = BuildRequest(max_iterations=4, run_validation=run_validation)
     with (
         patch("kgbuilder.api.dependencies.get_ontology_service", return_value=OntologyService()),
         patch("kgbuilder.api.dependencies.get_llm_provider", return_value=object()),
@@ -142,5 +178,9 @@ def test_build_worker_runs_markdown_pipeline_agent() -> None:
     ):
         build_route._run_build_pipeline("agentic-test", request)
 
-    assert build_route._jobs["agentic-test"]["status"] == BuildStatus.COMPLETED
-    assert build_route._jobs["agentic-test"]["current_phase"] == "completed"
+    if validation_failure:
+        assert build_route._jobs["agentic-test"]["status"] == BuildStatus.FAILED
+        assert "does not conform" in build_route._jobs["agentic-test"]["error"]
+    else:
+        assert build_route._jobs["agentic-test"]["status"] == BuildStatus.COMPLETED
+        assert build_route._jobs["agentic-test"]["current_phase"] == "completed"

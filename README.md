@@ -644,6 +644,8 @@ definitions and configuration models.
 
 ## Development
 
+Python 3.11 or newer is required.
+
 The outdated GitHub Actions workflows have been removed. Tests, linting,
 type checks, documentation builds, and SHACL container checks remain available
 locally; they no longer run automatically on pushes or pull requests.

@@ -89,7 +89,9 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
         from kgbuilder.extraction.synthesizer import FindingsSynthesizer
         from kgbuilder.retrieval import FusionRAGRetriever
 
-        _update_job(job_id, status=BuildStatus.RUNNING, current_phase="loading_resources", progress=0.02)
+        _update_job(
+            job_id, status=BuildStatus.RUNNING, current_phase="loading_resources", progress=0.02
+        )
         ontology_service = get_ontology_service()
         all_classes = ontology_service.get_all_classes()
         if not all_classes:
@@ -99,7 +101,7 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
         if not module_map:
             module_map = {"Ontology": all_classes}
         if request.classes_limit is not None:
-            selected_classes = {name.lower() for name in all_classes[:request.classes_limit]}
+            selected_classes = {name.lower() for name in all_classes[: request.classes_limit]}
             module_map = {
                 module: [name for name in names if name.lower() in selected_classes]
                 for module, names in module_map.items()
@@ -107,7 +109,9 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
             module_map = {module: names for module, names in module_map.items() if names}
         if not module_map:
             raise RuntimeError("No ontology classes remain after applying classes_limit")
-        classes = [class_name for module_classes in module_map.values() for class_name in module_classes]
+        classes = [
+            class_name for module_classes in module_map.values() for class_name in module_classes
+        ]
 
         _update_job(job_id, progress=0.08)
         llm = get_llm_provider()
@@ -149,6 +153,22 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
             similarity_threshold=request.similarity_threshold,
         )
         neo4j_store = get_neo4j_store()
+        shacl_validator = None
+        if request.run_validation:
+            from rdflib import Namespace
+            from rdflib.namespace import RDF
+
+            from kgbuilder.validation.shacl_generator import SHACLShapeGenerator
+            from kgbuilder.validation.shacl_validator import SHACLValidator
+
+            ontology_uri = "http://example.org/kg/"
+            shapes = SHACLShapeGenerator(
+                ontology_service, ontology_namespace=ontology_uri
+            ).generate()
+            sh = Namespace("http://www.w3.org/ns/shacl#")
+            if not any(shapes.subjects(RDF.type, sh.NodeShape)):
+                raise RuntimeError("SHACL validation requested but no node shapes were generated")
+            shacl_validator = SHACLValidator(shapes, ontology_uri=ontology_uri)
         builder = KGBuilder(
             primary_store=neo4j_store,
             config=KGBuilderConfig(),
@@ -156,7 +176,9 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
         from kgbuilder.agents.question_generator import QuestionGenerationAgent
 
         question_agent = QuestionGenerationAgent(ontology_service=ontology_service)
-        pipeline_path = Path(__file__).resolve().parents[4] / "agentic_pipeline" / "build_pipeline.md"
+        pipeline_path = (
+            Path(__file__).resolve().parents[4] / "agentic_pipeline" / "build_pipeline.md"
+        )
         steps = load_pipeline(pipeline_path)
         steps = [
             PipelineStep(
@@ -200,6 +222,7 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
                 "graph_builder": builder,
                 "graph_store": neo4j_store,
                 "run_validation": request.run_validation,
+                "shacl_validator": shacl_validator,
                 "job_id": job_id,
             }
         )
@@ -215,6 +238,9 @@ def _run_build_pipeline(job_id: str, request: BuildRequest) -> None:
             nonlocal completed_steps
             if state == "completed":
                 completed_steps += 1
+                if step.skill == "build_validation" and isinstance(result, dict):
+                    if not result.get("valid", False):
+                        raise RuntimeError("Build validation failed; graph does not conform")
             progress = min(
                 0.1 + 0.85 * completed_steps / (len(steps) * request.max_iterations),
                 0.98,

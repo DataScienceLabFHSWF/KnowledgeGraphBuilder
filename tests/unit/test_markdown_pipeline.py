@@ -41,7 +41,7 @@ def test_repo_pipeline_md_parses_into_steps() -> None:
     ]
 
     retrieval_step = next(step for step in steps if step.skill == "document_retrieval")
-    assert retrieval_step.bind == {"retriever": "retriever"}
+    assert retrieval_step.bind == {"retriever": "retriever", "query": "retrieval_query"}
     assert retrieval_step.kwargs == {"top_k": 10}
 
 
@@ -66,22 +66,45 @@ def test_build_pipeline_md_declares_agentic_build_stages() -> None:
     ]
     assert steps[1].inputs == {"questions": "questions"}
     assert steps[3].inputs == {"entities": "entities", "relations": "relations"}
+    assert steps[-1].bind["shacl_validator"] == "shacl_validator"
 
 
-def test_pipeline_agent_can_execute_repo_pipeline_plan() -> None:
-    """The markdown-defined plan should be directly runnable by PipelineAgent."""
+def test_pipeline_agent_can_execute_composition_template_with_all_bindings() -> None:
+    """The capability template runs when all service and input bindings are provided."""
     from unittest.mock import MagicMock
 
     steps = load_pipeline(AGENTIC_PIPELINE_DIR / "pipeline.md")
     question_agent = MagicMock()
     question_agent.generate_questions.return_value = []
 
-    agent = PipelineAgent(bindings={"question_generation_agent": question_agent})
-    first_step = next(step for step in steps if step.skill == "ontology_gap_analysis")
+    retriever = MagicMock()
+    retriever.retrieve.return_value = ["chunk"]
+    context = MagicMock()
+    context.get_context.return_value = "context"
+    enrichment = MagicMock()
+    enrichment.enrich.return_value = "enriched"
+    linker = MagicMock()
+    linker.create_links.return_value = "linked"
+    agent = PipelineAgent(
+        bindings={
+            "question_generation_agent": question_agent,
+            "retriever": retriever,
+            "retrieval_query": "query",
+            "law_context_provider": context,
+            "context_text": "text",
+            "enrichment_pipeline": enrichment,
+            "entities": [],
+            "relations": [],
+            "law_linker": linker,
+            "retrieved_ids": ["a"],
+            "relevant_ids": ["a"],
+        }
+    )
 
-    result = agent.run_plan([first_step])
+    result = agent.run_plan(steps)
 
-    assert result == [[]]
+    assert result[:5] == [[], ["chunk"], "context", "enriched", "linked"]
+    assert result[5].recall_at_5 == 1.0
     question_agent.generate_questions.assert_called_once_with(max_questions=20, covered_threshold=1)
 
 

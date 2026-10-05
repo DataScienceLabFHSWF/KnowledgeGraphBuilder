@@ -37,6 +37,31 @@ def test_registry_contains_expected_skills_and_tools() -> None:
         assert name in TOOL_REGISTRY
 
 
+def test_registry_includes_every_exported_capability() -> None:
+    from kgbuilder import skills, tools
+    from kgbuilder.tools.base import AgentTool
+
+    for name in tools.__all__:
+        capability = getattr(tools, name)
+        if isinstance(capability, AgentTool):
+            assert get_tool(capability.name) is capability
+    for name in skills.__all__:
+        capability = getattr(skills, name)
+        if isinstance(capability, AgentSkill):
+            assert get_skill(capability.name) is capability
+
+
+def test_retrieval_evaluation_skill_and_cq_schema() -> None:
+    from kgbuilder.skills.retrieval_skill import RetrievalEvaluationSkill
+    from kgbuilder.tools.cq_sparql_tool import CQSparqlTool
+
+    result = RetrievalEvaluationSkill.execute(retrieved_ids=["a", "b"], relevant_ids=["b"])
+    assert result.recall_at_5 == 1.0
+    assert result.mrr == 0.5
+    assert CQSparqlTool.parameters["required"] == ["question"]
+    assert set(CQSparqlTool.parameters["required"]) <= set(CQSparqlTool.parameters["properties"])
+
+
 def test_get_skill_and_get_tool_raise_for_unknown_name() -> None:
     import pytest
 

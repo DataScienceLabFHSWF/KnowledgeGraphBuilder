@@ -137,7 +137,11 @@ def test_validate_flow_monkeypatched(monkeypatch):
 def test_validate_handles_conversion_error(monkeypatch):
     validator = SHACLValidator(rdflib.Graph())
     store = DummyStore()
-    monkeypatch.setattr(SHACLValidator, "_convert_store_to_rdf", lambda self, s: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(
+        SHACLValidator,
+        "_convert_store_to_rdf",
+        lambda self, s, run_id=None: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
     res = validator.validate(store)
     assert not res.valid
     assert any("boom" in v.message for v in res.violations)

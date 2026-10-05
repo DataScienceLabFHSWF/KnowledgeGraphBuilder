@@ -223,6 +223,13 @@ tools (`kgbuilder.tools.kg_validation_tools`) and a combined skill
 `pipeline.md` plan can invoke the same validation stage the FastAPI route
 uses.
 
+`LangChainReactAgent` adapts tools with structured JSON arguments. Inject
+non-serializable service resources using `tool_bindings={tool_name: {...}}`;
+only the tool's declared input schema is exposed to the model. Model arguments
+cannot override injected resources. The capability composition template in
+`agentic_pipeline/pipeline.md` needs explicit data/service bindings and is
+not the build endpoint's executable plan.
+
 ## Agent Swarm Configuration
 
 `kgbuilder.agents.swarm_config.SwarmModelConfig` lets you assign a
@@ -294,6 +301,16 @@ retrieved evidence, synthesizes findings, persists the graph, and optionally
 validates it. The API still owns deterministic setup (loading the ontology,
 retriever, extractors, stores, and job state); the markdown plan controls the
 agentic work and its data flow.
+
+With `run_validation=true`, setup generates SHACL shapes from the configured
+ontology and binds a `SHACLValidator` into the validation skill alongside
+rules and consistency checks. Empty shape generation, a missing validator,
+or failed conformance cannot be reported as a successful validated build.
+Validation currently covers the persisted store, not only nodes created by
+this job: build nodes are not tagged for job-scoped validation. The shape
+namespace matches the validator's RDF projection of graph types/properties.
+Configured ontology reasoners require an ontology path and an errored check
+fails aggregate validity rather than being treated as an unconfigured check.
 
 Other older entry points have not all been migrated: `IterativeDiscoveryLoop`
 still has a compatibility per-question path when no module map is supplied,

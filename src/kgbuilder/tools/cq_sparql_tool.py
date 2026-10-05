@@ -32,7 +32,7 @@ CQSparqlTool = AgentTool(
         "properties": {
             "question": {"type": "object"},
         },
-        "required": ["question", "store"],
+        "required": ["question"],
     },
     handler=_cq_sparql_handler,
 )

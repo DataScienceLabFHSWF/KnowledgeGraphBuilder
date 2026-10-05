@@ -50,6 +50,7 @@ steps:
       store: graph_store
       enabled: run_validation
       job_id: job_id
+      shacl_validator: shacl_validator
 ---
 
 # Ontology-driven KG build

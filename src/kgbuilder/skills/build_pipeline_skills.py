@@ -113,15 +113,12 @@ def _assembly_handler(
                 **relation.properties,
                 "confidence": relation.confidence,
                 "evidence": [
-                    evidence.text_span
-                    for evidence in relation.evidence
-                    if evidence.text_span
+                    evidence.text_span for evidence in relation.evidence if evidence.text_span
                 ],
             },
         )
         for relation in relations
-        if relation.source_entity_id in entity_by_id
-        and relation.target_entity_id in entity_by_id
+        if relation.source_entity_id in entity_by_id and relation.target_entity_id in entity_by_id
     ]
     result = builder.build(entities=nodes, relations=edges)
     if result.errors:
@@ -133,10 +130,13 @@ def _validation_handler(
     enabled: bool,
     store: Any,
     job_id: str,
+    shacl_validator: Any | None = None,
 ) -> dict[str, Any]:
     """Run the reusable KG-validation skill when enabled for this build."""
     if not enabled:
         return {"skipped": True, "valid": True}
+    if shacl_validator is None:
+        raise ValueError(f"Build {job_id} requested SHACL validation without a validator")
 
     from kgbuilder.skills.kg_validation_skill import KGValidationSkill
     from kgbuilder.validation.consistency_checker import ConsistencyChecker
@@ -146,9 +146,9 @@ def _validation_handler(
         dict[str, Any],
         KGValidationSkill.execute(
             store=store,
+            shacl_validator=shacl_validator,
             rules_engine=RulesEngine(),
             consistency_checker=ConsistencyChecker(),
-            run_id=job_id,
         ),
     )
 
@@ -179,7 +179,9 @@ FindingsSynthesisSkill = AgentSkill(
 
 KGAssemblySkill = AgentSkill(
     name="kg_assembly",
-    description="Convert synthesized findings into ontology-typed graph nodes and edges and persist them.",
+    description=(
+        "Convert synthesized findings into ontology-typed graph nodes and edges and persist them."
+    ),
     handler=_assembly_handler,
 )
 

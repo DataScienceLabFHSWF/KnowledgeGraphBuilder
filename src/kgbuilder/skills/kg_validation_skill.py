@@ -45,24 +45,32 @@ def _kg_validation_handler(
         conformance failures do.
     """
     results: dict[str, Any] = {}
+    if (consistency_reasoner is not None or pitfall_detector is not None) and ontology_path is None:
+        raise ValueError("ontology_path is required for configured ontology checks")
 
     if shacl_validator is not None:
-        results["shacl"] = SHACLValidationTool.handler(shacl_validator, store=store, run_id=run_id)
+        results["shacl"] = SHACLValidationTool.execute(
+            shacl_validator=shacl_validator, store=store, run_id=run_id
+        )
 
     if rules_engine is not None:
-        results["rules"] = RulesEngineTool.handler(rules_engine, store=store)
+        results["rules"] = RulesEngineTool.execute(rules_engine=rules_engine, store=store)
 
     if consistency_checker is not None:
-        results["consistency"] = ConsistencyCheckTool.handler(consistency_checker, store=store)
+        results["consistency"] = ConsistencyCheckTool.execute(
+            consistency_checker=consistency_checker, store=store
+        )
 
     if consistency_reasoner is not None and ontology_path is not None:
-        results["ontology_consistency"] = OntologyConsistencyReasoningTool.handler(
-            consistency_reasoner, ontology_path=ontology_path,
+        results["ontology_consistency"] = OntologyConsistencyReasoningTool.execute(
+            consistency_reasoner=consistency_reasoner,
+            ontology_path=ontology_path,
         )
 
     if pitfall_detector is not None and ontology_path is not None:
-        results["pitfalls"] = OntologyPitfallScanTool.handler(
-            pitfall_detector, ontology_path=ontology_path,
+        results["pitfalls"] = OntologyPitfallScanTool.execute(
+            pitfall_detector=pitfall_detector,
+            ontology_path=ontology_path,
         )
 
     shacl_valid = getattr(results.get("shacl"), "valid", True)
@@ -70,8 +78,8 @@ def _kg_validation_handler(
     consistency_valid = getattr(results.get("consistency"), "conflict_count", 0) == 0
     ontology_consistency_result = results.get("ontology_consistency")
     ontology_consistent = (
-        ontology_consistency_result.consistent
-        if ontology_consistency_result is not None and ontology_consistency_result.error is None
+        ontology_consistency_result.error is None and ontology_consistency_result.consistent
+        if ontology_consistency_result is not None
         else True
     )
 

@@ -57,26 +57,40 @@ class LangChainReactAgent(BaseAgent):
         skills: list[AgentSkill] | None = None,
         tools: list[AgentTool] | None = None,
         system_prompt: str | None = None,
+        tool_bindings: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(name=name, skills=skills, tools=tools)
         self.llm = llm
-        self._graph = None
+        self._graph: Any | None = None
 
         try:
             from langchain.agents import create_agent
-            from langchain_core.tools import Tool
+            from langchain_core.tools import StructuredTool
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError("LangChain is required for LangChainReactAgent") from exc
 
-        langchain_tools = [
-            Tool(name=tool.name, func=tool.execute, description=tool.description)
-            for tool in self.tools
-        ]
+        def wrap_tool(tool: AgentTool) -> Any:
+            resources = (tool_bindings or {}).get(tool.name, {})
+
+            def execute(**arguments: Any) -> Any:
+                if resources.keys() & arguments.keys():
+                    raise ValueError(f"Tool '{tool.name}' cannot override bound resources")
+                return tool.execute(**resources, **arguments)
+
+            return StructuredTool(
+                name=tool.name,
+                func=execute,
+                description=tool.description,
+                args_schema=tool.parameters or {"type": "object", "properties": {}},
+            )
+
+        langchain_tools = [wrap_tool(tool) for tool in self.tools]
 
         self._graph = create_agent(
             model=self.llm,
             tools=langchain_tools,
-            system_prompt=system_prompt or f"You are {name}. Use the supplied tools to answer the user request.",
+            system_prompt=system_prompt
+            or f"You are {name}. Use the supplied tools to answer the user request.",
         )
 
     def run(self, prompt: str, **kwargs: Any) -> Any:

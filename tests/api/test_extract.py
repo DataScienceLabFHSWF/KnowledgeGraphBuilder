@@ -147,15 +147,34 @@ class TestExtractionRoutes:
             "progress": 42,
         }
 
+    @pytest.mark.parametrize(
+        "document_format",
+        [
+            ("example.txt", "text/plain"),
+            ("example.pdf", "application/pdf"),
+            (
+                "example.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+            (
+                "example.pptx",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ),
+            ("example.xml", "application/xml"),
+        ],
+    )
     def test_results_shape_after_agentic_extraction(
         self,
         client: TestClient,
         monkeypatch: pytest.MonkeyPatch,
+        document_format: tuple[str, str],
     ) -> None:
         from kgbuilder.api.schemas import ExtractionStatusValue
 
         monkeypatch.setenv("KGBUILDER_API_KEY", "integration-test-key")
         request = extract_route.ExtractionRequest.model_validate(_request_body())
+        request.file.name, request.file.content_type = document_format
+        binary_document = request.file.content_type != "text/plain"
         person = ExtractedEntity(
             id="entity-person",
             label="Ada",
@@ -227,6 +246,7 @@ class TestExtractionRoutes:
                 "kgbuilder.extraction.relation.LLMRelationExtractor",
                 FakeRelationExtractor,
             ),
+            patch.object(extract_route, "_load_document_text", return_value="Ada works for Acme."),
         ):
             extract_route._run_extraction(
                 _RUN_ID,
@@ -270,9 +290,8 @@ class TestExtractionRoutes:
             "isCrossChapter": False,
             "evidence": {
                 "quote": "Ada works for Acme.",
-                "sectionTitle": "example.txt",
+                "sectionTitle": request.file.name,
                 "paragraphId": "paragraph-1",
-                "pageFrom": 1,
-                "pageTo": 1,
+                **({} if binary_document else {"pageFrom": 1, "pageTo": 1}),
             },
         }

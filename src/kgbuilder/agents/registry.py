@@ -10,11 +10,14 @@ from __future__ import annotations
 from kgbuilder.skills import (
     EnrichmentSkill,
     FollowUpGapAnalysisSkill,
+    KGValidationSkill,
     LawContextSkill,
     LawLinkingSkill,
     OntologyGapAnalysisSkill,
+    QuestionValidationSkill,
     RetrievalEvaluationSkill,
     RetrievalSkill,
+    SparqlQuestionValidationSkill,
 )
 from kgbuilder.skills.base import AgentSkill
 from kgbuilder.skills.build_pipeline_skills import (
@@ -27,13 +30,22 @@ from kgbuilder.skills.build_pipeline_skills import (
 from kgbuilder.skills.join_skill import JoinModuleResultsSkill
 from kgbuilder.skills.module_extraction_skill import ModuleExtractionSkill
 from kgbuilder.tools import (
+    ConsistencyCheckTool,
     CoverageSnapshotTool,
+    CQSparqlTool,
     EnrichmentTool,
     EvaluationTool,
     LawContextTool,
     LawLinkingTool,
+    OntologyConsistencyReasoningTool,
+    OntologyPitfallScanTool,
     OntologyQueryTool,
+    RelationExtractionTool,
     RetrievalTool,
+    RulesEngineTool,
+    SHACLValidationTool,
+    StaticValidationTool,
+    ValidationTool,
 )
 from kgbuilder.tools.base import AgentTool
 from kgbuilder.tools.extraction_tool import ExtractionTool
@@ -53,6 +65,9 @@ ALL_SKILLS: list[AgentSkill] = [
     FindingsSynthesisSkill,
     KGAssemblySkill,
     BuildValidationSkill,
+    KGValidationSkill,
+    QuestionValidationSkill,
+    SparqlQuestionValidationSkill,
 ]
 
 ALL_TOOLS: list[AgentTool] = [
@@ -64,6 +79,15 @@ ALL_TOOLS: list[AgentTool] = [
     LawLinkingTool,
     LawContextTool,
     ExtractionTool,
+    ValidationTool,
+    RelationExtractionTool,
+    StaticValidationTool,
+    SHACLValidationTool,
+    RulesEngineTool,
+    ConsistencyCheckTool,
+    OntologyConsistencyReasoningTool,
+    OntologyPitfallScanTool,
+    CQSparqlTool,
 ]
 
 SKILL_REGISTRY: dict[str, AgentSkill] = {skill.name: skill for skill in ALL_SKILLS}

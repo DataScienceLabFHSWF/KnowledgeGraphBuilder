@@ -193,8 +193,8 @@ class ExtractionEvidence(BaseModel):
     quote: str
     section_title: str | None = Field(alias="sectionTitle")
     paragraph_id: str | None = Field(alias="paragraphId")
-    page_from: int | None = Field(alias="pageFrom")
-    page_to: int | None = Field(alias="pageTo")
+    page_from: int | None = Field(default=None, alias="pageFrom")
+    page_to: int | None = Field(default=None, alias="pageTo")
 
     model_config = ConfigDict(populate_by_name=True)
 
