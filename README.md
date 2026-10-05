@@ -119,7 +119,7 @@ per completed configuration.
 These are **not held-out or independently reviewed quality scores**. Corpus
 counts measure extraction output, not accuracy; errors and skipped PDFs matter.
 The [publication status](Planning/benchmarks/expanded/STATUS.md) documents the
-failed TEV-judge run and pending Qwen runs at the time of publication.
+failed TEV-judge and Qwen runs in the completed matrix.
 Raw passages, predictions, evidence quotes, and logs remain local.
 
 ---
@@ -872,7 +872,7 @@ The documentation is generated from module docstrings using
 | [docs/guide/extraction-api.md](docs/guide/extraction-api.md) | Workbench contract, deployment, authentication, and vector retrieval boundaries |
 | [docs/guide/model-providers-and-benchmarks.md](docs/guide/model-providers-and-benchmarks.md) | Ollama/vLLM/Kolibri deployment and GLiNER/TEV benchmark paths |
 | [Planning/benchmarks/expanded/README.md](Planning/benchmarks/expanded/README.md) | Published expanded benchmark measurements |
-| [Planning/benchmarks/expanded/STATUS.md](Planning/benchmarks/expanded/STATUS.md) | Completed, failed, and pending configurations; evaluation caveats |
+| [Planning/benchmarks/expanded/STATUS.md](Planning/benchmarks/expanded/STATUS.md) | Final matrix status, failed configurations, and evaluation caveats |
 | [Planning/IMPLEMENTATION_SUMMARY.md](Planning/IMPLEMENTATION_SUMMARY.md) | Law graph implementation summary |
 | [Planning/LAW_ONTOLOGY_RATIONALE.md](Planning/LAW_ONTOLOGY_RATIONALE.md) | Legal ontology design decisions |
 | [docs/getting-started/quickstart-law-graph.md](docs/getting-started/quickstart-law-graph.md) | Quick start for German law graph |
