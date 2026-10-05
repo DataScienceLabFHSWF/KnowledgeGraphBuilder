@@ -1,0 +1,109 @@
+{
+  "publication": "aggregate-only; source text and raw predictions intentionally excluded",
+  "run": {
+    "created_at": "2026-10-05T09:11:47.798117+00:00",
+    "dataset_sha256": "786f9d7bcbbfe8ab6ba23ae57d38e0ff37d45e3caedd11f320429d014998fde4",
+    "llm_backend": "ollama",
+    "llm_model": "qwen3:32b",
+    "model_revision": "urchade/gliner_multi-v2.1@443d26d654e0324125a96bebd8e796c14ff2efe6",
+    "entity_extractor": "gliner",
+    "relation_extractor": "rules",
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "seed": 42,
+    "response_cache_enabled": false,
+    "decision_model": null,
+    "gpu_memory_snapshot_before": [
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 31166
+      },
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 51376
+      }
+    ],
+    "gpu_memory_snapshot_after": [
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 1019
+      },
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 50853
+      }
+    ]
+  },
+  "dataset": {
+    "name": "KGBuilder nuclear decommissioning bilingual pilot",
+    "version": "1.0.0",
+    "split": "pilot-evaluation",
+    "item_count": 22,
+    "languages": [
+      "de",
+      "en"
+    ]
+  },
+  "aggregate": {
+    "entity_metrics": {
+      "precision": 0.38333333333333336,
+      "recall": 0.3484848484848485,
+      "f1": 0.3650793650793651
+    },
+    "triple_metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "attribute_metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "entity_counts": {
+      "predicted": 61,
+      "gold": 66
+    },
+    "triple_counts": {
+      "predicted": 0,
+      "gold": 36
+    },
+    "kg_richness": {
+      "predicted_entity_class_types": 9,
+      "predicted_relation_types": 0,
+      "ontology_class_coverage": 0.8181818181818182,
+      "ontology_relation_coverage": 0.0,
+      "predicted_attributes": 0,
+      "gold_attributes": 6,
+      "relation_evidence_entity_coverage": 1.0,
+      "ontology_domain_range_validity": 1.0
+    },
+    "latency_seconds": {
+      "median": 3.463811244815588,
+      "p95": 3.564731761114672,
+      "mean": 3.4358146021841094
+    },
+    "quality_ci95": {
+      "entity_f1": {
+        "lower": 0.19298245614035084,
+        "upper": 0.5063291139240506
+      },
+      "triple_f1": {
+        "lower": 0.0,
+        "upper": 0.0
+      }
+    },
+    "errors": 0,
+    "tokens": {
+      "prompt": null,
+      "completion": null,
+      "total": null,
+      "source": "unavailable",
+      "calls": 0
+    }
+  }
+}
