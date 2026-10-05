@@ -644,6 +644,12 @@ definitions and configuration models.
 
 ## Development
 
+The outdated GitHub Actions workflows have been removed. Tests, linting,
+type checks, documentation builds, and SHACL container checks remain available
+locally; they no longer run automatically on pushes or pull requests.
+Any required status checks in GitHub branch protection must be updated
+separately if they reference the removed workflows.
+
 ```bash
 # Install with dev dependencies
 pip install -e ".[dev]"
