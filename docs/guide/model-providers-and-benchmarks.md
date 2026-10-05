@@ -204,6 +204,10 @@ Raw PDF passages, evidence quotes, predictions, and error messages remain in
 the ignored experiment directory and are not pushed. More repetitions and
 unlabeled passages do **not** turn these development examples into a held-out
 quality benchmark. Corpus results measure throughput and graph size, not accuracy.
+The first expanded rules-only path processed 260 passages. Four PDFs produced
+no eligible text (one checked file had an empty text layer); these are recorded
+as corpus skips/errors, not successful zero-extraction documents. OCR or improved
+loading is needed before claiming extraction coverage of those files.
 
 ## Model availability caveats
 

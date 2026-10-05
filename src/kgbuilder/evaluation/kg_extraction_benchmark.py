@@ -807,6 +807,8 @@ def render_benchmark_markdown(
     if probe:
         probe_entities = probe.get("entities_predicted", "not reported")
         probe_relations = probe.get("triples_predicted", "not reported")
+        documents_attempted = probe.get("documents_attempted", len(probe.get("documents", [])))
+        corpus_errors = probe.get("error_count", len(probe.get("errors", [])))
         lines.extend(
             [
                 "## Unlabeled source-document probe",
@@ -816,6 +818,10 @@ def render_benchmark_markdown(
                 "",
                 f"- Entities: {probe_entities}",
                 f"- Triples: {probe_relations}",
+                f"- Documents attempted: {documents_attempted}",
+                f"- Passages processed: {probe.get('passages_processed', 'not recorded')}",
+                f"- Corpus errors/skips: {corpus_errors}",
+                f"- Reported corpus tokens: {token_count(probe.get('tokens'))}",
                 f"- Elapsed: {probe.get('elapsed_seconds', 0):.2f} s",
                 "",
             ]
@@ -829,6 +835,8 @@ def render_benchmark_markdown(
             "expert-reviewed model ranking. Read quality alongside richness, "
             "latency, and token usage; do not select a production winner from this "
             "run alone.",
+            "Evidence/ontology validity ratios are vacuous when no relations are "
+            "predicted; they do not establish extraction quality.",
             "",
             (
                 f"Aggregate-only measurements: [{json_filename}]({json_filename}). "

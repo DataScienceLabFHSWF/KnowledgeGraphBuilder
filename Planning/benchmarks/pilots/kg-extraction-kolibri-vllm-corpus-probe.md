@@ -47,10 +47,15 @@ This is an exploratory extraction count, not an accuracy score; the passages do 
 
 - Entities: 16
 - Triples: 11
+- Documents attempted: 3
+- Passages processed: 9
+- Corpus errors/skips: 0
+- Reported corpus tokens: 24,699
 - Elapsed: 24.65 s
 
 ## Interpretation
 
 This is a development-pilot result, not a held-out or independently expert-reviewed model ranking. Read quality alongside richness, latency, and token usage; do not select a production winner from this run alone.
+Evidence/ontology validity ratios are vacuous when no relations are predicted; they do not establish extraction quality.
 
 Aggregate-only measurements: [kg-extraction-kolibri-vllm-corpus-probe.json](kg-extraction-kolibri-vllm-corpus-probe.json). Source passages, predictions, and error messages are retained locally, not published.

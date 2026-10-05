@@ -62,7 +62,14 @@ def public_summary(report: dict[str, Any]) -> dict[str, Any]:
         )
         summary["unlabeled_corpus_probe"] = {
             **{key: probe[key] for key in fields if key in probe},
-            "documents_processed": len(probe.get("documents", [])),
+            "documents_attempted": len(probe.get("documents", [])),
+            "documents_with_trials": len(
+                {
+                    trial["source_document"]
+                    for trial in probe.get("trials", [])
+                    if "source_document" in trial
+                }
+            ),
             "error_count": len(probe.get("errors", [])),
             "tokens": sum(
                 record.get("total_tokens") or 0

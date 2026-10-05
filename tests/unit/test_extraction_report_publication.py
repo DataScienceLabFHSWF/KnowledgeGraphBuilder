@@ -33,6 +33,8 @@ def test_public_summary_omits_source_predictions_errors_and_connection_details()
     assert summary["aggregate"]["errors"] == 2
     assert summary["unlabeled_corpus_probe"]["tokens"] == 7
     assert summary["unlabeled_corpus_probe"]["error_count"] == 1
+    assert summary["unlabeled_corpus_probe"]["documents_attempted"] == 1
+    assert summary["unlabeled_corpus_probe"]["documents_with_trials"] == 0
     assert "trials" not in summary
 
 

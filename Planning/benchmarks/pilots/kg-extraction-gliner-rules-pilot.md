@@ -44,5 +44,6 @@
 ## Interpretation
 
 This is a development-pilot result, not a held-out or independently expert-reviewed model ranking. Read quality alongside richness, latency, and token usage; do not select a production winner from this run alone.
+Evidence/ontology validity ratios are vacuous when no relations are predicted; they do not establish extraction quality.
 
 Aggregate-only measurements: [kg-extraction-gliner-rules-pilot.json](kg-extraction-gliner-rules-pilot.json). Source passages, predictions, and error messages are retained locally, not published.

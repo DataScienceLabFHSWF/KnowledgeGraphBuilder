@@ -119,7 +119,8 @@
     },
     "entities_predicted": 108,
     "triples_predicted": 42,
-    "documents_processed": 3,
+    "documents_attempted": 3,
+    "documents_with_trials": 3,
     "error_count": 0,
     "tokens": 59657
   }

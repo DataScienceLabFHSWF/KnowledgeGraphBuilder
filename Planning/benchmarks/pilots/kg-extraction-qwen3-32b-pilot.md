@@ -47,10 +47,15 @@ This is an exploratory extraction count, not an accuracy score; the passages do 
 
 - Entities: 108
 - Triples: 42
+- Documents attempted: 3
+- Passages processed: 9
+- Corpus errors/skips: 0
+- Reported corpus tokens: 59,657
 - Elapsed: 359.18 s
 
 ## Interpretation
 
 This is a development-pilot result, not a held-out or independently expert-reviewed model ranking. Read quality alongside richness, latency, and token usage; do not select a production winner from this run alone.
+Evidence/ontology validity ratios are vacuous when no relations are predicted; they do not establish extraction quality.
 
 Aggregate-only measurements: [kg-extraction-qwen3-32b-pilot.json](kg-extraction-qwen3-32b-pilot.json). Source passages, predictions, and error messages are retained locally, not published.
