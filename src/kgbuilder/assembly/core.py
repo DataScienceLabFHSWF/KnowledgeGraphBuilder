@@ -22,6 +22,7 @@ from langchain_core.runnables import Runnable
 from langchain_text_splitters import CharacterTextSplitter
 
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
+from kgbuilder.core.protocols import LLMProvider
 from kgbuilder.extraction.chains import ExtractionChains
 from kgbuilder.storage.graph import Neo4jStore
 from kgbuilder.storage.vector import QdrantStore
@@ -35,6 +36,7 @@ class GraphStatistics:
 
     num_nodes: int = 0
     num_edges: int = 0
+    duplicates_removed: int = 0
     num_node_types: int = 0
     node_type_distribution: dict[str, int] | None = None
     edge_type_distribution: dict[str, int] | None = None
@@ -103,6 +105,7 @@ class SimpleKGAssembler:
         dedup_threshold: float = 0.85,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
+        llm_provider: LLMProvider | None = None,
     ) -> None:
         """Initialize KG assembler.
 
@@ -114,6 +117,7 @@ class SimpleKGAssembler:
             dedup_threshold: Similarity threshold for entity deduplication
             chunk_size: Text chunk size for document splitting
             chunk_overlap: Overlap between chunks
+            llm_provider: Optional structured-generation provider for extraction.
         """
         self._graph = graph_store
         self._vector_store = vector_store
@@ -123,16 +127,20 @@ class SimpleKGAssembler:
         llm_model = llm_model or os.environ.get("OLLAMA_LLM_MODEL", "gemma4:e2b")
         llm_base_url = llm_base_url or os.environ.get("OLLAMA_URL", "http://localhost:18134")
 
-        # Initialize LLM (attach Langsmith callbacks if enabled)
-        from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
+        self._llm_provider = llm_provider
+        if llm_provider is None:
+            # Initialize Ollama LLM (attach Langsmith callbacks if enabled).
+            from kgbuilder.telemetry.langsmith import get_langsmith_callbacks
 
-        callbacks = get_langsmith_callbacks()
-        self._llm = ChatOllama(
-            model=llm_model,
-            base_url=llm_base_url,
-            temperature=0.5,
-            callbacks=callbacks if callbacks is not None else None,
-        )
+            callbacks = get_langsmith_callbacks()
+            self._llm: ChatOllama | None = ChatOllama(
+                model=llm_model,
+                base_url=llm_base_url,
+                temperature=0.5,
+                callbacks=callbacks if callbacks is not None else None,
+            )
+        else:
+            self._llm = None
 
         # Initialize text splitter
         self._splitter = CharacterTextSplitter(
@@ -165,12 +173,21 @@ class SimpleKGAssembler:
             LCEL Runnable pipeline
         """
         # Create extraction chains
-        entity_chain = ExtractionChains.create_entity_extraction_chain(
-            model=self._llm.model,
-        )
-        relation_chain = ExtractionChains.create_relation_extraction_chain(
-            model=self._llm.model,
-        )
+        if self._llm_provider is not None:
+            entity_chain = ExtractionChains.create_entity_extraction_chain(
+                llm_provider=self._llm_provider,
+            )
+            ExtractionChains.create_relation_extraction_chain(
+                llm_provider=self._llm_provider,
+            )
+        else:
+            assert self._llm is not None
+            entity_chain = ExtractionChains.create_entity_extraction_chain(
+                model=self._llm.model,
+            )
+            ExtractionChains.create_relation_extraction_chain(
+                model=self._llm.model,
+            )
 
         # Build pipeline using LCEL
         # Note: Full implementation would compose all stages

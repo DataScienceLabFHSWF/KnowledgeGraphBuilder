@@ -17,6 +17,13 @@ from kgbuilder.skills import (
     RetrievalSkill,
 )
 from kgbuilder.skills.base import AgentSkill
+from kgbuilder.skills.build_pipeline_skills import (
+    BuildValidationSkill,
+    FindingsSynthesisSkill,
+    KGAssemblySkill,
+    ModuleExtractionBatchSkill,
+    RelationExtractionBatchSkill,
+)
 from kgbuilder.skills.join_skill import JoinModuleResultsSkill
 from kgbuilder.skills.module_extraction_skill import ModuleExtractionSkill
 from kgbuilder.tools import (
@@ -41,6 +48,11 @@ ALL_SKILLS: list[AgentSkill] = [
     LawContextSkill,
     ModuleExtractionSkill,
     JoinModuleResultsSkill,
+    ModuleExtractionBatchSkill,
+    RelationExtractionBatchSkill,
+    FindingsSynthesisSkill,
+    KGAssemblySkill,
+    BuildValidationSkill,
 ]
 
 ALL_TOOLS: list[AgentTool] = [

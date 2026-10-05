@@ -25,6 +25,7 @@ dependencies = [
     "markitdown<=0.1.5",
     # LLM & embedding
     "httpx>=0.25.0",
+    "requests>=2.32",
     "numpy>=1.24",
     # Graph databases
     "neo4j>=5.19",
@@ -78,6 +79,9 @@ reasoning = [
     # validation — see validation/static_validator.py). No separate JAR
     # download needed. See Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md Phase C.
     "owlready2>=0.47",
+]
+gliner = [
+    "gliner>=0.2.21",
 ]
 analytics-gpu = [
     "torch>=2.0",

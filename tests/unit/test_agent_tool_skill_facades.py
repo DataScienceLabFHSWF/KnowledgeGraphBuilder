@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 from kgbuilder.agents.pipeline_agent import PipelineAgent, PipelineStep
 from kgbuilder.agents.registry import SKILL_REGISTRY, TOOL_REGISTRY, get_skill, get_tool
+from kgbuilder.skills.base import AgentSkill
 from kgbuilder.tools.enrichment_tool import EnrichmentTool
 from kgbuilder.tools.evaluation_tool import EvaluationTool
 from kgbuilder.tools.law_linking_tool import LawContextTool, LawLinkingTool
@@ -126,3 +127,37 @@ def test_pipeline_agent_missing_binding_raises() -> None:
                 )
             ]
         )
+
+
+def test_pipeline_agent_passes_outputs_and_stops_on_empty_result(monkeypatch) -> None:
+    from kgbuilder.agents import pipeline_agent
+
+    question_results = iter([["q1"], []])
+    consumed: list[list[str]] = []
+    fake_skills = {
+        "questions": AgentSkill(
+            name="questions",
+            description="Generate questions",
+            handler=lambda: next(question_results),
+        ),
+        "consume": AgentSkill(
+            name="consume",
+            description="Consume prior results",
+            handler=lambda questions: consumed.append(questions) or questions,
+        ),
+    }
+    monkeypatch.setattr(pipeline_agent, "get_skill", fake_skills.__getitem__)
+    agent = PipelineAgent()
+    plan = [
+        PipelineStep(skill="questions", id="questions"),
+        PipelineStep(
+            skill="consume",
+            id="consume",
+            inputs={"questions": "questions"},
+        ),
+    ]
+
+    results = agent.run_plan(plan, iterations=3, stop_if_empty="questions")
+
+    assert results == [["q1"], ["q1"], []]
+    assert consumed == [["q1"]]

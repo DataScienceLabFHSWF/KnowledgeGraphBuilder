@@ -1,6 +1,6 @@
 import pytest
 
-from kgbuilder.core.models import ExtractedEntity, ExtractedRelation, Evidence
+from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.synthesizer import FindingsSynthesizer, SynthesizedEntity
 
 
@@ -46,6 +46,15 @@ def test_synthesize_empty_and_simple():
     assert result[0].id in {"x", "y"}
 
 
+def test_synthesize_preserves_entity_properties():
+    entity = make_entity("entity-1", "Acme", "Organization", 0.9)
+    entity.properties = {"legal_name": "Acme GmbH"}
+
+    result = FindingsSynthesizer().synthesize([entity])
+
+    assert result[0].attributes == {"legal_name": "Acme GmbH"}
+
+
 def test_deduplicate_entities():
     s = FindingsSynthesizer(similarity_threshold=0.1)
     e1 = make_entity("1", "Dup", "T", 0.1)
@@ -79,11 +88,9 @@ def test_consolidate_and_export():
 
 def test_export_yaml_attributes():
     # ensure attributes and relations sections formatted correctly
-    s = FindingsSynthesizer()
-    synth = SynthesizedEntity(id="e", label="L", entity_type="T", confidence=0.1)
-    finding = s.consolidate([make_entity("e", "L", "T", 0.1)], [])
+    finding = FindingsSynthesizer().consolidate([make_entity("e", "L", "T", 0.1)], [])
     # manually insert attributes to verify export formatting
     finding["e"].attributes = {"foo": ["bar", "baz"]}
-    out = s.export_yaml(finding)
+    out = FindingsSynthesizer().export_yaml(finding)
     assert "attributes:" in out
     assert "foo" in out

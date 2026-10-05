@@ -3,8 +3,8 @@
 # Brings up all infrastructure + the KGB API in one command.
 # Models are pulled automatically on first run.
 #
-# Usage:
-#   docker compose up -d              # start everything
+# Usage (profile is derived from LLM_BACKEND in .env):
+#   docker compose up -d              # start selected model provider + services
 #   docker compose up -d --build      # rebuild API image + start
 #   docker compose logs -f kgb-api    # follow API logs
 #
@@ -36,11 +36,21 @@ services:
       - FUSEKI_DATASET=${FUSEKI_DATASET:-kgbuilder}
       - OLLAMA_URL=http://kgb-ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:e2b}
+      - LLM_BACKEND=${LLM_BACKEND:-ollama}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - VLLM_MODEL=${VLLM_MODEL:-Qwen/Qwen3-8B}
+      - VLLM_BASE_URL=http://kgb-vllm:8000/v1
+      - VLLM_EMBEDDING_BASE_URL=http://kgb-vllm-embeddings:8000/v1
+      - VLLM_EMBEDDING_MODEL=${VLLM_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      - VLLM_API_KEY=${VLLM_API_KEY:-EMPTY}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-}
+      - LLM_TOP_P=${LLM_TOP_P:-0.9}
+      - LLM_SEED=${LLM_SEED:-}
+      - LLM_CHAT_TEMPLATE_KWARGS=${LLM_CHAT_TEMPLATE_KWARGS:-{}}
+      - LLM_CACHE_ENABLED=${LLM_CACHE_ENABLED:-true}
       - GRAPHQA_API_URL=${GRAPHQA_API_URL:-}
       - ONTOLOGY_API_URL=${ONTOLOGY_API_URL:-}
     depends_on:
-      kgb-ollama-init:
-        condition: service_completed_successfully
       kgb-neo4j:
         condition: service_started
       kgb-qdrant:
@@ -77,9 +87,19 @@ services:
       - FUSEKI_DATASET=${FUSEKI_DATASET:-kgbuilder}
       - OLLAMA_URL=http://kgb-ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:e2b}
+      - LLM_BACKEND=${LLM_BACKEND:-ollama}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - VLLM_MODEL=${VLLM_MODEL:-Qwen/Qwen3-8B}
+      - VLLM_BASE_URL=http://kgb-vllm:8000/v1
+      - VLLM_EMBEDDING_BASE_URL=http://kgb-vllm-embeddings:8000/v1
+      - VLLM_EMBEDDING_MODEL=${VLLM_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      - VLLM_API_KEY=${VLLM_API_KEY:-EMPTY}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-}
+      - LLM_TOP_P=${LLM_TOP_P:-0.9}
+      - LLM_SEED=${LLM_SEED:-}
+      - LLM_CHAT_TEMPLATE_KWARGS=${LLM_CHAT_TEMPLATE_KWARGS:-{}}
+      - LLM_CACHE_ENABLED=${LLM_CACHE_ENABLED:-true}
     depends_on:
-      kgb-ollama-init:
-        condition: service_completed_successfully
       kgb-neo4j:
         condition: service_started
       kgb-qdrant:
@@ -137,7 +157,8 @@ services:
 
   # ── Ollama + model init ────────────────────────────────────
   kgb-ollama:
-    image: ollama/ollama:0.14.3
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.35.0}
+    profiles: ["ollama"]
     container_name: kgb-ollama
     restart: unless-stopped
     ports:
@@ -163,27 +184,183 @@ services:
       - kgbuilder-net
 
   kgb-ollama-init:
-    image: ollama/ollama:0.14.3
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.35.0}
+    profiles: ["ollama"]
     container_name: kgb-ollama-init
     depends_on:
       kgb-ollama:
         condition: service_healthy
     environment:
       - OLLAMA_HOST=kgb-ollama:11434
+      - OLLAMA_DECISION_MODEL=${OLLAMA_DECISION_MODEL:-none}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         echo "Pulling models for KGBuilder..."
         ollama pull ${OLLAMA_MODEL:-gemma4:e2b}
         ollama pull ${OLLAMA_EMBED_MODEL:-qwen3-embedding}
+        decision_model="$${OLLAMA_DECISION_MODEL:-none}"
+        if [ -n "$${decision_model}" ] && [ "$${decision_model}" != "none" ]; then
+          ollama pull "$${decision_model}"
+        fi
         echo "KGBuilder models ready."
     restart: "no"
     networks:
       - kgbuilder-net
 
+  kgb-vllm:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
+    container_name: kgb-vllm
+    profiles: ["vllm"]
+    restart: unless-stopped
+    environment:
+      - CUDA_VISIBLE_DEVICES=${VLLM_GPU_DEVICE:-0}
+    command:
+      - --model
+      - ${VLLM_MODEL:-Qwen/Qwen3-8B}
+      - --served-model-name
+      - ${VLLM_MODEL:-Qwen/Qwen3-8B}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --api-key
+      - ${VLLM_API_KEY:-EMPTY}
+    ports:
+      - "127.0.0.1:${VLLM_PORT:-8000}:8000"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - kgbuilder-net
+
+  kgb-vllm-embeddings:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
+    container_name: kgb-vllm-embeddings
+    profiles: ["vllm"]
+    restart: unless-stopped
+    environment:
+      - CUDA_VISIBLE_DEVICES=${VLLM_EMBEDDING_GPU_DEVICE:-0}
+    command:
+      - --model
+      - ${VLLM_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      - --served-model-name
+      - ${VLLM_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      - --task
+      - embed
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --api-key
+      - ${VLLM_API_KEY:-EMPTY}
+    ports:
+      - "127.0.0.1:${VLLM_EMBEDDING_PORT:-8002}:8000"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - kgbuilder-net
+
+  # Kolibri requires Aleph Alpha's plugin image, which pins its supported vLLM.
+  # Set COMPOSE_PROFILES=kolibri, LLM_BACKEND=vllm, and VLLM_MODEL=Aleph-Alpha/Kolibri-1.
+  kgb-vllm-kolibri:
+    image: ${KOLIBRI_VLLM_IMAGE:-ghcr.io/aleph-alpha/aleph-alpha-inference@sha256:ac93d782890eb942dd59afa7cee9fa1e681d09f63a0036b21ea7664a254ed7d5}
+    container_name: kgb-vllm-kolibri
+    profiles: ["kolibri"]
+    restart: unless-stopped
+    environment:
+      - CUDA_VISIBLE_DEVICES=${KOLIBRI_GPU_DEVICE:-0}
+      - HF_HOME=/root/.cache/huggingface
+    command:
+      - Aleph-Alpha/Kolibri-1
+      - --revision
+      - ${KOLIBRI_MODEL_REVISION:-e52eb4627d11516b0c01de49210ab5a4e4061444}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --kv-cache-dtype
+      - fp8
+      - --reasoning-parser
+      - kolibri1
+      - --tool-call-parser
+      - kolibri1
+      - --enable-auto-tool-choice
+      - --max-model-len
+      - ${KOLIBRI_MAX_MODEL_LEN:-32768}
+      - --gpu-memory-utilization
+      - ${KOLIBRI_GPU_MEMORY_UTILIZATION:-0.9}
+    ports:
+      - "127.0.0.1:${VLLM_PORT:-8000}:8000"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      kgbuilder-net:
+        aliases:
+          - kgb-vllm
+
+  kgb-vllm-kolibri-embeddings:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
+    container_name: kgb-vllm-kolibri-embeddings
+    profiles: ["kolibri"]
+    restart: unless-stopped
+    environment:
+      - CUDA_VISIBLE_DEVICES=${KOLIBRI_GPU_DEVICE:-0}
+    command:
+      - --model
+      - ${VLLM_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      - --served-model-name
+      - ${VLLM_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      - --task
+      - embed
+      - --gpu-memory-utilization
+      - ${VLLM_EMBEDDING_GPU_MEMORY_UTILIZATION:-0.05}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --api-key
+      - ${VLLM_API_KEY:-EMPTY}
+    ports:
+      - "127.0.0.1:${VLLM_EMBEDDING_PORT:-8002}:8000"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      kgbuilder-net:
+        aliases:
+          - kgb-vllm-embeddings
+
 volumes:
   neo4j-plugins:
   ollama-data:
+  huggingface-cache:
 
 networks:
   kgbuilder-net:

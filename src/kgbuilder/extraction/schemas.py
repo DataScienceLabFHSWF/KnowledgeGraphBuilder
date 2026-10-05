@@ -8,6 +8,8 @@ These schemas define the JSON structure for:
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -60,6 +62,17 @@ class EntityItem(BaseModel):
     context: str = Field(
         description="Context window around entity (50 chars before/after)"
     )
+    attributes: list[EntityAttributeItem] = Field(
+        default_factory=list,
+        description="Ontology attributes observed for this entity",
+    )
+
+
+class EntityAttributeItem(BaseModel):
+    """One ontology attribute extracted for an entity."""
+
+    attribute_name: str
+    value: Any
 
 
 class RelationExtractionOutput(BaseModel):

@@ -1,5 +1,3 @@
-import pytest
-
 from kgbuilder.core.models import ExtractedEntity, ExtractedRelation
 from kgbuilder.extraction.relation import (
     LLMRelationExtractor,
@@ -35,6 +33,16 @@ def test_validate_domain_range():
     # with correct types passes
     onto2 = OntologyRelationDef(uri="u", label="R", domain=["A"], range=["B"])
     assert LLMRelationExtractor._validate_domain_range(e1, e2, onto2)
+    # URI and display-name forms should be equivalent.
+    uri_entity = make_entity("uri", "urn:kgb:FacilityUnit")
+    label_entity = make_entity("label", "Organization")
+    onto3 = OntologyRelationDef(
+        uri="u",
+        label="R",
+        domain=["Facility Unit"],
+        range=["http://example.org/ontology#Organization"],
+    )
+    assert LLMRelationExtractor._validate_domain_range(uri_entity, label_entity, onto3)
 
 
 def test_check_cardinality_constraints():

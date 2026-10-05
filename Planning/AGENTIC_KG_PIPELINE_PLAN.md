@@ -1,7 +1,10 @@
 # Agentic KG-Building Pipeline — Migration Plan
 
-**Status**: Phases 1–3 (foundation, markdown pipeline, modular subagents) complete.
-Phases 4–6 not yet started.
+**Status**: Agentic foundation, markdown pipeline, modular extraction, and the
+`POST /api/v1/build` pipeline cutover are implemented. The API build plan
+composes extraction, relation extraction, synthesis, assembly, and validation
+skills. Remaining work is documented below; this status does not imply that
+every older discovery/CLI entry point has been migrated.
 **Branch**: `refactor/clean-agent-skills-tools` (based on `main`)
 **Scope boundary** (explicit, do not expand):
 - Document preprocessing/indexing (loading, chunking, embedding into Qdrant) **stays a
@@ -210,15 +213,18 @@ Also implemented (this session):
 - Tests: `tests/unit/test_orchestrator_agent.py::test_validation_agent_runs_only_vcq_questions`,
   `tests/unit/test_kg_validation_tools_and_skill.py` (new file).
 
-Not yet done (tracked below): stage 2 (assembly tools/skill), stage 4/5
-extensions (per-enricher tools, combined law-linking skill wired into the
-discovery-loop plan), and stage 6 (swap `BuildPipeline`/`pipeline/orchestrator.py`
-for a `PipelineAgent` driven by `pipeline.md`). The tool/skill wrappers above
-are additive — `IterativeDiscoveryLoop._process_question` and
-`pipeline/orchestrator.py` still call SHACL/rules/consistency/static
-validation directly rather than through the new tools; per the working
-agreement, that rewire happens once each stage's tool/skill coverage is
-proven and not before.
+The `/api/v1/build` endpoint now uses a separate markdown-defined plan at
+`agentic_pipeline/build_pipeline.md`. Its build-specific skills cover module
+extraction, evidence-grounded relation extraction, findings synthesis,
+assembly, and post-assembly validation. The endpoint's prior inline
+orchestration has been removed; its Python worker now binds resources and
+executes the plan through `PipelineAgent`.
+
+Remaining work is narrower and applies to other entry points: migrate the
+legacy per-question `IterativeDiscoveryLoop` path, expose individual
+enrichment phases and wire the combined law-linking skill into the discovery
+plan, and decide how to handle the separate `pipeline/orchestrator.py`
+`BuildPipeline` API. None of these paths is called by `/api/v1/build`.
 
 ---
 
@@ -246,12 +252,12 @@ call sites working via thin delegation until the old call site is deleted.
 5. **Law linking**: already wrapped (Phase 1) — add a skill combining
    `law_context_lookup` (pre-extraction context) and `law_linking`
    (post-assembly cross-linking) into the discovery-loop plan.
-6. **Full pipeline swap**: once stages 1–5 are covered by tools/skills and the
-   markdown loader exists, replace the hardcoded call sequence in
-   `pipeline/orchestrator.py` / `BuildPipeline` with a `PipelineAgent` driven
-   by `pipeline.md`. Old orchestrator logic is deleted only after the
-   `PipelineAgent` path has equivalent test coverage and passes an end-to-end
-   smoke test against `data/smoke_test/`.
+6. **Other entry points**: the `/api/v1/build` endpoint now runs
+   `agentic_pipeline/build_pipeline.md` through `PipelineAgent`. Separately
+   assess the compatibility `BuildPipeline` API and migrate it only if it is
+   still a supported KG-building entry point; keep its behavior distinct from
+   the ontology/document-backed API build unless equivalent inputs and
+   coverage are in place.
 
 Preprocessing/indexing (`document/loaders/*`, `document/chunking/*`,
 embedding into Qdrant) is explicitly **out of scope** and stays as-is.

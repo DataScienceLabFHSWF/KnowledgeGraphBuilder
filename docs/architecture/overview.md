@@ -84,3 +84,7 @@ full breakdown, including Ollama-vs-vLLM guidance for concurrent subagents.
 
 For full details, see
 [Planning/02_ARCHITECTURE.md](https://github.com/DataScienceLabFHSWF/KnowledgeGraphBuilder/blob/main/Planning/02_ARCHITECTURE.md).
+
+The current external extraction API, model-routing tiers, and the planned
+LLM-led tool-calling design are diagrammed in
+[Agentic Pipeline](agentic-pipeline.md#runtime-architecture-and-model-routing).

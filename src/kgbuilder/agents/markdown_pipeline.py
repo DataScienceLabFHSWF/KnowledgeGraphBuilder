@@ -12,7 +12,7 @@ name. This module parses both into `PipelineStep` objects that
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -144,8 +144,10 @@ def load_pipeline(pipeline_path: Path, skills_dir: Path | None = None) -> list[P
         steps.append(
             PipelineStep(
                 skill=skill_name,
+                id=raw_step.get("id"),
                 kwargs=merged_kwargs,
                 bind=dict(raw_step.get("bind") or {}),
+                inputs=dict(raw_step.get("inputs") or {}),
             )
         )
 

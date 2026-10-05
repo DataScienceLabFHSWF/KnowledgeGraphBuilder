@@ -12,7 +12,9 @@ See Planning/ISSUES_BACKLOG.md Issue #3.1 for acceptance criteria.
 from __future__ import annotations
 
 from kgbuilder.embedding.ollama import OllamaProvider
+from kgbuilder.embedding.vllm import VLLMProvider
 
 __all__ = [
     "OllamaProvider",
+    "VLLMProvider",
 ]

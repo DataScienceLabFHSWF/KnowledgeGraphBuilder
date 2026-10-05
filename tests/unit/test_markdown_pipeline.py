@@ -45,6 +45,29 @@ def test_repo_pipeline_md_parses_into_steps() -> None:
     assert retrieval_step.kwargs == {"top_k": 10}
 
 
+def test_build_pipeline_md_declares_agentic_build_stages() -> None:
+    steps = load_pipeline(AGENTIC_PIPELINE_DIR / "build_pipeline.md")
+
+    assert [step.id for step in steps] == [
+        "questions",
+        "entities",
+        "relations",
+        "synthesis",
+        "assembly",
+        "validation",
+    ]
+    assert [step.skill for step in steps] == [
+        "ontology_gap_analysis",
+        "module_extraction_batch",
+        "relation_extraction_batch",
+        "findings_synthesis",
+        "kg_assembly",
+        "build_validation",
+    ]
+    assert steps[1].inputs == {"questions": "questions"}
+    assert steps[3].inputs == {"entities": "entities", "relations": "relations"}
+
+
 def test_pipeline_agent_can_execute_repo_pipeline_plan() -> None:
     """The markdown-defined plan should be directly runnable by PipelineAgent."""
     from unittest.mock import MagicMock

@@ -46,7 +46,7 @@ class CQType(str, Enum):
 @runtime_checkable
 class OntologyService(Protocol):
     """Protocol for ontology query services.
-    
+
     Provides query methods for analyzing ontology structure, class hierarchies,
     and relations to guide question generation and discovery prioritization.
     """
@@ -168,6 +168,7 @@ class QuestionGenerationAgent(BaseAgent):
         max_questions: int = 50,
         covered_threshold: int = 1,
         coverage_percentage_threshold: float = 0.8,
+        class_filter: list[str] | None = None,
     ) -> list[ResearchQuestion]:
         """Generate prioritized research questions.
 
@@ -187,6 +188,7 @@ class QuestionGenerationAgent(BaseAgent):
             covered_threshold: Minimum entity count to consider class "covered"
                 (default: 1 - ask about any class with <1 instance, i.e., none)
             coverage_percentage_threshold: Unused currently, kept for API compatibility
+            class_filter: Optional ontology classes to include in this generation pass.
 
         Returns:
             Sorted list of research questions (highest priority first)
@@ -203,6 +205,13 @@ class QuestionGenerationAgent(BaseAgent):
         try:
             # 1. Get all classes from ontology
             all_classes = self._ontology.get_all_classes()
+            if class_filter is not None:
+                allowed_classes = {name.lower() for name in class_filter}
+                all_classes = [
+                    class_name
+                    for class_name in all_classes
+                    if class_name.lower() in allowed_classes
+                ]
             if not all_classes:
                 self._logger.warning("no_ontology_classes_found")
                 return []
@@ -275,6 +284,17 @@ class QuestionGenerationAgent(BaseAgent):
                 coverage[entity.entity_type] += 1
 
         return coverage
+
+    def add_existing_entities(self, entities: list[ExtractedEntity]) -> None:
+        """Update coverage state with entities found during an extraction iteration."""
+        existing = {
+            (entity.label.lower().strip(), entity.entity_type.lower().strip()): entity
+            for entity in self._existing
+        }
+        for entity in entities:
+            key = (entity.label.lower().strip(), entity.entity_type.lower().strip())
+            existing[key] = entity
+        self._existing = list(existing.values())
 
     def _generate_question_for_class(
         self, class_name: str, current_count: int

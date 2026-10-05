@@ -51,7 +51,16 @@ def test_entity_build_prompt_contains_sections():
 def test_entity_extract_basic_behavior():
     # provider returns two entities, one below threshold
     items = [
-        EntityItem(id="e1", label="Foo", type="T", confidence=0.9, start_char=0, end_char=3, context=""),
+        EntityItem(
+            id="e1",
+            label="Foo",
+            type="T",
+            confidence=0.9,
+            start_char=0,
+            end_char=3,
+            context="",
+            attributes=[{"attribute_name": "legal_name", "value": "Foo"}],
+        ),
         EntityItem(id="e2", label="Bar", type="T", confidence=0.4, start_char=4, end_char=7, context=""),
     ]
     out = EntityExtractionOutput(entities=items)
@@ -61,6 +70,7 @@ def test_entity_extract_basic_behavior():
     result = extractor.extract("Foo Bar", ontology_classes=classes)
     assert len(result) == 1
     assert result[0].label == "Foo"
+    assert result[0].properties == {"legal_name": "Foo"}
 
 
 def test_entity_extract_retries_and_failure():
@@ -91,7 +101,7 @@ def test_entity_extract_edge_cases():
 @ pytest.fixture(autouse=True)
 def patch_relation_chain(monkeypatch):
     # patch extraction chain so we can control output
-    def fake_chain(model, base_url, temperature=0.5):
+    def fake_chain(model, base_url, temperature=0.5, llm_provider=None):
         return SimpleNamespace(invoke=lambda kwargs: fake_chain.output)
     monkeypatch.setattr(ExtractionChains, "create_relation_extraction_chain", fake_chain)
     yield
@@ -144,3 +154,37 @@ def test_relation_extract_no_inputs():
     rel_ex = LLMRelationExtractor(llm_provider=DummyProvider([]))
     assert rel_ex.extract("", [], []) == []
     assert rel_ex.extract("foo", [], [OntologyRelationDef(uri="r", label="R")]) == []
+
+
+def test_relation_extract_surfaces_chain_failures(monkeypatch):
+    class BrokenChain:
+        def invoke(self, kwargs):
+            raise ValueError("inference unavailable")
+
+    monkeypatch.setattr(
+        ExtractionChains,
+        "create_relation_extraction_chain",
+        lambda **kwargs: BrokenChain(),
+    )
+    source = ExtractedEntity(
+        id="s",
+        label="Source",
+        entity_type="Type1",
+        description="",
+        confidence=1.0,
+    )
+    target = ExtractedEntity(
+        id="t",
+        label="Target",
+        entity_type="Type2",
+        description="",
+        confidence=1.0,
+    )
+    extractor = LLMRelationExtractor(llm_provider=DummyProvider([]), max_retries=1)
+
+    with pytest.raises(RuntimeError, match="Relation extraction failed"):
+        extractor.extract(
+            "Source relates to Target",
+            [source, target],
+            [OntologyRelationDef(uri="rel", label="relates to")],
+        )

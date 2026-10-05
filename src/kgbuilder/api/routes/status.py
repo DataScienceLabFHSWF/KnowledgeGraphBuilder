@@ -18,6 +18,8 @@ async def health_check() -> ServiceHealth:
     qdrant_status = "unknown"
     fuseki_status = "unknown"
     ollama_status = "unknown"
+    llm_status = "unknown"
+    llm_backend = "unknown"
 
     # Neo4j
     try:
@@ -51,16 +53,31 @@ async def health_check() -> ServiceHealth:
     except Exception as e:
         fuseki_status = f"error: {e}"
 
-    # Ollama
+    # Configured LLM backend
     try:
         import httpx
 
-        from kgbuilder.api.dependencies import _OLLAMA_URL
+        from kgbuilder.api.dependencies import (
+            _LLM_BACKEND,
+            _OLLAMA_URL,
+            _VLLM_BASE_URL,
+        )
 
-        resp = httpx.get(f"{_OLLAMA_URL}/api/tags", timeout=3)
-        ollama_status = "ok" if resp.status_code == 200 else f"http {resp.status_code}"
+        llm_backend = _LLM_BACKEND
+        if _LLM_BACKEND == "ollama":
+            resp = httpx.get(f"{_OLLAMA_URL}/api/tags", timeout=3)
+            llm_status = "ok" if resp.status_code == 200 else f"http {resp.status_code}"
+            ollama_status = llm_status
+        elif _LLM_BACKEND == "vllm":
+            health_url = _VLLM_BASE_URL.removesuffix("/v1").rstrip("/") + "/health"
+            resp = httpx.get(health_url, timeout=3)
+            llm_status = "ok" if resp.status_code == 200 else f"http {resp.status_code}"
+        else:
+            llm_status = f"unsupported backend: {_LLM_BACKEND}"
     except Exception as e:
-        ollama_status = f"error: {e}"
+        llm_status = f"error: {e}"
+        if llm_backend == "ollama":
+            ollama_status = llm_status
 
     overall = "ok" if neo4j_status == "ok" else "degraded"
 
@@ -70,6 +87,8 @@ async def health_check() -> ServiceHealth:
         qdrant=qdrant_status,
         fuseki=fuseki_status,
         ollama=ollama_status,
+        llm_backend=llm_backend,
+        llm=llm_status,
     )
 
 

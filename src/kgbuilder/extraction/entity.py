@@ -228,7 +228,7 @@ VALID ENTITY TYPES:
 
 EXTRACTION GUIDELINES:
 1. Extract all entities matching the types above
-2. Assign each a unique ID in format "ent_XXX" 
+2. Assign each a unique ID in format "ent_XXX"
 3. Record exact text as it appears in source
 4. Classify as one of the entity types above
 5. Estimate confidence (0.0-1.0) based on context clarity:
@@ -239,11 +239,15 @@ EXTRACTION GUIDELINES:
 6. Find character positions (start_char, end_char) in source text
 7. Provide context: text snippet with 50 chars before/after entity
 
+- attributes: list of ontology attributes found for this entity, each with
+  attribute_name and value; use an empty list when no attribute value is stated
+
 IMPORTANT:
 - Be conservative: only extract if confident
 - Avoid duplicates: each entity type + label should appear once
 - Domain focus: prioritize domain-relevant entities
 - Quality over quantity: accuracy matters more than coverage
+- Do not infer attribute values that are not stated in the source
 
 RESPONSE FORMAT:
 Return ONLY valid JSON matching the EntityExtractionOutput schema.
@@ -259,7 +263,8 @@ EXAMPLE OUTPUT STRUCTURE (adapt to your domain):
       "confidence": 0.95,
       "start_char": 42,
       "end_char": 56,
-      "context": "...surrounding context with 50 chars before/after..."
+      "context": "...surrounding context with 50 chars before/after...",
+      "attributes": []
     }}
   ]
 }}
@@ -294,19 +299,25 @@ Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."
             if cls.examples:
                 examples_str = ", ".join(f'"{ex}"' for ex in cls.examples[:3])
                 lines.append(f"  Examples: {examples_str}")
+            for prop in cls.properties:
+                required = "required" if prop.required else "optional"
+                attribute = f"  Attribute: {prop.name} ({prop.data_type}, {required})"
+                if prop.description:
+                    attribute += f" - {prop.description}"
+                lines.append(attribute)
 
         return "\n".join(lines)
 
     def _find_entity_position(self, entity_label: str, source_text: str) -> tuple[int, int]:
         """Find entity position in source text by searching.
-        
+
         More reliable than trusting LLM-provided character offsets.
         Searches for exact match first, then case-insensitive, then substring.
-        
+
         Args:
             entity_label: Text to search for
             source_text: Source text to search in
-            
+
         Returns:
             Tuple (start, end) of entity position, or (-1, -1) if not found
         """
@@ -417,6 +428,9 @@ Extract all entities you can identify with confidence >= 0.5. Return ONLY JSON."
                 label=item.label,
                 entity_type=item.entity_type,
                 description=description,
+                properties={
+                    attribute.attribute_name: attribute.value for attribute in item.attributes
+                },
                 confidence=item.confidence,
                 evidence=[evidence],
             )

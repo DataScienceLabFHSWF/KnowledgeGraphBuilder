@@ -12,6 +12,7 @@ Key features:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -129,7 +130,8 @@ class LLMRelationExtractor:
         chain = ExtractionChains.create_relation_extraction_chain(
             model=model,
             base_url=base_url,
-            temperature=0.5
+            temperature=0.5,
+            llm_provider=self._llm,
         )
 
         # 3. Call LLM with retry logic
@@ -217,9 +219,11 @@ class LLMRelationExtractor:
                         "relation_extraction_failed",
                         error=str(e)
                     )
-                    return []
+                    raise RuntimeError(
+                        f"Relation extraction failed after {self.max_retries} attempts: {e}"
+                    ) from e
 
-        return []
+        raise RuntimeError("Relation extraction did not run; max_retries must be at least 1")
 
     def _build_extraction_prompt(
         self,
@@ -360,8 +364,14 @@ Respect domain/range constraints strictly."""
             return True
 
         if ontology_def.domain:
-            source_types = {t.strip() for t in source_entity.entity_type.split("|")}
-            domain_types = set(ontology_def.domain)
+            source_types = {
+                LLMRelationExtractor._canonical_type_name(value)
+                for value in source_entity.entity_type.split("|")
+            }
+            domain_types = {
+                LLMRelationExtractor._canonical_type_name(value)
+                for value in ontology_def.domain
+            }
             if not source_types.intersection(domain_types):
                 logger.debug(
                     "domain_check_failed",
@@ -371,8 +381,14 @@ Respect domain/range constraints strictly."""
                 return False
 
         if ontology_def.range:
-            target_types = {t.strip() for t in target_entity.entity_type.split("|")}
-            range_types = set(ontology_def.range)
+            target_types = {
+                LLMRelationExtractor._canonical_type_name(value)
+                for value in target_entity.entity_type.split("|")
+            }
+            range_types = {
+                LLMRelationExtractor._canonical_type_name(value)
+                for value in ontology_def.range
+            }
             if not target_types.intersection(range_types):
                 logger.debug(
                     "range_check_failed",
@@ -382,6 +398,12 @@ Respect domain/range constraints strictly."""
                 return False
 
         return True
+
+    @staticmethod
+    def _canonical_type_name(value: str) -> str:
+        """Normalize class labels and URI local names for domain/range checks."""
+        local_name = re.split(r"[/#:]", value.strip())[-1]
+        return "".join(character.casefold() for character in local_name if character.isalnum())
 
     @staticmethod
     def _check_cardinality_constraints(
