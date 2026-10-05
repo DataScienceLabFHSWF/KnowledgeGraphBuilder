@@ -1,11 +1,21 @@
 # KnowledgeGraphBuilder
 
-**Ontology-driven Knowledge Graph construction pipeline** for building validated,
-traceable knowledge graphs from unstructured documents using local LLMs.
+**Ontology-guided Knowledge Graph extraction with agents, tools, and skills**
+for building validated, traceable knowledge graphs from unstructured documents.
 
 Ingests documents (PDF, DOCX, PPTX, XML), extracts entities and relations guided
 by an OWL ontology, assembles a validated knowledge graph in Neo4j, and exports
 it in multiple standard formats (JSON-LD, RDF/Turtle, YARRRML, Cypher).
+
+**Research context:** An earlier version of KnowledgeGraphBuilder was presented
+at the **SEMANTiCS 2026 conference**. The current implementation extends that
+version with Workbench integration, composable agent tools/skills, configurable
+model providers, and extraction benchmarks.
+
+For application integration, start with the
+[KG Workbench extraction API guide](docs/guide/extraction-api.md). For model
+comparisons, see the [published benchmark reports](Planning/benchmarks/expanded/README.md)
+and their [execution status and limitations](Planning/benchmarks/expanded/STATUS.md).
 
 A minimal sample dataset is available at `data/smoke_test/` (ontology + text
 file) for quick local experiments and to exercise the `scripts/quickstart.py`
@@ -15,17 +25,22 @@ Part of a three-repository research ecosystem:
 
 | Repository | Purpose | Branch |
 |-----------|---------|--------|
-| **KnowledgeGraphBuilder** (this repo) | KG construction, validation, and export | `fast-api` |
+| **KnowledgeGraphBuilder** (this repo) | KG construction, validation, and export | `main` |
 | [GraphQAAgent](https://github.com/DataScienceLabFHSWF/GraphQAAgent) | Ontology-informed GraphRAG QA agent | `dev/fast-api-backend` |
 | [OntologyExtender](https://github.com/DataScienceLabFHSWF/OntologyExtender) | Human-in-the-loop ontology extension | `fast-api` |
 
 All three are orchestrated together via [KGPlatform](https://github.com/DataScienceLabFHSWF/KGPlatform), but each works standalone with its own `docker-compose.yml`.
+
+[KG Workbench](https://github.com/DataScienceLabFHSWF/kg-workbench) is an additional
+application integration: it submits documents and ontologies to KGBuilder's
+external extraction API and imports the resulting entities and facts.
 
 ---
 
 ## Table of Contents
 
 - [What This Repository Does](#what-this-repository-does)
+- [Application Integration and Current Status](#application-integration-and-current-status)
 - [Pipeline Architecture](#pipeline-architecture)
 - [Quick Start](#quick-start)
 - [Build a KG from Your Own Data](#build-a-kg-from-your-own-data)
@@ -46,6 +61,69 @@ All three are orchestrated together via [KGPlatform](https://github.com/DataScie
 
 ---
 
+## Application Integration and Current Status
+
+### KG Workbench API
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/extract` | Submit `runId`, document/ontology IDs, a base64 file, and an inline ontology |
+| `GET /api/extract/{runId}/status` | Poll execution status and integer progress |
+| `GET /api/extract/{runId}/results` | Fetch `sections`, typed `entities`, and evidence-backed `facts` |
+
+Status/results require a bearer key configured through `KGBUILDER_API_KEY`.
+POST currently remains unauthenticated; keep the service on a trusted network
+or behind an authenticated proxy. Run state is in memory, so use one API process
+and expect jobs to be lost on restart.
+
+Workbench's actual adapter has been tested across containers against real
+Kolibri/vLLM inference on a small fixture. Deployment settings and contract
+details are in the [extraction API guide](docs/guide/extraction-api.md).
+
+Uploaded-file extraction does **not** query a vector index. The separate
+retrieval-backed build route currently uses Qdrant; Supabase/pgvector retrieval
+is not implemented. Supabase file storage alone does not provide a vector index.
+
+### Model roles and orchestration
+
+- **Generation:** select Ollama or vLLM with `LLM_BACKEND`; a separate Kolibri
+  deployment profile uses Aleph Alpha's vLLM plugin.
+- **Entity spans:** GLiNER is an optional benchmark path, not a triple or
+  attribute generator.
+- **Decision scoring/judging:** TEV1 scores supplied candidate triples or
+  checks source support for proposed relations through Ollama's decision API.
+  It cannot recover facts omitted by candidate generation.
+- **Current public extraction:** fixed module/entity/relation stages use a
+  generative LLM. GLiNER and TEV are not enabled in that route.
+- **Dynamic tool calling:** `LangChainReactAgent` uses a LangGraph loop in
+  which an LLM selects structured tools and observes their results. Tools are
+  supplied by the caller with bound resources; this adapter is implemented,
+  but is not the public endpoint's controller.
+
+See the [architecture diagrams](docs/architecture/agentic-pipeline.md) and
+[provider/benchmark guide](docs/guide/model-providers-and-benchmarks.md).
+The architecture below distinguishes dynamic tool calling, declared skill
+plans, and the deployed API workflows.
+
+### Published evaluation
+
+[Pilot reports](Planning/benchmarks/pilots/README.md) and
+[expanded reports](Planning/benchmarks/expanded/README.md) contain aggregate-only
+JSON and Markdown measurements for quality, token usage, and KG richness.
+Detailed reports retain per-run measurements; conference-era runtime totals
+are not representative of the current architecture.
+The expanded publication covers seven completed configurations, with 22 bilingual
+development examples repeated three times and 260 eligible real-PDF passages
+per completed configuration.
+
+These are **not held-out or independently reviewed quality scores**. Corpus
+counts measure extraction output, not accuracy; errors and skipped PDFs matter.
+The [publication status](Planning/benchmarks/expanded/STATUS.md) documents the
+failed TEV-judge run and pending Qwen runs at the time of publication.
+Raw passages, predictions, evidence quotes, and logs remain local.
+
+---
+
 ## What This Repository Does
 
 1. **Document ingestion** -- loads PDFs, DOCX, PPTX, and German law XML;
@@ -57,15 +135,15 @@ All three are orchestrated together via [KGPlatform](https://github.com/DataScie
 3. **Autonomous discovery** -- iteratively generates competency questions,
    retrieves relevant chunks, and extracts additional facts until coverage
    converges (see [Architecture](Planning/02_ARCHITECTURE.md) Section 2).
-4. **Tiered extraction** -- deterministic rule-based heuristics run first
-   (fast, high precision); the LLM extractor handles remaining items.
-   An ensemble layer merges and deduplicates results with overlap-boosted
-   confidence.
+4. **Selectable extraction capabilities** -- generative LLM extraction,
+   domain-specific rules, GLiNER entity spans, and TEV candidate scoring or
+   evidence judging. Separate benchmark paths compare these combinations;
+   the public extraction API currently uses generative LLM extraction.
 5. **Confidence tuning** -- statistical analysis, multi-source boosting,
    coreference resolution, LLM consensus voting, and quality filtering.
-6. **Enrichment pipeline** -- five-phase post-extraction enrichment:
-   LLM descriptions, semantic embeddings, competency questions, type
-   constraints, and alias generation.
+6. **Enrichment capabilities** -- descriptions, semantic embeddings,
+   competency questions, type constraints, and alias generation, exposed
+   through reusable tools and skills.
 7. **KG assembly and validation** -- assembles nodes and edges in Neo4j;
    validates against SHACL shapes generated from the ontology; runs pySHACL
    and (optionally) SHACL2FOL/Vampire static checks; calculates automated
@@ -78,8 +156,8 @@ All three are orchestrated together via [KGPlatform](https://github.com/DataScie
     checkpointing, automated SHACL quality scoring, and HTML reports.
 11. **KG versioning** -- snapshot, restore, and diff operations for
     reproducible experiment tracking.
-12. **Agentic orchestration** -- extraction and validation are also exposed
-    as composable tools/skills/subagents: one extraction subagent per
+12. **Agentic orchestration** -- a dynamic LLM tool-calling adapter and
+    composable tools/skills/subagents: one extraction subagent per
     ontology module (dispatched concurrently, optionally on different
     models), and a dedicated validation subagent that consumes VCQ
     (validating) competency questions instead of only SCQ/RCQ (scoping/
@@ -94,48 +172,99 @@ ontology and document loaders change.
 
 ## Pipeline Architecture
 
-The system uses a **three-layer processing model** that separates the
-expensive extraction phase from fast enrichment and persistence:
+The current architecture is organized around **capabilities**, rather than
+the conference version's extraction/enrichment/persistence layers. An agent
+receives an ontology and a task, while tools receive explicitly bound resources
+such as document context, retrievers, model providers, and validators.
 
-```
- LAYER 1: EXTRACTION  (~6.8 h for 33 docs)
- ──────────────────────────────────────────────────────
-   OWL Ontology
-     -> Question Generation (competency-question driven)
-     -> Iterative Discovery Loop
-          Retrieve chunks (Qdrant)  ->  Tiered Extraction
-          (Rule-based heuristics -> LLM fallback)
-          ->  Ensemble merge  ->  Synthesize & deduplicate
-     -> Confidence Tuning (analyze, boost, calibrate,
-        coreference, vote, filter)
-   Output: checkpoint.json
+### Dynamic reasoning and tool calls
 
- LAYER 2: ENRICHMENT  (~15 min)
- ──────────────────────────────────────────────────────
-   Load checkpoint
-     -> Phase 1: LLM descriptions per entity
-     -> Phase 2: 384-dim semantic embeddings
-     -> Phase 3: Competency questions per entity
-     -> Phase 4: Type constraint scoring
-     -> Phase 5: Alias / synonym generation
-   Output: enriched entities + relations
+`LangChainReactAgent` implements the LLM-driven control loop. The LLM chooses
+from the tools supplied to that agent, receives observations, and can make
+further calls before returning an answer. The arrows below describe available
+interactions, **not a mandatory execution order**.
 
- LAYER 3: PERSISTENCE  (~5 min)
- ──────────────────────────────────────────────────────
-   Write Neo4j  ->  Write Qdrant  ->  Write RDF/Fuseki
-     -> Generate exports (JSON-LD, Cypher, Turtle, ...)
-     -> SHACL validation & quality scoring
-     -> Analytics (OWL-RL inference, SKOS, graph metrics)
-   Output: populated stores + export files + quality report
+```mermaid
+flowchart TD
+    INPUT["Task + supplied ontology"]
+    AGENT["Reasoning LLM<br/>LangChainReactAgent / LangGraph"]
+    ONTOLOGY["Ontology query + coverage tools"]
+    RETRIEVE["Retrieval tool<br/>bound document or vector context"]
+    EXTRACT["Entity + relation extraction tools"]
+    ENRICH["Enrichment tool"]
+    VALIDATE["Validation tools<br/>SHACL, rules, consistency, CQ/SPARQL"]
+    OUTPUT["Agent response + tool results"]
+
+    INPUT --> AGENT
+    AGENT <-->|"structured calls / observations"| ONTOLOGY
+    AGENT <-->|"structured calls / observations"| RETRIEVE
+    AGENT <-->|"structured calls / observations"| EXTRACT
+    AGENT <-->|"structured calls / observations"| ENRICH
+    AGENT <-->|"structured calls / observations"| VALIDATE
+    AGENT --> OUTPUT
 ```
 
-Extraction (Layer 1) is the bottleneck. By checkpointing after extraction,
-enrichment and persistence can be re-run in ~20 min without re-extracting
-(94% time savings on iterative refinement).
+**Tools** wrap bounded operations; **skills** compose tools into reusable work
+units; **module subagents** bind those capabilities to ontology-specific
+resources. The registry centralizes the available capabilities.
+`PipelineAgent` provides a separate way to compose skills in declared Markdown
+plans, with explicit resource bindings and result flow. A declared plan is
+reconfigurable, but it is not LLM-selected control flow.
 
-See [Planning/02_ARCHITECTURE.md](Planning/02_ARCHITECTURE.md) for the full
-technical design including the iterative discovery loop, entity/relation
-extraction details, and stopping criteria.
+### Extraction model roles
+
+The **reasoning LLM remains the thinking and tool-routing component**.
+Extraction models and decision models perform bounded subtasks; TEV does not
+replace the controller, invent missing proposals, or perform ontology reasoning.
+
+```mermaid
+flowchart LR
+    CONTEXT["Source text + ontology"]
+    RULES["Rules<br/>deterministic domain patterns"]
+    GLINER["GLiNER<br/>typed entity spans"]
+    GENERATE["Generative LLM<br/>entities, attributes, relations"]
+    CANDIDATES["Ontology-valid candidate builder"]
+    TEV["TEV1 decision model<br/>candidate support scoring"]
+    JUDGE["TEV1 evidence judge<br/>filter proposed relations"]
+    CHECK["Evidence and ontology checks"]
+
+    CONTEXT --> RULES
+    CONTEXT --> GLINER
+    CONTEXT --> GENERATE
+    RULES --> CANDIDATES
+    GLINER --> CANDIDATES
+    CANDIDATES --> TEV
+    GENERATE --> JUDGE
+    CONTEXT -.->|"source evidence"| TEV
+    CONTEXT -.->|"source evidence"| JUDGE
+    TEV --> CHECK
+    JUDGE --> CHECK
+    GENERATE --> CHECK
+```
+
+This second diagram describes **alternative extraction/benchmark paths**, not
+a sequence every request runs. Generative extraction uses Ollama or vLLM;
+GLiNER is a separate span model, and TEV uses Ollama's decision API. GLiNER/TEV
+paths are benchmarkable but are not currently registered as dedicated tools
+in the dynamic agent or enabled in the public extraction route. Connecting
+them to the controller is distinct from implementing their extractors.
+
+### Deployed entry points
+
+| Entry point | Controller | Context and output |
+|-------------|------------|--------------------|
+| `LangChainReactAgent` (Python adapter) | LLM dynamically selects supplied structured tools | Caller-bound resources; agent response and tool results |
+| `POST /api/extract` | Module subagents, then paragraph relation extraction | Uploaded file + inline ontology; Workbench sections/entities/facts |
+| `POST /api/v1/build` | `PipelineAgent` executes a declared skill plan | Qdrant retrieval + ontology; assembly in Neo4j and optional SHACL validation |
+
+Creating module agents dynamically is not the same as dynamically selecting
+tools with an LLM. The API routes reuse the agent/skill infrastructure, but do
+not yet invoke the reasoning adapter as their controller.
+
+See [Agentic Pipeline](docs/architecture/agentic-pipeline.md) for tool bindings,
+module dispatch, validation boundaries, and the remaining controller wiring.
+The [earlier architecture notes](Planning/02_ARCHITECTURE.md) retain historical
+design context rather than defining the current runtime.
 
 ---
 
@@ -302,7 +431,7 @@ docker compose up -d
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
 | Neo4j | kgb-neo4j | 7474 / 7687 | Knowledge graph storage (Cypher queries) |
-| Qdrant | kgb-qdrant | 6333 | Vector similarity search (384-dim embeddings) |
+| Qdrant | kgb-qdrant | 6333 | Vector similarity search (dimensions match the configured embedding model) |
 | Fuseki | kgb-fuseki | 3030 | RDF/SPARQL ontology store |
 | Ollama | kgb-ollama | 11435 | Local LLM inference and embedding generation |
 | API | kgb-api | 8001 | FastAPI service for KG construction |
@@ -566,7 +695,7 @@ Features:
 - **W&B integration** for metric tracking and visualization
 - **SHACL quality scoring** per run (auto-generated from ontology)
 - **HTML reports** with convergence analysis and variant comparison
-- **Checkpoint-based re-enrichment** (`--enrich-only` mode, 94% time savings)
+- **Checkpoint-based re-enrichment** (`--enrich-only` mode, without repeating extraction)
 
 See [examples/ABLATION_STUDY_GUIDE.md](examples/ABLATION_STUDY_GUIDE.md) for
 ablation study setup.
@@ -597,8 +726,9 @@ ablation study setup.
 | Component | Technology |
 |-----------|-----------|
 | Language | Python 3.11+ |
-| LLM | Ollama (qwen3:8b, llama3.1:8b) -- see [agent-swarm scaling notes](docs/architecture/agentic-pipeline.md#ollama-vs-vllm-for-concurrent-subagents) for vLLM tradeoffs at higher subagent concurrency |
-| Embeddings | Ollama (qwen3-embedding, nomic-embed-text, 384-dim) |
+| LLM serving | Ollama or vLLM; Kolibri uses Aleph Alpha's vLLM plugin |
+| Experimental extraction | GLiNER entity spans; TEV1 candidate scoring/evidence judging |
+| Embeddings | Configured Ollama or vLLM embedding endpoint; model and dimensions must match the index |
 | Graph DB | Neo4j 5.x |
 | Vector DB | Qdrant |
 | RDF Store | Apache Fuseki 4.x |
@@ -680,6 +810,11 @@ complete coding guidelines.
 
 ## API Documentation
 
+The [extraction API guide](docs/guide/extraction-api.md) documents the KG Workbench
+request/response contract, cross-container deployment, authentication, and
+retrieval boundaries. A running API exposes interactive documentation at
+`http://localhost:8001/docs`.
+
 Auto-generated API documentation is available via MkDocs:
 
 ```bash
@@ -712,6 +847,10 @@ The documentation is generated from module docstrings using
 | [Planning/AGENT_TOOLBOX_INVENTORY.md](Planning/AGENT_TOOLBOX_INVENTORY.md) | Full inventory of every subagent, skill, and tool, and how they compose |
 | [Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md](Planning/SEMANTICS2026_IMPROVEMENT_PLAN.md) | Gap analysis and phased plan informed by SEMANTiCS 2026 (provenance, reasoning, repair agents, CQ-driven testing) |
 | [docs/architecture/agentic-pipeline.md](docs/architecture/agentic-pipeline.md) | Agent swarm design: CQType routing, module subagents, VCQ validation, model/concurrency config |
+| [docs/guide/extraction-api.md](docs/guide/extraction-api.md) | Workbench contract, deployment, authentication, and vector retrieval boundaries |
+| [docs/guide/model-providers-and-benchmarks.md](docs/guide/model-providers-and-benchmarks.md) | Ollama/vLLM/Kolibri deployment and GLiNER/TEV benchmark paths |
+| [Planning/benchmarks/expanded/README.md](Planning/benchmarks/expanded/README.md) | Published expanded benchmark measurements |
+| [Planning/benchmarks/expanded/STATUS.md](Planning/benchmarks/expanded/STATUS.md) | Completed, failed, and pending configurations; evaluation caveats |
 | [Planning/IMPLEMENTATION_SUMMARY.md](Planning/IMPLEMENTATION_SUMMARY.md) | Law graph implementation summary |
 | [Planning/LAW_ONTOLOGY_RATIONALE.md](Planning/LAW_ONTOLOGY_RATIONALE.md) | Legal ontology design decisions |
 | [docs/getting-started/quickstart-law-graph.md](docs/getting-started/quickstart-law-graph.md) | Quick start for German law graph |
