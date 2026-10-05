@@ -1,0 +1,137 @@
+{
+  "publication": "aggregate-only; source text and raw predictions intentionally excluded",
+  "run": {
+    "created_at": "2026-10-05T11:17:51.951679+00:00",
+    "dataset_sha256": "786f9d7bcbbfe8ab6ba23ae57d38e0ff37d45e3caedd11f320429d014998fde4",
+    "llm_backend": "ollama",
+    "llm_model": "qwen3:8b",
+    "model_revision": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "entity_extractor": "gliner",
+    "relation_extractor": "decision",
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "seed": 42,
+    "response_cache_enabled": false,
+    "decision_model": "tev1:0.8b",
+    "decision_judge": null,
+    "decision_model_revision": "8d11b3146b7f3f4f4d5e9a64665ab2bdaf8b46e4ec42a5880b60a716ae50e3fb",
+    "gpu_memory_snapshot_before": [
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 131776
+      },
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 50853
+      }
+    ],
+    "gpu_memory_snapshot_after": [
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 133246
+      },
+      {
+        "name": "NVIDIA H200 NVL",
+        "memory_total_mib": 143771,
+        "memory_used_mib": 51828
+      }
+    ]
+  },
+  "dataset": {
+    "name": "KGBuilder nuclear decommissioning bilingual pilot",
+    "version": "1.0.0",
+    "split": "pilot-evaluation",
+    "item_count": 22,
+    "languages": [
+      "de",
+      "en"
+    ],
+    "repeats": 3,
+    "trial_count": 66
+  },
+  "aggregate": {
+    "entity_metrics": {
+      "precision": 0.38333333333333336,
+      "recall": 0.3484848484848485,
+      "f1": 0.3650793650793651
+    },
+    "triple_metrics": {
+      "precision": 0.027777777777777776,
+      "recall": 0.027777777777777776,
+      "f1": 0.027777777777777776
+    },
+    "attribute_metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "entity_counts": {
+      "predicted": 183,
+      "gold": 198
+    },
+    "triple_counts": {
+      "predicted": 108,
+      "gold": 108
+    },
+    "kg_richness": {
+      "predicted_entity_class_types": 9,
+      "predicted_relation_types": 5,
+      "ontology_class_coverage": 0.8181818181818182,
+      "ontology_relation_coverage": 0.23809523809523808,
+      "predicted_attributes": 0,
+      "gold_attributes": 18,
+      "relation_evidence_entity_coverage": 1.0,
+      "ontology_domain_range_validity": 1.0
+    },
+    "latency_seconds": {
+      "median": 3.8537763238418847,
+      "p95": 4.0765410859603435,
+      "mean": 3.8463414803598868
+    },
+    "quality_ci95": {
+      "entity_f1": {
+        "lower": 0.19298245614035084,
+        "upper": 0.5063291139240506
+      },
+      "triple_f1": {
+        "lower": 0.0,
+        "upper": 0.10169491525423728
+      }
+    },
+    "errors": 0,
+    "decision_candidates": {
+      "count": 108,
+      "gold_covered": 3,
+      "gold": 108,
+      "recall": 0.027777777777777776,
+      "measured_trials": 66
+    },
+    "tokens": {
+      "prompt": 78888,
+      "completion": 132,
+      "total": 79020,
+      "source": "server",
+      "calls": 33
+    }
+  },
+  "unlabeled_corpus_probe": {
+    "scoring": "unlabeled-exploratory-only",
+    "documents_requested": 33,
+    "passages_per_document_limit": 10,
+    "passages_processed": 260,
+    "elapsed_seconds": 1424.9009576030076,
+    "latency_seconds": {
+      "median": 4.640924204955809,
+      "p95": 4.978205420076847
+    },
+    "entities_predicted": 2129,
+    "triples_predicted": 445,
+    "documents_attempted": 33,
+    "documents_with_trials": 29,
+    "error_count": 93,
+    "tokens": 677155
+  }
+}
